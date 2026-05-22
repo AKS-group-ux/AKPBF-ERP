@@ -1,0 +1,6 @@
+{
+  "name": "AKPBF - ERP Collecte Ordures",
+  "description": "Plateforme moderne de gestion et planification de la collecte d'ordures ménagères pour municipalités et services urbains (SIG, Facturation, Abonnés, Tournées).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
