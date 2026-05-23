@@ -117,7 +117,7 @@ export default function SubscribersView({
       lat: baseLat + latOffset,
       lng: baseLng + lngOffset,
       planId: newSubPlanId,
-      status: 'pending',
+      status: 'pending_validation',
       binType: newSubBinType,
       lastCollectionDate: 'Jamais',
       currentBinLevel: 0,
@@ -144,7 +144,7 @@ export default function SubscribersView({
   };
 
   // Toggle subscriber status
-  const handleToggleStatus = (status: 'active' | 'suspended' | 'pending') => {
+  const handleToggleStatus = (status: Subscriber['status']) => {
     if (!selectedSub) return;
     const updated = { ...selectedSub, status };
     setSelectedSub(updated);
@@ -233,7 +233,7 @@ export default function SubscribersView({
               <option value="All">Tous Statuts</option>
               <option value="active">Actif</option>
               <option value="suspended">Suspendu</option>
-              <option value="pending">En dépôt d'activation</option>
+              <option value="pending_validation">En dépôt d'activation</option>
             </select>
           </div>
         </div>
@@ -545,7 +545,7 @@ export default function SubscribersView({
                     type="range"
                     min="0"
                     max="100"
-                    value={selectedSub.currentBinLevel}
+                    value={selectedSub.currentBinLevel ?? 0}
                     onChange={(e) => handleBinLevelSlider(parseInt(e.target.value))}
                     className="w-full accent-indigo-600 cursor-ew-resize h-1.5 bg-slate-200 rounded-lg duration-100"
                   />
@@ -570,11 +570,11 @@ export default function SubscribersView({
                   <div className="mt-4 flex items-center gap-1.5 text-xs">
                     <span className="text-slate-500">Paiement :</span>
                     <select 
-                      value={selectedSub.paymentStatus}
+                      value={selectedSub.paymentStatus ?? 'unpaid'}
                       onChange={(e) => handleTogglePayment(e.target.value as any)}
                       className={`font-bold focus:outline-none cursor-pointer text-xs rounded-md p-1 ${
-                        selectedSub.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-700' : 
-                        selectedSub.paymentStatus === 'overdue' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'
+                        (selectedSub.paymentStatus ?? 'unpaid') === 'paid' ? 'bg-emerald-50 text-emerald-700' : 
+                        (selectedSub.paymentStatus ?? 'unpaid') === 'overdue' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'
                       }`}
                     >
                       <option value="paid">À Jour</option>

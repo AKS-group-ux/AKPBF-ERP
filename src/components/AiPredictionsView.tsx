@@ -1,9 +1,9 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: Apache-2.5
  */
 
-import { useState, useMemo, FormEvent } from 'react';
+import React, { useState, useMemo, FormEvent } from 'react';
 import { 
   Sparkles, 
   Bot, 
@@ -21,12 +21,18 @@ import {
   CheckCircle2, 
   UserPlus, 
   BarChart2, 
-  Eye, 
   RefreshCw,
-  Info
+  Info,
+  Flame,
+  Wrench,
+  Activity,
+  FileText,
+  ShieldCheck,
+  Zap,
+  Globe
 } from 'lucide-react';
 import { Subscriber, Invoice, SubscriptionPlan, Route } from '../types';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface AiPredictionsViewProps {
   subscribers: Subscriber[];
@@ -34,6 +40,71 @@ interface AiPredictionsViewProps {
   plans: SubscriptionPlan[];
   routes: Route[];
   onNavigateToTab?: (tab: string) => void;
+}
+
+// Inline Markdown formatter to safely styles response elements cleanly
+function FormattedMessage({ text }: { text: string }) {
+  const lines = text.split('\n');
+  return (
+    <div className="space-y-2 text-slate-700">
+      {lines.map((line, index) => {
+        const trimmed = line.trim();
+        
+        // Horizontal line
+        if (trimmed === '---') {
+          return <hr key={index} className="my-2 border-slate-200" />;
+        }
+        
+        // H3 headers
+        if (trimmed.startsWith('###')) {
+          const headerText = trimmed.replace('###', '').trim();
+          return (
+            <h4 key={index} className="text-xs font-black text-slate-800 uppercase tracking-wider mt-3 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block" />
+              {headerText}
+            </h4>
+          );
+        }
+
+        // H4 headers
+        if (trimmed.startsWith('####')) {
+          const headerText = trimmed.replace('####', '').trim();
+          return (
+            <h5 key={index} className="text-xs font-bold text-slate-800 mt-2 block">
+              {headerText}
+            </h5>
+          );
+        }
+
+        // Bullet points
+        if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+          const content = trimmed.replace(/^[\*\-]\s*/, '').trim();
+          // Bold matches inside item
+          const parts = content.split(/\*\*([^*]+)\*\*/g);
+          return (
+            <div key={index} className="flex items-start gap-2 text-[11.5px] leading-relaxed pl-2">
+              <span className="text-emerald-500 shrink-0 mt-1">•</span>
+              <span className="text-slate-600 font-medium">
+                {parts.map((p, i) => i % 2 === 1 ? <strong key={i} className="font-extrabold text-slate-900">{p}</strong> : p)}
+              </span>
+            </div>
+          );
+        }
+
+        // Standard text with bold markers
+        if (trimmed) {
+          const parts = trimmed.split(/\*\*([^*]+)\*\*/g);
+          return (
+            <p key={index} className="text-[11.5px] leading-relaxed font-semibold text-slate-600">
+              {parts.map((p, i) => i % 2 === 1 ? <strong key={i} className="font-extrabold text-slate-950">{p}</strong> : p)}
+            </p>
+          );
+        }
+
+        return <div key={index} className="h-1.5" />;
+      })}
+    </div>
+  );
 }
 
 export default function AiPredictionsView({
@@ -44,29 +115,38 @@ export default function AiPredictionsView({
   onNavigateToTab
 }: AiPredictionsViewProps) {
   
-  // Tabs: 'copilot' (Assistant Intelligent), 'financials' (Prévisions Financières & Impayés), 'logistics' (Optimisation Tournées), 'commercial' (Recommandations)
-  const [activeTab, setActiveTab] = useState<'copilot' | 'financials' | 'logistics' | 'commercial'>('copilot');
+  // Tabs: 'copilot' (Assistant Intelligent), 'financials' (Prévisions Financières & Impayés), 'logistics' (Optimisation Tournées), 'commercial' (Recommandations), 'audit_crisis' (Audit & Continuité)
+  const [activeTab, setActiveTab] = useState<'copilot' | 'financials' | 'logistics' | 'commercial' | 'audit_crisis'>('copilot');
 
   // Chat/Copilot States
   const [chatMessage, setChatMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState<Array<{ sender: 'user' | 'ai'; text: string; time: string }>>([
+  const [chatHistory, setChatHistory] = useState<Array<{ sender: 'user' | 'ai'; text: string; time: string; live?: boolean }>>([
     {
       sender: 'ai',
-      text: "Bonjour ! Je suis l'Assistant Intelligent AKPBF-Brain. J'analyse en continu le comportement de vos clients d'assainissement, les trajectoires de facturation, l'état physique du parc de poubelles et les tournées GPS d'Abidjan. Comment puis-je vous aider aujourd'hui ?\n\n💡 *Questions recommandées :*\n- *Quel est le risque global d'impayé ce mois-ci ?*\n- *Quels clients de Cocody devrions-nous passer sur la formule supérieure ?*\n- *Comment optimiser la consommation de carburant de la tournée d'aujourd'hui ?*",
-      time: '09:30'
+      text: "Bonjour ! Je suis l'Assistant Intelligent AKPBF-Brain. J'analyse en continu le comportement de vos clients d'assainissement, les trajectoires de facturation, l'état physique du parc de poubelles et les tournées GPS d'Abidjan. Comment puis-je vous aider aujourd'hui ?\n\n### Questions recommandées :\n* *Quel est le risque global d'impayé ce mois-ci ?*\n* *Quels clients de Cocody devrions-nous passer sur la formule supérieure ?*\n* *Comment optimiser la consommation de carburant de la tournée d'aujourd'hui ?*",
+      time: '09:30',
+      live: false
     }
   ]);
   const [isAiAnswering, setIsAiAnswering] = useState(false);
 
+  // Strategic AI Audit States
+  const [auditResult, setAuditResult] = useState<string | null>(null);
+  const [isAuditing, setIsAuditing] = useState(false);
+
+  // Crisis Continuité States
+  const [crisisType, setCrisisType] = useState<string>('greve');
+  const [crisisResult, setCrisisResult] = useState<string | null>(null);
+  const [isCrisisSimulating, setIsCrisisSimulating] = useState(false);
+
   // Unpaid Predict Data
   const riskSubscribers = useMemo(() => {
     return subscribers.map(s => {
-      // Calculate a deterministic risk score from status, neighborhood, phone size
       let riskScore = 15;
       let reasons: string[] = [];
 
       const unpaidBills = invoices.filter(i => i.subscriberId === s.id && i.status !== 'paid');
-      if (unpaidBills.length > 0) {
+      if (unpaidInvoicesCount() > 0) {
         riskScore += 45;
         reasons.push("Reliquat de facturation en attente");
       }
@@ -75,13 +155,12 @@ export default function AiPredictionsView({
         reasons.push("Contrat suspendu temporairement");
       }
       if (s.neighborhood === 'Yopougon') {
-        riskScore += 10; // minor demographic coefficient
+        riskScore += 10;
       }
-      if (s.phone.startsWith('+22505')) {
-        riskScore += 5; // Orange carrier correlation factor
+      if (s.phone.startsWith('+22505') || s.phone.includes('05')) {
+        riskScore += 5;
       }
 
-      // bound
       riskScore = Math.min(98, Math.max(8, riskScore));
 
       let level: 'Faible' | 'Modéré' | 'Élevé' | 'Critique' = 'Faible';
@@ -97,6 +176,10 @@ export default function AiPredictionsView({
       };
     }).sort((a,b) => b.riskScore - a.riskScore);
   }, [subscribers, invoices]);
+
+  function unpaidInvoicesCount() {
+    return invoices.filter((i: any) => i.status !== 'paid').length;
+  }
 
   // Revenues Predictions Calculations (Next 4 months)
   const currentMrr = useMemo(() => {
@@ -129,13 +212,11 @@ export default function AiPredictionsView({
       confidenceScore: number;
     }> = [];
 
-    // Criteria 1: Subscribers with Standard 240L bins who empty very often (implied high trash volume)
     subscribers.forEach((s, idx) => {
       const plan = plans.find(p => p.id === s.planId);
       if (!plan) return;
 
       if (plan.name.includes('Social') || plan.price < 4000) {
-        // Find higher plan
         const premiumPlan = plans.find(p => p.price > plan.price);
         if (premiumPlan) {
           leads.push({
@@ -157,7 +238,7 @@ export default function AiPredictionsView({
     return leads.sort((a,b) => b.confidenceScore - a.confidenceScore);
   }, [subscribers, plans]);
 
-  // Geographic High Potential Zones (Zones à fort potentiel)
+  // Geographic High Potential Zones
   const highPotentialZones = useMemo(() => {
     return [
       { name: 'Cocody-Riviera 3 (Zone Université)', rating: 'Critique', potentialCount: 840, densityIndex: 'Élevé 92%', averageIncome: 'Élevé', status: 'Cible Prioritaire' },
@@ -167,7 +248,7 @@ export default function AiPredictionsView({
     ];
   }, []);
 
-  // Handle chat submission
+  // Handle live chat submission to Express backend
   const handleSendChat = (e?: FormEvent) => {
     if (e) e.preventDefault();
     if (!chatMessage.trim()) return;
@@ -178,36 +259,98 @@ export default function AiPredictionsView({
     setChatMessage('');
     setIsAiAnswering(true);
 
-    // Smart responses reflecting the Local ERP state data
-    setTimeout(() => {
-      let aiText = '';
-      const query = userMsg.toLowerCase();
-
-      if (query.includes('impayé') || query.includes('reco') || query.includes('risque')) {
-        const highRiskCount = riskSubscribers.filter(r => r.riskScore > 60).length;
-        aiText = `### Analyse IA de Recouvrement (Impayés)\n\nJ'ai identifié **${highRiskCount} clients à fort risque d'impayé**. Notre score prédictif montre que **Cocody-Angré** présente la plus forte efficacité d'encaissement (94% d'apuration), tandis que **Yopougon** nécessite l'envoi d'alertes SMS renforcées.\n\n**Action immédiate recommandée :**\n1. Déclencher le *système automatique de suspension d'accès* pour les clients en reliquat de plus de 60 jours.\n2. Lancer la relance ciblée sur Orange Money.`;
-      } else if (query.includes('formule') || query.includes('vente') || query.includes('upsell') || query.includes('poubelle')) {
-        const upsellCount = upsellLeads.length;
-        const potentialGain = upsellLeads.reduce((acc, current) => acc + current.additionalMrrFcfa, 0);
-        aiText = `### Opportunités Commerciales & Upsell détectées\n\nAprès analyse, **${upsellCount} foyers** peuvent basculer immédiatement de la formule standard à la formule Premium, augmentant notre **Revenu Récurrent Mensuel (MRR) de +${potentialGain.toLocaleString()} FCFA**.\n\n**Leads les plus prometteurs :**\n- **${upsellLeads[0]?.subscriberName || 'Koffi'}** (${upsellLeads[0]?.neighborhood}) : Raison : *${upsellLeads[0]?.reason}* (Score de Confiance : ${upsellLeads[0]?.confidenceScore}%).\n- **${upsellLeads[1]?.subscriberName || 'Sangaré'}** (${upsellLeads[1]?.neighborhood}) : Raison : *${upsellLeads[1]?.reason}* (Score de Confiance : ${upsellLeads[1]?.confidenceScore}%).`;
-      } else if (query.includes('tour') || query.includes('optimis') || query.includes('carburant')) {
-        aiText = `### Optimisation Logistique de Tournées\n\nPour optimiser la flotte aujourd'hui (22 Mai 2026) :\n- **Camion #COL-402 (Cocody)** : Retarder le départ de 15 minutes pour regrouper les levées du quartier Riviera 3. Gain de temps estimé : **34 minutes** sur l'itinéraire.\n- **Économie de carburant estimée** : **-14.2%** sur le réseau d'Abidjan en adoptant la modélisation à arrêts ordonnés PostGIS.`;
-      } else {
-        aiText = `J'ai bien analysé votre message : "${userMsg}". \n\nD'un point de vue ERP et intelligence opérationnelle, nous gérons actuellement **${subscribers.length} clients** répartis sur différents arrondissements d'Abidjan. Notre portefeuille d'abonnements génère un MRR stable de **${currentMrr.toLocaleString()} FCFA**. \n\nN'hésitez pas à m'interroger plus précisément sur : les impayés, les tournées d'équipages ou les recommandations de vente de nouveaux bacs d'assainissement !`;
-      }
-
-      setChatHistory(prev => [...prev, { sender: 'ai', text: aiText, time }]);
+    fetch('/api/ai/chat', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: userMsg,
+        history: chatHistory.slice(-6), // pass recent history as context
+        context: {
+          subscribers,
+          invoices,
+          plans,
+          routes
+        }
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      setChatHistory(prev => [...prev, { sender: 'ai', text: data.text, time, live: data.live }]);
       setIsAiAnswering(false);
-    }, 1500);
+    })
+    .catch(err => {
+      console.error("Chat API error:", err);
+      // Failover message
+      setChatHistory(prev => [...prev, { 
+        sender: 'ai', 
+        text: "### Désolé !\nLa liaison serveur avec AKPBF-Brain v3.5 a été ralentie. Heureusement, notre plan d'action préconise de vérifier votre clé API Gemini dans l'onglet Secrets ou de retenter.", 
+        time,
+        live: false 
+      }]);
+      setIsAiAnswering(false);
+    });
   };
 
   // Preset quick ask
   const handleQuickRequest = (text: string) => {
     setChatMessage(text);
-    setTimeout(() => {
-      // Trigger click manually inside react state loop
-      setChatMessage(text);
-    }, 50);
+  };
+
+  // Call the strategic audit endpoint
+  const handleTriggerAudit = () => {
+    setIsAuditing(true);
+    setAuditResult(null);
+
+    fetch('/api/ai/audit', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        context: {
+          subscribers,
+          invoices,
+          plans,
+          routes
+        }
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      setAuditResult(data.text);
+      setIsAuditing(false);
+    })
+    .catch(err => {
+      console.error(err);
+      setIsAuditing(false);
+    });
+  };
+
+  // Trigger crisis simulator
+  const handleTriggerCrisisSim = () => {
+    setIsCrisisSimulating(true);
+    setCrisisResult(null);
+
+    fetch('/api/ai/sim-crisis', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        crisisType,
+        context: {
+          subscribers,
+          invoices,
+          plans,
+          routes
+        }
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      setCrisisResult(data.text);
+      setIsCrisisSimulating(false);
+    })
+    .catch(err => {
+      console.error(err);
+      setIsCrisisSimulating(false);
+    });
   };
 
   return (
@@ -216,17 +359,18 @@ export default function AiPredictionsView({
       {/* Upper Navigation Tab Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] font-bold text-amber-700 uppercase bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 tracking-wider inline-block">
-            Moteur Autonome AKPBF-Brain v3.5
+          <span className="text-[10px] font-bold text-amber-500 uppercase bg-slate-900 px-3 py-1 rounded-full border border-slate-700 tracking-wider inline-flex items-center gap-1.5 font-mono">
+            <Globe className="h-3 w-3 animate-pulse text-emerald-400" />
+            MOTEUR INTUITIF COGNITIF IA v3.5
           </span>
           <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-1.5 flex items-center gap-2">
-            Intelligence Artificielle & Prévisions
+            Intelligence Artificielle & Audit
           </h2>
-          <p className="text-slate-500 text-sm mt-0.5">Analyses heuristiques de propensions d'impayés, de recettes et logistique urbaine</p>
+          <p className="text-slate-500 text-sm mt-0.5">Croisement cognitif de facturation, logistique d'Abidjan et plans de secours d'urgence</p>
         </div>
 
         {/* Local Tab Selector */}
-        <div className="flex bg-slate-100 rounded-xl p-1 shrink-0 gap-1 self-start md:self-auto">
+        <div className="flex flex-wrap bg-slate-100 rounded-xl p-1 shrink-0 gap-1 self-start md:self-auto shadow-xs border border-slate-200/50">
           <button 
             type="button"
             id="subtab-copilot"
@@ -275,6 +419,18 @@ export default function AiPredictionsView({
           >
             💎 Opportunités Commerciales
           </button>
+          <button 
+            type="button"
+            id="subtab-audit-crisis"
+            onClick={() => setActiveTab('audit_crisis')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+              activeTab === 'audit_crisis' 
+                ? 'bg-emerald-600 text-white shadow-xs' 
+                : 'text-indigo-600 hover:text-indigo-900 bg-emerald-50/50'
+            }`}
+          >
+            📊 Audit & Continuité IA
+          </button>
         </div>
       </div>
 
@@ -314,14 +470,14 @@ export default function AiPredictionsView({
                 <Cpu className="h-4 w-4" />
                 <span>Statut du Moteur</span>
               </div>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
-                Le moteur analytique croise les relevés RFID matériels des cuves et le grand livre comptable d'AKPBF en temps réel pour suggérer des actions de recouvrement immédiates.
+              <p className="text-[11px] text-zinc-400 leading-relaxed font-semibold">
+                Le cerveau cognitif interroge en temps réel le registre comptable d'AKPBF et le positionnement RFID des cuves d'Abidjan pour formuler de fiers diagnostics.
               </p>
             </div>
           </div>
 
           {/* Right panel - Chat console */}
-          <div className="col-span-3 bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-xs flex flex-col h-[520px]">
+          <div className="col-span-3 bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-sm flex flex-col h-[520px]">
             
             {/* Header info bar */}
             <div className="bg-slate-50 border-b border-slate-100 px-5 py-4 flex items-center justify-between shrink-0">
@@ -341,7 +497,7 @@ export default function AiPredictionsView({
               <button 
                 type="button"
                 onClick={() => setChatHistory([{ sender: 'ai', text: 'Console réinitialisée. Comment puis-je vous guider ?', time: 'A l\'instant' }])}
-                className="text-[10px] text-slate-400 hover:text-slate-700 font-bold border border-slate-200 px-2 py-1 rounded"
+                className="text-[10px] text-slate-400 hover:text-slate-700 font-bold border border-slate-200 px-2 py-1 rounded cursor-pointer"
               >
                 Vider le fil
               </button>
@@ -362,14 +518,21 @@ export default function AiPredictionsView({
                       </div>
                     )}
                     <div className="space-y-1 max-w-[85%]">
-                      <div className={`p-3.5 rounded-2xl text-xs font-medium leading-relaxed ${
+                      <div className={`p-4 rounded-2xl text-xs font-semibold leading-relaxed ${
                         isAi 
-                          ? 'bg-slate-100/80 text-slate-700 border border-slate-200/40 rounded-tl-none whitespace-pre-line' 
-                          : 'bg-emerald-700 text-white rounded-tr-none font-semibold shadow-xs'
+                          ? 'bg-slate-50/95 text-slate-700 border border-slate-200/60 rounded-tl-none' 
+                          : 'bg-emerald-700 text-white rounded-tr-none shadow-xs'
                       }`}>
-                        {ch.text}
+                        <FormattedMessage text={ch.text} />
+                        
+                        {isAi && ch.live && (
+                          <div className="mt-3 pt-2 border-t border-slate-200/50 flex items-center gap-1.5 text-[9px] text-emerald-600 font-bold">
+                            <ShieldCheck className="h-3 w-3" />
+                            Analyse en direct effectuée par Gemini
+                          </div>
+                        )}
                       </div>
-                      <span className="text-[9px] text-slate-400 font-mono pl-1 text-right block">{ch.time}</span>
+                      <span className="text-[9px] text-slate-405 font-mono pl-1 text-right block">{ch.time}</span>
                     </div>
                   </div>
                 );
@@ -377,8 +540,8 @@ export default function AiPredictionsView({
 
               {isAiAnswering && (
                 <div className="flex justify-start items-center gap-2 text-slate-400 text-xs pl-8 font-mono animate-pulse">
-                  <Sparkles className="h-3.5 w-3.5 text-brand-accent animate-spin" />
-                  <span>AKPBF-Brain calcule le diagnostic et interroge l'ERP...</span>
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600 animate-spin" />
+                  <span>AKPBF-Brain interroge l'ERP et compile l'analyse en Côte d'Ivoire...</span>
                 </div>
               )}
             </div>
@@ -436,7 +599,7 @@ export default function AiPredictionsView({
                 </ResponsiveContainer>
               </div>
 
-              <div className="p-3.5 bg-slate-50 rounded-xl text-xs space-y-1 border border-slate-150 leading-relaxed text-slate-600">
+              <div className="p-3.5 bg-slate-50 rounded-xl text-xs space-y-1 border border-slate-150 leading-relaxed text-slate-600 font-semibold">
                 <strong>Analyse de variance :</strong> L'augmentation projetée prend en compte le plan d'upsell automatique ciblé et l'assainissement commercial à Cocody qui compense les coûts d'acquisition initiaux des bacs.
               </div>
             </div>
@@ -444,7 +607,10 @@ export default function AiPredictionsView({
             {/* Right Risk Score Ledger */}
             <div className="lg:col-span-5 bg-white border border-slate-150 rounded-2xl p-5 shadow-xs space-y-4 text-left">
               <div>
-                <h3 className="font-extrabold text-slate-800 text-sm">Abonnés à Risque Élevé d'Impayé</h3>
+                <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5Header">
+                  <AlertTriangle className="h-4.5 w-4.5 text-amber-500 shrink-0" />
+                  Abonnés à Risque Élevé d'Impayé
+                </h3>
                 <p className="text-xs text-slate-400">Classement automatique par probabilité d'incidence financière</p>
               </div>
 
@@ -465,8 +631,8 @@ export default function AiPredictionsView({
                         </div>
                       </div>
 
-                      <div className="text-right shrink-0">
-                        <span className="text-[9px] text-slate-400 block font-bold">Probabilité d'Impayé</span>
+                      <div className="text-right shrink-0 font-semibold">
+                        <span className="text-[9px] text-slate-405 block font-bold">Probabilité</span>
                         <span className={`text-[13px] font-black ${
                           rs.riskScore > 70 ? 'text-red-700' : 'text-amber-600'
                         }`}>
@@ -481,7 +647,7 @@ export default function AiPredictionsView({
               <button 
                 type="button"
                 onClick={() => onNavigateToTab?.('unpaid_debts')}
-                className="w-full text-center bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl block cursor-pointer transition"
+                className="w-full text-center bg-slate-100 hover:bg-slate-250 text-slate-700 text-xs font-bold py-2.5 rounded-xl block cursor-pointer transition border border-slate-200"
               >
                 Ouvrir le Module Intelligent des Impayés
               </button>
@@ -498,16 +664,16 @@ export default function AiPredictionsView({
           
           {/* Spatial Optimization controls */}
           <div className="lg:col-span-8 bg-zinc-900 border border-zinc-805 text-white rounded-2xl p-5 space-y-5">
-            <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+            <div className="flex justify-between items-center border-b border-zinc-805 pb-3">
               <div>
                 <h3 className="font-extrabold text-sm flex items-center gap-1.5 text-amber-400">
                   <Compass className="h-4.5 w-4.5" />
                   Simulateur Mathématique du TSP / VRP de Voirie
                 </h3>
-                <p className="text-[11px] text-zinc-400 mt-0.5">Optimisation spatiale séquentielle pour Cocody et Yopougon</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5 font-semibold">Optimisation spatiale séquentielle pour Cocody et Yopougon</p>
               </div>
 
-              <span className="text-[9px] bg-emerald-500/20 text-brand-accent px-2.5 py-1 rounded font-black font-mono">
+              <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded font-black font-mono">
                 PostGIS SIG OK
               </span>
             </div>
@@ -515,49 +681,44 @@ export default function AiPredictionsView({
             {/* Map visual track representation with animated routes points */}
             <div className="relative aspect-video w-full rounded-xl bg-slate-950 border border-zinc-800 overflow-hidden flex items-center justify-center">
               
-              {/* Overlay lines and nodes */}
               <div className="absolute inset-0 opacity-15 flex gap-8 flex-wrap">
                 {[1, 2, 3, 4, 5, 20].map(n => <div key={n} className="border border-white w-24 h-24" />)}
               </div>
 
               <svg viewBox="0 0 100 100" className="w-56 h-56 relative z-10 text-emerald-500">
-                {/* Node representation */}
                 <circle cx="20" cy="70" r="2.5" fill="#EF4444" />
                 <circle cx="35" cy="40" r="2" fill="#4CAF50" />
                 <circle cx="65" cy="20" r="2" fill="#4CAF50" />
                 <circle cx="80" cy="50" r="2" fill="#4CAF50" />
                 <circle cx="50" cy="85" r="2" fill="#4CAF50" />
 
-                {/* Simulated optimal flight routing line path */}
                 <path d="M 20 70 L 35 40 L 65 20 L 80 50 L 50 85 Z" stroke="#10B981" strokeWidth="0.8" strokeLinecap="round" strokeDasharray="3 2" fill="none" className="animate-pulse" />
-                
-                {/* Vehicle tracker point */}
                 <circle cx="35" cy="40" r="3.5" fill="#3B82F6" className="animate-bounce" />
               </svg>
 
-              <div className="absolute bottom-3 left-3 bg-black/80 border border-zinc-800 p-3 text-[10px] rounded-lg text-zinc-350 space-y-1 font-mono">
+              <div className="absolute bottom-3 left-3 bg-black/80 border border-zinc-800 p-3 text-[10px] rounded-lg text-zinc-350 space-y-1 font-mono leading-relaxed">
                 <div>🏁 Départ : **Garage Voirie Cocody**</div>
                 <div>📍 Équipage actif : **Camion #COL-402**</div>
                 <div className="text-emerald-400 font-bold">🚀 Trajet optimal séquencé par l'IA</div>
               </div>
 
-              <div className="absolute top-3 right-3 bg-emerald-950/80 border border-emerald-800 px-2.5 py-1 text-[9px] text-brand-accent rounded-full font-bold">
+              <div className="absolute top-3 right-3 bg-emerald-950/80 border border-emerald-800 px-2.5 py-1 text-[9px] text-emerald-400 rounded-full font-bold">
                 Économie Carburant : -14.2%
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-center text-xs">
               <div className="p-3 bg-zinc-850 rounded-xl border border-zinc-800">
-                <span className="text-zinc-400 block text-[9px] uppercase font-bold">Durée Totale Estimée</span>
+                <span className="text-zinc-400 block text-[9px] uppercase font-bold font-mono">Durée Totale Estimée</span>
                 <strong className="text-white block mt-0.5 text-md text-slate-200">210 Mins</strong>
               </div>
               <div className="p-3 bg-zinc-850 rounded-xl border border-zinc-800">
-                <span className="text-zinc-400 block text-[9px] uppercase font-bold">Distance Cumulative</span>
-                <strong className="text-brand-accent block mt-0.5 text-md">24.6 Km</strong>
+                <span className="text-zinc-400 block text-[9px] uppercase font-bold font-mono">Distance Cumulative</span>
+                <strong className="text-emerald-400 block mt-0.5 text-md">24.6 Km</strong>
               </div>
               <div className="p-3 bg-zinc-850 rounded-xl border border-zinc-800">
-                <span className="text-zinc-400 block text-[9px] uppercase font-bold">Passages Séquencés</span>
-                <strong className="text-sky-400 block mt-0.5 text-md font-bold">142 Foyers</strong>
+                <span className="text-zinc-400 block text-[9px] uppercase font-bold font-mono">Passages Séquencés</span>
+                <strong className="text-sky-450 block mt-0.5 text-md font-bold">142 Foyers</strong>
               </div>
             </div>
           </div>
@@ -577,7 +738,7 @@ export default function AiPredictionsView({
               ].map((an, idx) => (
                 <div 
                   key={idx} 
-                  className={`p-3 rounded-xl border text-xs space-y-1.5 leading-normal ${
+                  className={`p-3 rounded-xl border text-xs space-y-1.5 leading-normal font-semibold ${
                     an.type === 'critical' ? 'bg-red-50 border-red-150 text-red-900' :
                     an.type === 'warning' ? 'bg-amber-50 border-amber-150 text-amber-900' : 'bg-blue-50 border-blue-150 text-blue-900'
                   }`}
@@ -594,7 +755,7 @@ export default function AiPredictionsView({
             <button 
               type="button"
               onClick={() => onNavigateToTab?.('routes')}
-              className="w-full text-center bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl block cursor-pointer transition"
+              className="w-full text-center bg-slate-100 hover:bg-slate-205 text-slate-700 text-xs font-bold py-2.5 rounded-xl block cursor-pointer transition border border-slate-200"
             >
               Surveiller la Feuille de Route Opérationnelle
             </button>
@@ -616,7 +777,7 @@ export default function AiPredictionsView({
 
             <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
               {upsellLeads.slice(0, 4).map((lp) => (
-                <div key={lp.id} className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl text-xs space-y-2 relative hover:bg-slate-100/30 transition duration-150">
+                <div key={lp.id} className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl text-xs space-y-2 relative hover:bg-slate-100/30 transition duration-150 font-semibold">
                   <span className="absolute top-3.5 right-3 px-2 py-0.5 text-[8px] bg-emerald-100 text-emerald-800 rounded font-black">
                     {lp.confidenceScore}% Probabilité
                   </span>
@@ -626,13 +787,13 @@ export default function AiPredictionsView({
                     <p className="text-[10px] text-slate-400 font-semibold">{lp.neighborhood} • Formule Actuelle : {lp.currentPlanName}</p>
                   </div>
 
-                  <p className="text-[11px] text-slate-600 leading-normal italic pl-2 border-l-2 border-slate-300">
+                  <p className="text-[11px] text-slate-600 leading-normal italic pl-2 border-l-2 border-slate-305">
                     " {lp.reason} "
                   </p>
 
-                  <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-200/50">
-                    <span className="text-slate-500 font-semibold">Conseillé : <strong className="text-indigo-700">{lp.suggestedPlanName}</strong></span>
-                    <span className="text-brand-primary font-black">Gain Mensuel : +{lp.additionalMrrFcfa} FCFA</span>
+                  <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-200/50 font-semibold">
+                    <span className="text-slate-500">Conseillé : <strong className="text-indigo-700">{lp.suggestedPlanName}</strong></span>
+                    <span className="text-emerald-700 font-extrabold">Gain Mensuel : +{lp.additionalMrrFcfa} FCFA</span>
                   </div>
                 </div>
               ))}
@@ -646,9 +807,9 @@ export default function AiPredictionsView({
               <p className="text-xs text-slate-400 font-mono">Détection sectorielle des prospects à proximité immédiate d'abonnés</p>
             </div>
 
-            <div className="space-y-3.5">
+            <div className="space-y-3.5 font-semibold">
               {highPotentialZones.map((zone, i) => (
-                <div key={i} className="p-3 bg-slate-50 border border-slate-200 rounded-xl relative flex justify-between items-center text-xs hover:bg-slate-100/30 transition">
+                <div key={i} className="p-3 bg-slate-50 border border-slate-205 rounded-xl relative flex justify-between items-center text-xs hover:bg-slate-100/30 transition">
                   <div className="space-y-1">
                     <h4 className="font-bold text-slate-800">{zone.name}</h4>
                     <div className="flex gap-2 text-[10px] text-slate-450 font-semibold">
@@ -658,20 +819,144 @@ export default function AiPredictionsView({
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] text-brand-primary font-black block">{zone.potentialCount} prospects</span>
+                    <span className="text-[10px] text-emerald-850 font-black block">{zone.potentialCount} prospects</span>
                     <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mt-0.5">{zone.status}</span>
                   </div>
                 </div>
               ))}
 
               <div className="pt-2">
-                <div className="p-3.5 bg-brand-primary/10 rounded-xl border border-emerald-150 font-medium text-xs leading-normal text-slate-700 flex items-start gap-2">
+                <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-150 font-medium text-xs leading-normal text-slate-700 flex items-start gap-2">
                   <Info className="h-4.5 w-4.5 text-emerald-800 shrink-0 mt-0.5" />
                   <p>
-                    <strong>Recommandation d'acquisition SaaS :</strong> En déployant un représentant sur la **Riviera 3**, notre taux de conversion de salubrité peut augmenter de **18%** grâce à la preuve sociale cumulée des résidents déjà abonnés.
+                    <strong>Recommandation d'acquisition SaaS :</strong> En déployant un représentant sur la **Riviera 3**, notre taux de conversion de salubrité peut augmenter de **18%** grâce à la preuve sociale de voisinage résiduelle.
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* RENDER NEW TAB 5: STRATEGIC AUDIT & CRISIS CONTINUITY PLANNER */}
+      {activeTab === 'audit_crisis' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-300 text-left">
+          
+          {/* Left panel: Tactical Audit Trigger */}
+          <div className="lg:col-span-6 space-y-6 flex flex-col">
+            <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs flex-1 flex flex-col space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-sm">Rapport d'Audit Stratégique & SWOT</h3>
+                  <p className="text-xs text-slate-400">Croisement automatique des metrics d'Abidjan en direct</p>
+                </div>
+              </div>
+
+              <p className="text-[11.5px] text-slate-500 leading-relaxed font-semibold">
+                Engagez le moteur cognitif d'audit pour scanner la base comptable d'AKPBF. L'algorithme calcule le diagnostic financier de recouvrement, identifie les anomalies matérielles de vos bennes et génère un rapport SWOT exhaustif pour réunion de direction.
+              </p>
+
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={handleTriggerAudit}
+                  disabled={isAuditing}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-3 rounded-xl transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-45"
+                >
+                  {isAuditing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Calcul comptable & Audit stratégique par l'IA...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 text-amber-300" />
+                      Générer le Rapport d'Audit Institutionnel (Abidjan)
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Show Audit Result if available */}
+              {auditResult && (
+                <div className="mt-4 p-4 bg-slate-50/70 border border-slate-200 rounded-xl overflow-y-auto max-h-[380px] space-y-2 animate-in slide-in-from-top-3 duration-200 font-semibold shadow-inner">
+                  <FormattedMessage text={auditResult} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right panel: Disruption Crisis Simulation (PCA) */}
+          <div className="lg:col-span-6 space-y-6 flex flex-col">
+            <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs flex-1 flex flex-col space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                  <Flame className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-sm">Simulateur de Crises Urbaines & Continuité (PCA)</h3>
+                  <p className="text-xs text-slate-400">Modèles de réaction d'urgence face aux imprévus d'Abidjan</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 font-semibold">
+                <label className="text-slate-700 text-xs font-bold block">1. Choisissez un scénario de crise :</label>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'greve', label: '✊ Grève Organisée', tip: '75% du personnel absent' },
+                    { id: 'penurie_carburant', label: '⛽ Pénurie Gazole', tip: 'Ravitaillement bloqué' },
+                    { id: 'inondation', label: '⛈️ Saison des Pluies', tip: 'Riviera submergée' },
+                    { id: 'panne_camions', label: '🔧 Pannes Matérielles', tip: '3 Vérins hydrauliques hors-service' }
+                  ].map((sc) => (
+                    <button
+                      key={sc.id}
+                      type="button"
+                      onClick={() => setCrisisType(sc.id)}
+                      className={`p-3 text-left border rounded-xl transition duration-150 cursor-pointer ${
+                        crisisType === sc.id
+                          ? 'bg-red-50 border-red-300 text-red-900 ring-1 ring-red-400/30'
+                          : 'bg-slate-50 hover:bg-slate-100/60 border-slate-150 text-slate-600'
+                      }`}
+                    >
+                      <strong className="text-[11.5px] font-extrabold block">{sc.label}</strong>
+                      <span className="text-[9.5px] text-slate-400 block font-semibold mt-0.5">{sc.tip}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleTriggerCrisisSim}
+                  disabled={isCrisisSimulating}
+                  className="w-full bg-rose-700 hover:bg-rose-800 text-white font-black text-xs py-3 rounded-xl transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-45"
+                >
+                  {isCrisisSimulating ? (
+                    <>
+                      <Activity className="h-4 w-4 animate-pulse text-amber-200" />
+                      Calcul tactique du Plan de Continuité d'Activité PCA...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 text-amber-400" />
+                      Déclencher l'Analyse Tactique du Risque & PCA
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Show Crisis Result if available */}
+              {crisisResult && (
+                <div className="mt-4 p-4 bg-rose-50/40 border border-rose-100 rounded-xl overflow-y-auto max-h-[340px] space-y-2 animate-in slide-in-from-top-3 duration-200 font-semibold shadow-inner">
+                  <FormattedMessage text={crisisResult} />
+                </div>
+              )}
             </div>
           </div>
 

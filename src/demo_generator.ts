@@ -11,25 +11,43 @@ export const DEMO_PLANS: SubscriptionPlan[] = [
   {
     id: 'plan_standard_2500',
     name: 'Abonnement Standard Particulier',
+    reference: 'REF-STD-2500',
     price: 2500,
     frequency: 'Mensuel',
+    durationMonths: 12,
+    collectionFrequency: '2 fois par semaine',
+    maxCollectionsCount: 8,
     description: '2 passages de bennes par semaine. Bac d\'assainissement de 240Litres équipé de puce RFID inclus.',
+    termsAndConditions: 'Valable pour les déchets ménagers uniquement. Tout déchet de construction est exclu.',
+    status: 'active',
     allowedVolume: '480 L / Mois'
   },
   {
     id: 'plan_premium_5000',
     name: 'Abonnement Premium Famille',
+    reference: 'REF-PREM-5000',
     price: 5000,
     frequency: 'Mensuel',
+    durationMonths: 12,
+    collectionFrequency: '3 fois par semaine',
+    maxCollectionsCount: 12,
     description: '3 passages de bennes par semaine. Bac renforcé de 360Litres équipé RFID inclus. Enlèvement lourd prioritaire.',
+    termsAndConditions: 'Comprend le ramassage périodique des encombrants légers de jardinage.',
+    status: 'active',
     allowedVolume: '1080 L / Mois'
   },
   {
     id: 'plan_entreprise_15000',
     name: 'Abonnement Professionnel & Commerce',
+    reference: 'REF-ENT-15000',
     price: 15000,
     frequency: 'Mensuel',
+    durationMonths: 12,
+    collectionFrequency: 'Quotidienne (Lundi-Samedi)',
+    maxCollectionsCount: 26,
     description: '6 passages de bennes par semaine (Lundi-Samedi). Grand conteneur de voirie de 1100Litres fourni. Lavage annuel.',
+    termsAndConditions: 'Idéal commerces, syndics et bureaux. Comprend un service annuel de désinfection du bac.',
+    status: 'active',
     allowedVolume: '6600 L / Mois'
   }
 ];
@@ -199,11 +217,15 @@ export function generateAllDemoData() {
       lat,
       lng,
       planId,
-      status,
+      status: status as any,
       binType,
       lastCollectionDate: `2026-05-${Math.floor(15 + rand() * 7)}`,
       currentBinLevel: currentLevel,
-      paymentStatus
+      paymentStatus,
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      collectionsRealized: Math.floor(12 + rand() * 20),
+      unpaidDays: paymentStatus === 'overdue' ? Math.floor(30 + rand() * 100) : 0
     };
 
     subscribers.push(subscriber);

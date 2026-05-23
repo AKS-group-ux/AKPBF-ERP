@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: akpbf_postgres_db
+    environment:
+      POSTGRES_USER: akpbf_admin
+      POSTGRES_PASSWORD: akpbf_secure_password_2026
+      POSTGRES_DB: akpbf_erp_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U akpbf_admin -d akpbf_erp_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: akpbf_fastapi_app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://akpbf_admin:akpbf_secure_password_2026@db:5432/akpbf_erp_db
+      - SECRET_KEY=09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=480
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

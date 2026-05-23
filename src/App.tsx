@@ -27,17 +27,19 @@ import {
   BookOpen,
   Sparkles,
   Camera,
-  Cpu
+  Cpu,
+  FileText
 } from 'lucide-react';
 
-import { Subscriber, Invoice, CollectorAgent, Route, NotificationLog, SubscriptionPlan } from './types';
+import { Subscriber, Invoice, CollectorAgent, Route, NotificationLog, SubscriptionPlan, SubscriptionHistoryLog, Contract, ContractTemplate, PaymentReceipt, Emplacement } from './types';
 import { 
   INITIAL_PLANS, 
   INITIAL_SUBSCRIBERS, 
   INITIAL_AGENTS, 
   INITIAL_ROUTES, 
   INITIAL_INVOICES, 
-  INITIAL_NOTIFS 
+  INITIAL_NOTIFS,
+  INITIAL_EMPLACEMENTS
 } from './mockData';
 import { generateAllDemoData } from './demo_generator';
 
@@ -52,6 +54,7 @@ import ArchitectHub from './components/ArchitectHub';
 
 // New missing views imports
 import SubscriptionPlansView from './components/SubscriptionPlansView';
+import ContractsView from './components/ContractsView';
 import PaymentsView from './components/PaymentsView';
 import ReportsView from './components/ReportsView';
 import GpsMapView from './components/GpsMapView';
@@ -59,12 +62,354 @@ import UnpaidDebtsView from './components/UnpaidDebtsView';
 import BinsManagementView from './components/BinsManagementView';
 import AiPredictionsView from './components/AiPredictionsView';
 import ClientPortalView from './components/ClientPortalView';
+import UnifiedAuth from './components/UnifiedAuth';
+
+// Enterprise ERP Modules imports
+import AccountingView from './components/AccountingView';
+import ExpensesView from './components/ExpensesView';
+import StockView from './components/StockView';
+import FleetView from './components/FleetView';
+import HrView from './components/HrView';
+
+import UserProfileMenu from './components/UserProfileMenu';
+import EmplacementsView from './components/EmplacementsView';
+import ThemeToggle from './components/ThemeToggle';
+
+const INITIAL_TEMPLATES: ContractTemplate[] = [
+  {
+    id: 'tpl_standard',
+    name: 'Contrat d\'Abonnement Standard Particulier',
+    status: 'active',
+    body: `CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ AKPBF
+Numéro du contrat : {{contract_number}}
+Client Citoyen d'Abidjan : {{client_name}} (N° Citoyen: {{client_number}})
+
+Il est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine (contact : {{company_phone}} / {{company_email}}) et l'Abonné(e) désigné(e) ci-dessus :
+
+1. Prestation : AKPBF met à disposition un bac standard d'enlèvement et effectuera le ramassage planifié à l'adresse indiquée.
+2. Formule Souscrite : {{subscription_name}} au prix mensuel fixe de {{subscription_price}}.
+3. Période de validité : Le présent engagement prend effet le {{start_date}} et restera d'application stricte jusqu'au {{end_date}}.
+
+Fait à Abidjan, Côte d'Ivoire.`
+  },
+  {
+    id: 'tpl_premium',
+    name: 'Contrat d\'Abonnement Premium Famille',
+    status: 'active',
+    body: `CONTRAT PREMIUM RESIDENTIEL - AKPBF CODY
+Réf Contrat : {{contract_number}}
+Bénéficiaire : {{client_name}} (ID Mairie: {{client_number}})
+
+Conclu sous l'égide de la mairie d'Abidjan pour la salubrité publique :
+
+- Type de forfait : {{subscription_name}}
+- Redevance mensuelle : {{subscription_price}}
+- Date de prise d'effet : {{start_date}}
+- Échéance contractuelle : {{end_date}}
+
+Une redevance due de {{subscription_price}} est payable par prélèvement ou Mobile Money (Orange Money/Wave) au début de chaque mois. En cas d'inexécution sous un délai de 30 jours, le service d'enlèvement sera suspendu de plein droit.
+
+Signé électroniquement en direct.`
+  },
+  {
+    id: 'tpl_pro',
+    name: 'Convention de Salubrité et d\'Hygiène Commerciale B2B',
+    status: 'active',
+    body: `CONVENTION COMMERCIALE D'ENLÈVEMENT DE DÉCHETS B2B
+Contrat N° : {{contract_number}}
+Partenaire B2B : {{client_name}} (N° de registre : {{client_number}})
+
+Le prestataire {{company_name}} s'engage à vider sur un plan quotidien (Lundi au Samedi) les conteneurs du client.
+
+Conditions Financières:
+- Abonnement : {{subscription_name}}
+- Redevance Mensuelle : {{subscription_price}}
+- Engagement : Du {{start_date}} au {{end_date}}
+
+Contact assistance B2B : {{company_phone}} / {{company_email}}.`
+  }
+];
+
+function generateInitialContracts(): Contract[] {
+  return [
+    {
+      id: 'CNT-2026-6081',
+      contractNumber: 'CNT-2026-6081',
+      subscriberId: 'SUB-4029',
+      subscriberName: 'Koffi Jean-Jacques',
+      planId: 'plan_eco',
+      planName: 'Standard Municipal',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      amount: 3500,
+      status: 'active',
+      signatureDate: '2026-01-01',
+      termsAndConditions: `CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ AKPBF\nNuméro du contrat : CNT-2026-6081\nClient Citoyen d'Abidjan : Koffi Jean-Jacques (N° Citoyen: SUB-4029)\n\nIl est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine (contact : +225 27 22 45 61 / contact@salubrite.akpbf.ci) et l'Abonné(e) désigné(e) ci-dessus :\n\n1. Prestation : AKPBF met à disposition un bac standard d'enlèvement et effectuera le ramassage planifié à l'adresse indiquée.\n2. Formule Souscrite : Standard Municipal au prix mensuel fixe de 3 500 FCFA.\n3. Période de validité : Le présent engagement prend effet le 2026-01-01 et restera d'application stricte jusqu'au 2026-12-31.\n\nFait à Abidjan, Côte d'Ivoire.`
+    },
+    {
+      id: 'CNT-2026-1933',
+      contractNumber: 'CNT-2026-1933',
+      subscriberId: 'SUB-1933',
+      subscriberName: 'Soro Aminata',
+      planId: 'plan_pro',
+      planName: 'Professionnel & Commerce',
+      startDate: '2026-02-01',
+      endDate: '2027-01-31',
+      amount: 15000,
+      status: 'active',
+      signatureDate: '2026-02-01',
+      termsAndConditions: `CONVENTION COMMERCIALE D'ENLÈVEMENT DE DÉCHETS B2B\nContrat N° : CNT-2026-1933\nPartenaire B2B : Soro Aminata (N° de registre : SUB-1933)\n\nLe prestataire AKPBF s'engage à vider sur un plan quotidien (Lundi au Samedi) les conteneurs du client.\n\nConditions Financières:\n- Abonnement : Professionnel & Commerce\n- Redevance Mensuelle : 15 005 FCFA\n- Engagement : Du 2026-02-01 au 2027-01-31\n\nContact assistance B2B : +225 27 22 45 61 / contact@salubrite.akpbf.ci.`
+    },
+    {
+      id: 'CNT-2026-8842',
+      contractNumber: 'CNT-2026-8842',
+      subscriberId: 'SUB-8842',
+      subscriberName: 'Mamadou Diallo',
+      planId: 'plan_eco',
+      planName: 'Standard Municipal',
+      startDate: '2025-10-01',
+      endDate: '2026-09-30',
+      amount: 3500,
+      status: 'suspended',
+      signatureDate: '2025-10-01',
+      termsAndConditions: `CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ AKPBF\nNuméro du contrat : CNT-2026-8842\nClient Citoyen d'Abidjan : Mamadou Diallo (N° Citoyen: SUB-8842)\n\nIl est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine et l'Abonné(e) désigné(e) ci-dessus :\n\n- Type de forfait : Standard Municipal au prix mensuel fixe de 3 500 FCFA.\n- Engagement : Du 2025-10-01 au 2026-09-30.`
+    }
+  ];
+}
+
+function generateInitialReceipts(): PaymentReceipt[] {
+  return [
+    {
+      id: 'REC-2026-0001',
+      paymentRef: 'PAY-TX-998124',
+      subscriberId: 'SUB-4029',
+      subscriberName: 'Koffi Jean-Jacques',
+      contractNumber: 'CNT-2026-6081',
+      invoiceId: 'FAC_KOFFI_01',
+      paymentDate: '2026-05-10',
+      amountPaid: 3500,
+      paymentMethod: 'Orange Money',
+      remainingBalance: 0,
+      electronicSignature: 'CERT-SIG-4421-AKPBF'
+    },
+    {
+      id: 'REC-2026-0002',
+      paymentRef: 'PAY-TX-440291',
+      subscriberId: 'SUB-1933',
+      subscriberName: 'Soro Aminata',
+      contractNumber: 'CNT-2026-1933',
+      invoiceId: 'FAC_SORO_01',
+      paymentDate: '2026-05-12',
+      amountPaid: 15000,
+      paymentMethod: 'Wave',
+      remainingBalance: 0,
+      electronicSignature: 'CERT-SIG-8802-AKPBF'
+    }
+  ];
+}
 
 const LOCAL_STORAGE_KEY = 'akpbf_erp_state_v2';
 
 export default function App() {
+  // Central Auth session user state
+  const [sessionUser, setSessionUser] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    role: 'ADMINISTRATEUR' | 'COMPTABLE' | 'SUPERVISEUR' | 'CHAUFFEUR' | 'AGENT' | 'CLIENT';
+    phone?: string;
+    subscriberId?: string;
+  } | null>(() => {
+    const saved = localStorage.getItem('akpbf_erp_session');
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [lastRole, setLastRole] = useState<string | null>(() => {
+    const saved = localStorage.getItem('akpbf_erp_session');
+    try {
+      return saved ? JSON.parse(saved).role : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Strict role switch separation security check
+  useEffect(() => {
+    if (sessionUser) {
+      if (lastRole && lastRole !== sessionUser.role) {
+        // Clear everything immediately - security protocol
+        localStorage.removeItem('akpbf_erp_session');
+        localStorage.removeItem('akpbf_jwt_token');
+        localStorage.removeItem('akpbf_user_preferences');
+        setSessionUser(null);
+        setLastRole(null);
+        alert('Sécurité : Un changement de rôle nécessite une nouvelle authentification.');
+      } else {
+        setLastRole(sessionUser.role);
+      }
+    } else {
+      setLastRole(null);
+    }
+  }, [sessionUser, lastRole]);
+
+  // Odoo Subscription actions historical audit logs
+  const [auditLogs, setAuditLogs] = useState<SubscriptionHistoryLog[]>(() => {
+    const saved = localStorage.getItem('akpbf_erp_audit_logs');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [
+      {
+        id: 'LOG-001',
+        subscriberId: 'AKPBF-000001',
+        subscriberName: 'Jean-Jacques Coulibaly',
+        action: 'creation',
+        description: 'Initialisation du contrat et affectation du bac RFID 240L Standard.',
+        timestamp: '2026-05-10 09:30',
+        operator: 'Admin AKPBF'
+      },
+      {
+        id: 'LOG-002',
+        subscriberId: 'AKPBF-000002',
+        subscriberName: 'Aminata Koné',
+        action: 'state_change',
+        oldState: 'pending_validation',
+        newState: 'active',
+        description: 'Changement d\'état du contrat vers "Actif". Redirection vers le moteur de facturation automatique.',
+        timestamp: '2026-05-14 11:20',
+        operator: 'Système Central ERP'
+      }
+    ];
+  });
+
+  const logAuditAction = (
+    subId: string, 
+    subName: string, 
+    action: SubscriptionHistoryLog['action'], 
+    desc: string, 
+    oldState?: string, 
+    newState?: string
+  ) => {
+    const newLog: SubscriptionHistoryLog = {
+      id: `LOG-${Math.floor(1000 + Math.random() * 9050)}`,
+      subscriberId: subId,
+      subscriberName: subName,
+      action,
+      oldState,
+      newState,
+      description: desc,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      operator: sessionUser ? sessionUser.name : 'Système Automatique'
+    };
+    const updated = [newLog, ...auditLogs];
+    setAuditLogs(updated);
+    localStorage.setItem('akpbf_erp_audit_logs', JSON.stringify(updated));
+  };
+
+  const handleLogin = (user: typeof sessionUser) => {
+    setSessionUser(user);
+    if (user) {
+      localStorage.setItem('akpbf_erp_session', JSON.stringify(user));
+      // Redirection logic to appropriate spaces as requested
+      if (user.role === 'CLIENT') {
+        setActiveTab('client_portal');
+      } else if (user.role === 'COMPTABLE') {
+        setActiveTab('accounting');
+      } else if (user.role === 'SUPERVISEUR') {
+        setActiveTab('dashboard');
+      } else if (user.role === 'CHAUFFEUR' || user.role === 'AGENT') {
+        setActiveTab('routes');
+      } else {
+        // ADMINISTRATEUR
+        setActiveTab('dashboard');
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    // 1. Destroy and void security JWT tokens
+    localStorage.removeItem('akpbf_jwt_token');
+    
+    // 2. Terminate session
+    localStorage.removeItem('akpbf_erp_session');
+    
+    // 3. Clear customer/operator cached preferences and settings databases
+    localStorage.removeItem('akpbf_user_preferences');
+    localStorage.removeItem('akpbf_user_cache');
+    
+    // Clear session storage
+    sessionStorage.clear();
+    
+    // 4. Force state replacement to clear navigation history context
+    try {
+      window.history.replaceState(null, '', window.location.pathname + '#/login');
+    } catch (e) {
+      console.log('Failed to alter browser history state', e);
+    }
+    
+    // 5. Set auth session null (Unified Login redirect)
+    setSessionUser(null);
+    setLastRole(null);
+    setActiveTab('dashboard');
+  };
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Dark/Light Theme state
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('akpbf_erp_theme');
+    if (saved === 'light' || saved === 'dark') {
+      return saved;
+    }
+    // Detect system preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
+
+  // Track theme changes and set body/html class
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('akpbf_erp_theme', theme);
+  }, [theme]);
+
+  // Close sidebar on ESC key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Prevent background scrolling when mobile menu is open
+  useEffect(() => {
+    if (isSidebarOpen) {
+      document.body.classList.add('overflow-hidden');
+    } else {
+      document.body.classList.remove('overflow-hidden');
+    }
+    return () => {
+      document.body.classList.remove('overflow-hidden');
+    };
+  }, [isSidebarOpen]);
 
   // Core municipal database states including subscription plans
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -73,6 +418,12 @@ export default function App() {
   const [agents, setAgents] = useState<CollectorAgent[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [notifLogs, setNotifLogs] = useState<NotificationLog[]>([]);
+
+  // Odoo Contracts and receipts states
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [templates, setTemplates] = useState<ContractTemplate[]>([]);
+  const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
+  const [emplacements, setEmplacements] = useState<Emplacement[]>([]);
 
   // Load state from local storage on mount
   useEffect(() => {
@@ -86,6 +437,12 @@ export default function App() {
         setAgents(parsed.agents && parsed.agents.length > 0 ? parsed.agents : generateAllDemoData().agents);
         setRoutes(parsed.routes && parsed.routes.length > 0 ? parsed.routes : generateAllDemoData().routes);
         setNotifLogs(parsed.notifLogs && parsed.notifLogs.length > 0 ? parsed.notifLogs : generateAllDemoData().notifLogs);
+        
+        // Load contracts, templates, receipts, or seed them if empty
+        setContracts(parsed.contracts && parsed.contracts.length > 0 ? parsed.contracts : generateInitialContracts());
+        setTemplates(parsed.templates && parsed.templates.length > 0 ? parsed.templates : INITIAL_TEMPLATES);
+        setReceipts(parsed.receipts && parsed.receipts.length > 0 ? parsed.receipts : generateInitialReceipts());
+        setEmplacements(parsed.emplacements && parsed.emplacements.length > 0 ? parsed.emplacements : INITIAL_EMPLACEMENTS);
       } catch (e) {
         console.error('Error parsing local storage ERP state - loading high fidelity presets', e);
         loadInitialPresets();
@@ -95,16 +452,52 @@ export default function App() {
     }
   }, []);
 
+  // Sync automatic tab redirection once user context is loaded
+  useEffect(() => {
+    if (sessionUser) {
+      if (sessionUser.role === 'CLIENT') {
+        setActiveTab('client_portal');
+      } else if (sessionUser.role === 'COMPTABLE') {
+        setActiveTab('accounting');
+      } else if (sessionUser.role === 'CHAUFFEUR' || sessionUser.role === 'AGENT') {
+        setActiveTab('routes');
+      } else {
+        setActiveTab('dashboard');
+      }
+    }
+  }, [sessionUser]);
+
   // Helper method to reload initials with high-fidelity AKPBF simulated databases
   const loadInitialPresets = () => {
     const demo = generateAllDemoData();
+    const initContracts = generateInitialContracts();
+    const initTemplates = INITIAL_TEMPLATES;
+    const initReceipts = generateInitialReceipts();
+    const initEmplacements = INITIAL_EMPLACEMENTS;
+
     setPlans(demo.plans);
     setSubscribers(demo.subscribers);
     setInvoices(demo.invoices);
     setAgents(demo.agents);
     setRoutes(demo.routes);
     setNotifLogs(demo.notifLogs);
-    saveStateToLocalStorage(demo.plans, demo.subscribers, demo.invoices, demo.agents, demo.routes, demo.notifLogs);
+    setContracts(initContracts);
+    setTemplates(initTemplates);
+    setReceipts(initReceipts);
+    setEmplacements(initEmplacements);
+
+    saveStateToLocalStorage(
+      demo.plans, 
+      demo.subscribers, 
+      demo.invoices, 
+      demo.agents, 
+      demo.routes, 
+      demo.notifLogs,
+      initContracts,
+      initTemplates,
+      initReceipts,
+      initEmplacements
+    );
   };
 
   // Sync state to local storage when state modifications occur
@@ -114,7 +507,11 @@ export default function App() {
     invs: Invoice[],
     agts: CollectorAgent[],
     rts: Route[],
-    notifs: NotificationLog[]
+    notifs: NotificationLog[],
+    cnts?: Contract[],
+    tpls?: ContractTemplate[],
+    rcpts?: PaymentReceipt[],
+    empls?: Emplacement[]
   ) => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
       plans: currentPlans,
@@ -122,8 +519,31 @@ export default function App() {
       invoices: invs,
       agents: agts,
       routes: rts,
-      notifLogs: notifs
+      notifLogs: notifs,
+      contracts: cnts || contracts,
+      templates: tpls || templates,
+      receipts: rcpts || receipts,
+      emplacements: empls || emplacements
     }));
+  };
+
+  // Emplacements multi-location management handlers
+  const handleAddEmplacement = (newEmp: Emplacement) => {
+    const updated = [newEmp, ...emplacements];
+    setEmplacements(updated);
+    saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, contracts, templates, receipts, updated);
+  };
+
+  const handleUpdateEmplacement = (updatedEmp: Emplacement) => {
+    const updated = emplacements.map(e => e.id === updatedEmp.id ? updatedEmp : e);
+    setEmplacements(updated);
+    saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, contracts, templates, receipts, updated);
+  };
+
+  const handleDeleteEmplacement = (id: string) => {
+    const updated = emplacements.filter(e => e.id !== id);
+    setEmplacements(updated);
+    saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, contracts, templates, receipts, updated);
   };
 
   // Plans Management
@@ -168,9 +588,53 @@ export default function App() {
   };
 
   const handleUpdateSubscriber = (updatedSub: Subscriber) => {
+    const prevSub = subscribers.find(s => s.id === updatedSub.id);
     const updated = subscribers.map(s => s.id === updatedSub.id ? updatedSub : s);
     setSubscribers(updated);
-    saveStateToLocalStorage(plans, updated, invoices, agents, routes, notifLogs);
+
+    let nextInvs = invoices;
+
+    // Detect state changes for Odoo audit historization
+    if (prevSub && prevSub.status !== updatedSub.status) {
+      logAuditAction(
+        updatedSub.id, 
+        updatedSub.name, 
+        'state_change', 
+        `Passage du statut de "${prevSub.status}" à "${updatedSub.status}".`,
+        prevSub.status,
+        updatedSub.status
+      );
+
+      // Automatic Invoicing when subscription becomes Active!
+      if (updatedSub.status === 'active' && (prevSub.status === 'draft' || prevSub.status === 'pending_validation')) {
+        const plan = plans.find(p => p.id === updatedSub.planId) || plans[0];
+        const amount = plan ? plan.price : 2500;
+        const newInvoice: Invoice = {
+          id: `FAC-${updatedSub.id.replace('AKPBF-', '')}-${Math.floor(100 + Math.random() * 900)}`,
+          subscriberId: updatedSub.id,
+          subscriberName: updatedSub.name,
+          amount,
+          issueDate: new Date().toISOString().substring(0, 10),
+          dueDate: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().substring(0, 10), // 10 days due
+          status: 'pending',
+          period: 'Mise en Service - Juin 2026'
+        };
+        nextInvs = [newInvoice, ...invoices];
+        setInvoices(nextInvs);
+
+        // Also log the invoice creation action audit log!
+        logAuditAction(
+          updatedSub.id, 
+          updatedSub.name, 
+          'creation', 
+          `Mise en service du contrat. Facture ${newInvoice.id} de ${amount} FCFA émise automatiquement.`,
+          undefined,
+          'active'
+        );
+      }
+    }
+
+    saveStateToLocalStorage(plans, updated, nextInvs, agents, routes, notifLogs);
   };
 
   const handleDeleteSubscriber = (id: string) => {
@@ -386,6 +850,89 @@ export default function App() {
     setActiveTab(tab);
   };
 
+  const canAccessTab = (tab: string) => {
+    const r = sessionUser ? sessionUser.role : 'ADMINISTRATEUR';
+    
+    // Strict separation: No administrator can ever load the client portal tab
+    if (tab === 'client_portal') return r === 'CLIENT';
+    // Strict separation: No client can ever load any administration tab
+    if (r === 'CLIENT') return false;
+
+    if (r === 'ADMINISTRATEUR') return true;
+    
+    if (r === 'COMPTABLE') {
+      return ['dashboard', 'billing', 'payments', 'unpaid_debts', 'reports', 'accounting', 'expenses', 'contracts'].includes(tab);
+    }
+    
+    if (r === 'SUPERVISEUR') {
+      return ['dashboard', 'subscribers', 'bins', 'routes', 'gps', 'agents', 'notifications', 'fleet', 'contracts', 'emplacements'].includes(tab);
+    }
+    
+    if (r === 'CHAUFFEUR') {
+      return ['routes', 'gps', 'bins'].includes(tab);
+    }
+    
+    if (r === 'AGENT') {
+      return ['routes', 'bins'].includes(tab);
+    }
+    
+    return false;
+  };
+
+  if (!sessionUser) {
+    return (
+      <UnifiedAuth 
+        onLogin={handleLogin} 
+        subscribers={subscribers} 
+      />
+    );
+  }
+
+  if (sessionUser.role === 'CLIENT') {
+    const clientSub = subscribers.find(s => s.phone === sessionUser.phone || s.email === sessionUser.email || s.id === sessionUser.subscriberId) || subscribers[0];
+    return (
+      <ClientPortalView 
+        subscribers={subscribers}
+        invoices={invoices}
+        plans={plans}
+        routes={routes}
+        contracts={contracts}
+        receipts={receipts}
+        emplacements={emplacements}
+        onAddEmplacement={handleAddEmplacement}
+        onUpdateEmplacement={handleUpdateEmplacement}
+        onDeleteEmplacement={handleDeleteEmplacement}
+        onUpdateSubscriber={handleUpdateSubscriber}
+        onPayInvoice={handlePayInvoice}
+        onAddNotification={(newNotif) => {
+          const logs = [newNotif, ...notifLogs];
+          setNotifLogs(logs);
+          saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, logs, contracts, templates, receipts);
+        }}
+        onAddContract={(cnt) => {
+          const updated = [cnt, ...contracts];
+          setContracts(updated);
+          saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, updated, templates, receipts);
+        }}
+        onUpdateContract={(cnt) => {
+          const updated = contracts.map(c => c.id === cnt.id ? cnt : c);
+          setContracts(updated);
+          saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, updated, templates, receipts);
+        }}
+        onAddReceipt={(rec) => {
+          const updated = [...receipts, rec];
+          setReceipts(updated);
+          saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, contracts, templates, updated);
+        }}
+        onAddHistoryLog={(log) => {
+          logAuditAction(log.subscriberId, log.subscriberName, log.action, log.description, log.oldState, log.newState);
+        }}
+        loggedClient={clientSub}
+        onLogoutCentral={handleLogout}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row antialiased">
       
@@ -393,15 +940,33 @@ export default function App() {
       <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-2">
           <div className="bg-emerald-650 p-1 rounded-lg text-white font-black text-xs">AKPBF</div>
-          <span className="font-extrabold text-sm tracking-tight text-white">AKPBF ERP Salubrité</span>
+          <span className="font-extrabold text-xs sm:text-sm tracking-tight text-white">AKPBF Salubrité</span>
         </div>
-        <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-1 px-2 border border-slate-700 bg-slate-800 rounded hover:bg-slate-700 active:scale-95 transition"
-        >
-          {isSidebarOpen ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle theme={theme} setTheme={setTheme} />
+          {sessionUser && (
+            <UserProfileMenu 
+              user={sessionUser} 
+              onLogout={handleLogout} 
+            />
+          )}
+          <button 
+            type="button"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-1 px-2 border border-slate-700 bg-slate-800 rounded hover:bg-slate-700 active:scale-95 transition"
+          >
+            {isSidebarOpen ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
+          </button>
+        </div>
       </header>
+
+      {/* MOBILE BACKDROP OVERLAY */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-30 md:hidden transition-all duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
       {/* SIDEBAR MAIN MENU NAVIGATION PANEL */}
       <aside className={`
@@ -420,206 +985,329 @@ export default function App() {
 
           {/* Nav Items */}
           <nav className="space-y-1 my-4 flex-1">
-            <div className="pb-3 border-b border-slate-800/80 mb-3.5">
-              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider block px-3 mb-1.5 font-mono">ESPACE CITOYENS</span>
+            {canAccessTab('dashboard') && (
               <button 
                 type="button"
-                onClick={() => { setActiveTab('client_portal'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs transition duration-150 ${
-                  activeTab === 'client_portal' 
-                    ? 'bg-amber-600 text-white font-bold rounded-xl border-l-4 border-amber-400 shadow-md' 
-                    : 'bg-emerald-950/35 hover:bg-emerald-900/45 text-emerald-400 font-bold border border-emerald-900/50 rounded-xl'
+                onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'dashboard' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
                 }`}
               >
-                <Smartphone className="h-4 w-4 shrink-0 text-amber-400 animate-bounce" />
-                PROPORTAL CLIENT (Stripe)
+                <LayoutDashboard className="h-4 w-4 shrink-0" />
+                Tableau de Bord
               </button>
-            </div>
+            )}
 
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'dashboard' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <LayoutDashboard className="h-4 w-4 shrink-0" />
-              Tableau de Bord
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('subscribers'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'subscribers' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <Users className="h-4 w-4 shrink-0" />
-              Gestion des Abonnés
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('bins'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'bins' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <Camera className="h-4 w-4 shrink-0 text-emerald-500" />
-              Gestion des Poubelles
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('ai'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'ai' 
-                  ? 'bg-slate-800 text-amber-400 font-bold border-l-4 border-amber-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <Cpu className="h-4 w-4 shrink-0 text-amber-500 animate-pulse" />
-              Prévisions IA & Assistant
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('plans'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'plans' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <Layers className="h-4 w-4 shrink-0" />
-              Abonnements (Forfaits)
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('billing'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'billing' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <Coins className="h-4 w-4 shrink-0" />
-              Facturation - Caisse
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('payments'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'payments' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <CreditCard className="h-4 w-4 shrink-0" />
-              Paiements & Trésorerie
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('unpaid_debts'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'unpaid_debts' 
-                  ? 'bg-slate-800 text-amber-400 font-bold border-l-4 border-amber-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              Gestion des Impayés
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('routes'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'routes' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <Navigation className="h-4 w-4 shrink-0" />
-              Tournées (SIG)
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('gps'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'gps' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <MapPin className="h-4 w-4 shrink-0" />
-              Carte GPS Live
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('reports'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'reports' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <TrendingUp className="h-4 w-4 shrink-0" />
-              Rapports & Stats
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('agents'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'agents' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <Award className="h-4 w-4 shrink-0" />
-              Agents & Équipages
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => { setActiveTab('notifications'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                activeTab === 'notifications' 
-                  ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                  : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-              }`}
-            >
-              <Smartphone className="h-4 w-4 shrink-0" />
-              Canaux d'Alerte SMS
-            </button>
-            
-            <div className="pt-3 border-t border-slate-800 mt-3 block">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block px-3 mb-1.5">Documentation</span>
+            {canAccessTab('subscribers') && (
               <button 
                 type="button"
-                onClick={() => { setActiveTab('architect_hub'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-2 py-2 text-xs transition duration-150 ${
-                  activeTab === 'architect_hub' 
-                    ? 'bg-emerald-600/90 text-white font-bold rounded-xl' 
+                onClick={() => { setActiveTab('subscribers'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'subscribers' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <Users className="h-4 w-4 shrink-0" />
+                Gestion des Abonnés
+              </button>
+            )}
+
+            {canAccessTab('emplacements') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('emplacements'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'emplacements' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <MapPin className="h-4 w-4 shrink-0 text-amber-500 animate-pulse" />
+                Gestion des Emplacements
+              </button>
+            )}
+
+            {canAccessTab('contracts') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('contracts'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'contracts' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <FileText className="h-4 w-4 shrink-0 text-emerald-500" />
+                Gestion des Contrats
+              </button>
+            )}
+
+            {canAccessTab('bins') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('bins'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'bins' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <Camera className="h-4 w-4 shrink-0 text-emerald-500" />
+                Gestion des Poubelles
+              </button>
+            )}
+
+            {canAccessTab('ai') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('ai'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'ai' 
+                    ? 'bg-slate-800 text-amber-400 font-bold border-l-4 border-amber-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <Cpu className="h-4 w-4 shrink-0 text-amber-500 animate-pulse" />
+                Prévisions IA & Assistant
+              </button>
+            )}
+
+            {canAccessTab('plans') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('plans'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'plans' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
                     : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
                 }`}
               >
                 <Layers className="h-4 w-4 shrink-0" />
-                Portail de l'Architecte
+                Abonnements (Forfaits)
               </button>
-            </div>
+            )}
+
+            {canAccessTab('billing') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('billing'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'billing' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <Coins className="h-4 w-4 shrink-0" />
+                Facturation - Caisse
+              </button>
+            )}
+
+            {canAccessTab('payments') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('payments'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'payments' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <CreditCard className="h-4 w-4 shrink-0" />
+                Paiements & Trésorerie
+              </button>
+            )}
+
+            {canAccessTab('unpaid_debts') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('unpaid_debts'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'unpaid_debts' 
+                    ? 'bg-slate-800 text-amber-400 font-bold border-l-4 border-amber-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                Gestion des Impayés
+              </button>
+            )}
+
+            {canAccessTab('routes') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('routes'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'routes' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <Navigation className="h-4 w-4 shrink-0" />
+                Tournées (SIG)
+              </button>
+            )}
+
+            {canAccessTab('gps') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('gps'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'gps' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <MapPin className="h-4 w-4 shrink-0" />
+                Carte GPS Live
+              </button>
+            )}
+
+            {canAccessTab('reports') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('reports'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'reports' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <TrendingUp className="h-4 w-4 shrink-0" />
+                Rapports & Stats
+              </button>
+            )}
+
+            {canAccessTab('agents') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('agents'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'agents' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <Award className="h-4 w-4 shrink-0" />
+                Agents & Équipages
+              </button>
+            )}
+
+            {canAccessTab('notifications') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('notifications'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'notifications' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <Smartphone className="h-4 w-4 shrink-0" />
+                Canaux d'Alerte SMS
+              </button>
+            )}
+
+            {(canAccessTab('accounting') || canAccessTab('expenses') || canAccessTab('stock') || canAccessTab('fleet') || canAccessTab('hr')) && (
+              <div className="pt-3 border-t border-slate-800 mt-3 block">
+                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest block px-3 mb-1.5 font-mono">FINANCES & OPÉRATIONS</span>
+                
+                {canAccessTab('accounting') && (
+                  <button 
+                    type="button"
+                    onClick={() => { setActiveTab('accounting'); setIsSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                      activeTab === 'accounting' 
+                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                    }`}
+                  >
+                    <BookOpen className="h-4 w-4 shrink-0 text-emerald-500" />
+                    Comptabilité Générale
+                  </button>
+                )}
+
+                {canAccessTab('expenses') && (
+                  <button 
+                    type="button"
+                    onClick={() => { setActiveTab('expenses'); setIsSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                      activeTab === 'expenses' 
+                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                    }`}
+                  >
+                    <Coins className="h-4 w-4 shrink-0 text-amber-500" />
+                    Dépenses & Achats
+                  </button>
+                )}
+
+                {canAccessTab('stock') && (
+                  <button 
+                    type="button"
+                    onClick={() => { setActiveTab('stock'); setIsSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                      activeTab === 'stock' 
+                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                    }`}
+                  >
+                    <Layers className="h-4 w-4 shrink-0 text-sky-500" />
+                    Gestion de Stock
+                  </button>
+                )}
+
+                {canAccessTab('fleet') && (
+                  <button 
+                    type="button"
+                    onClick={() => { setActiveTab('fleet'); setIsSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                      activeTab === 'fleet' 
+                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                    }`}
+                  >
+                    <Award className="h-4 w-4 shrink-0 text-amber-400" />
+                    Flotte & Véhicules
+                  </button>
+                )}
+
+                {canAccessTab('hr') && (
+                  <button 
+                    type="button"
+                    onClick={() => { setActiveTab('hr'); setIsSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                      activeTab === 'hr' 
+                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                    }`}
+                  >
+                    <Users className="h-4 w-4 shrink-0 text-violet-500" />
+                    Ressources Humaines (RH)
+                  </button>
+                )}
+              </div>
+            )}
+
+            {canAccessTab('architect_hub') && (
+              <div className="pt-3 border-t border-slate-800 mt-3 block">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block px-3 mb-1.5">Documentation</span>
+                <button 
+                  type="button"
+                  onClick={() => { setActiveTab('architect_hub'); setIsSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-2 py-2 text-xs transition duration-150 ${
+                    activeTab === 'architect_hub' 
+                      ? 'bg-emerald-600/90 text-white font-bold rounded-xl' 
+                      : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                  }`}
+                >
+                  <Layers className="h-4 w-4 shrink-0" />
+                  Portail de l'Architecte
+                </button>
+              </div>
+            )}
           </nav>
         </div>
 
@@ -643,26 +1331,30 @@ export default function App() {
       <main className="flex-1 flex flex-col overflow-y-auto h-screen">
         
         {/* UPPER CONSOLE BAR */}
-        <header className="hidden md:flex bg-white border-b border-slate-100 px-6 py-4 items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-            <Calendar className="h-3.5 w-3.5 text-indigo-550" />
+        <header className="hidden md:flex bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-6 py-4 items-center justify-between shrink-0 transition-colors duration-200">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
+            <Calendar className="h-3.5 w-3.5 text-indigo-500" />
             <span>Aujourd'hui : 22 Mai 2026</span>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
+          <div className="flex items-center gap-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Base PostgreSQL : Connectée (Simulée)</span>
             </div>
             
-            <div className="h-4 w-px bg-slate-200" />
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
 
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold font-mono text-xs">
-                AD
-              </div>
-              <span>Admin AKPBF</span>
-            </div>
+            <ThemeToggle theme={theme} setTheme={setTheme} />
+
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+            {sessionUser && (
+              <UserProfileMenu 
+                user={sessionUser} 
+                onLogout={handleLogout} 
+              />
+            )}
           </div>
         </header>
 
@@ -766,6 +1458,8 @@ export default function App() {
             <GpsMapView 
               subscribers={subscribers}
               agents={agents}
+              onUpdateSubscriber={handleUpdateSubscriber}
+              onUpdateAgentCollected={handleUpdateAgentCollected}
             />
           )}
 
@@ -789,20 +1483,72 @@ export default function App() {
             <NotificationsView logs={notifLogs} />
           )}
 
-          {activeTab === 'client_portal' && (
-            <ClientPortalView 
+          {activeTab === 'contracts' && (
+            <ContractsView 
+              contracts={contracts}
+              templates={templates}
               subscribers={subscribers}
-              invoices={invoices}
               plans={plans}
-              routes={routes}
-              onUpdateSubscriber={handleUpdateSubscriber}
-              onPayInvoice={handlePayInvoice}
-              onAddNotification={(newNotif) => {
-                const logs = [newNotif, ...notifLogs];
-                setNotifLogs(logs);
-                saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, logs);
+              onAddContract={(cnt) => {
+                const updated = [cnt, ...contracts];
+                setContracts(updated);
+                saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, updated, templates, receipts);
               }}
+              onUpdateContract={(cnt) => {
+                const updated = contracts.map(c => c.id === cnt.id ? cnt : c);
+                setContracts(updated);
+                saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, updated, templates, receipts);
+              }}
+              onDeleteContract={(id) => {
+                const updated = contracts.filter(c => c.id !== id);
+                setContracts(updated);
+                saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, updated, templates, receipts);
+              }}
+              onSaveTemplate={(tpl) => {
+                const updated = templates.some(t => t.id === tpl.id) 
+                  ? templates.map(t => t.id === tpl.id ? tpl : t) 
+                  : [...templates, tpl];
+                setTemplates(updated);
+                saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, contracts, updated, receipts);
+              }}
+              onAddHistoryLog={(log) => {
+                logAuditAction(log.subscriberId, log.subscriberName, log.action, log.description, log.oldState, log.newState);
+              }}
+              historyLogs={auditLogs}
             />
+          )}
+
+          {activeTab === 'emplacements' && (
+            <EmplacementsView 
+              emplacements={emplacements}
+              subscribers={subscribers}
+              onAddEmplacement={handleAddEmplacement}
+              onUpdateEmplacement={handleUpdateEmplacement}
+              onDeleteEmplacement={handleDeleteEmplacement}
+            />
+          )}
+
+          {activeTab === 'accounting' && (
+            <AccountingView 
+              invoices={invoices}
+              subscribers={subscribers}
+            />
+          )}
+
+          {activeTab === 'expenses' && (
+            <ExpensesView />
+          )}
+
+          {activeTab === 'stock' && (
+            <StockView />
+          )}
+
+          {activeTab === 'fleet' && (
+            <FleetView />
+          )}
+
+          {activeTab === 'hr' && (
+            <HrView />
           )}
 
           {activeTab === 'architect_hub' && (

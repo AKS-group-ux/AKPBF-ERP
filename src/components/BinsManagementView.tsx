@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { Subscriber } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import QrBinScanner from './QrBinScanner';
 
 interface Bin {
   id: string;
@@ -175,13 +176,17 @@ export default function BinsManagementView({ subscribers, onUpdateSubscriber }: 
   const [capacityFilter, setCapacityFilter] = useState<'all' | '240L' | '360L' | '1100L'>('all');
   
   // Interactive Simulator States
-  const [activeTab, setActiveTab] = useState<'roster' | 'analytics' | 'inspection'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'qr-scanner' | 'analytics' | 'inspection'>('roster');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [selectedPresetImage, setSelectedPresetImage] = useState(BIN_DAMAGE_PRESETS[1]);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiReportResult, setAiReportResult] = useState<any | null>(null);
   const [isInspectModalOpen, setIsInspectModalOpen] = useState(false);
   const [customInspectorName, setCustomInspectorName] = useState('Agent Mobile Camion-Benne');
+
+  const handleUpdateBin = (updatedBin: Bin) => {
+    setBins(prev => prev.map(b => b.id === updatedBin.id ? updatedBin : b));
+  };
 
   // Filter calculations
   const filteredBins = useMemo(() => {
@@ -329,6 +334,19 @@ export default function BinsManagementView({ subscribers, onUpdateSubscriber }: 
           </button>
           <button 
             type="button"
+            id="tab-qr-scanner-btn"
+            onClick={() => setActiveTab('qr-scanner')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'qr-scanner' 
+                ? 'bg-indigo-600 text-white shadow-xs font-black animate-pulse' 
+                : 'text-indigo-750 hover:text-indigo-900 bg-indigo-50'
+            }`}
+          >
+            <QrCode className="h-3.5 w-3.5" />
+            Scanner de QR Codes
+          </button>
+          <button 
+            type="button"
             id="tab-inspection-btn"
             onClick={() => setActiveTab('inspection')}
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -338,7 +356,7 @@ export default function BinsManagementView({ subscribers, onUpdateSubscriber }: 
             }`}
           >
             <Camera className="h-3.5 w-3.5" />
-            Scanner & IA Inspect
+            IA Inspect Diagnostic
           </button>
           <button 
             type="button"
@@ -960,6 +978,16 @@ export default function BinsManagementView({ subscribers, onUpdateSubscriber }: 
           </div>
 
         </div>
+      )}
+
+      {/* RENDER DYNAMIC SCREEN: DISPATCH CODE QR SCANNER */}
+      {activeTab === 'qr-scanner' && (
+        <QrBinScanner 
+          bins={bins}
+          subscribers={subscribers}
+          onUpdateBin={handleUpdateBin}
+          onUpdateSubscriber={onUpdateSubscriber}
+        />
       )}
 
       {/* RENDER ANALYTICS TAB */}

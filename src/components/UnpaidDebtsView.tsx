@@ -137,7 +137,7 @@ export default function UnpaidDebtsView({
       let action: 'Avertissement SMS/Mail' | 'Notification renforcée' | 'Mise En Demeure' | 'Suspension de Contrat' | null = null;
       let notificationType: 'email' | 'sms' | 'system' = 'sms';
       let notificationContent = '';
-      let targetStatus: 'active' | 'suspended' | 'pending' = sub.status;
+      let targetStatus: Subscriber['status'] = sub.status;
 
       if (simulatedMonths >= 6) {
         action = 'Suspension de Contrat';
@@ -594,7 +594,7 @@ export default function UnpaidDebtsView({
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-1.5">
                             <select 
-                              value={debtor.simulatedWeeks} 
+                              value={debtor.simulatedWeeks ?? 0} 
                               onChange={(e) => handleSetWeeksDebt(debtor.id, Number(e.target.value))}
                               className="bg-white border border-slate-200 rounded p-1 text-[10.5px] font-bold text-slate-700 outline-hidden"
                             >

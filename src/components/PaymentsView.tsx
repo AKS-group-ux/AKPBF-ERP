@@ -280,7 +280,7 @@ export default function PaymentsView({
               </select>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-auto">
               <table className="w-full text-left text-xs text-slate-600 border-collapse">
                 <thead className="bg-slate-50 font-bold uppercase text-[9px] tracking-widest text-slate-400 border-b border-slate-100">
                   <tr>

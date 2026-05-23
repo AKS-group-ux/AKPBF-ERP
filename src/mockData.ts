@@ -3,31 +3,49 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Subscriber, SubscriptionPlan, Invoice, CollectorAgent, Route, NotificationLog } from './types';
+import { Subscriber, SubscriptionPlan, Invoice, CollectorAgent, Route, NotificationLog, Emplacement } from './types';
 
 export const INITIAL_PLANS: SubscriptionPlan[] = [
   {
     id: 'plan_eco',
     name: 'Standard Municipal',
+    reference: 'REF-ECO-2026',
     price: 3500, // FCFA or generic unit. We'll use FCFA for high regional realism or $ if preferred. Let's write 'FCFA' or 'cfa' for realistic municipal ERP branding
     frequency: 'Mensuel',
+    durationMonths: 12,
+    collectionFrequency: '2 fois par semaine',
+    maxCollectionsCount: 16,
     description: '2 collectes par semaine, bac de 240L fourni, idéal pour les ménages standards de 2 à 4 personnes.',
+    termsAndConditions: 'Conditions standard d\'enlèvement de salubrité urbaine.',
+    status: 'active',
     allowedVolume: '480 Litres/Mois'
   },
   {
     id: 'plan_family',
     name: 'Famille Nombreuse',
+    reference: 'REF-FAM-2500',
     price: 6000,
     frequency: 'Mensuel',
+    durationMonths: 12,
+    collectionFrequency: '3 fois par semaine',
+    maxCollectionsCount: 24,
     description: '3 collectes par semaine, bac renforcé de 360L fourni, ramassage des encombrants légers inclus.',
+    termsAndConditions: 'Réservé aux résidences privées, encombrants légers acceptés.',
+    status: 'active',
     allowedVolume: '1080 Litres/Mois'
   },
   {
     id: 'plan_pro',
     name: 'Professionnel & Commerce',
+    reference: 'REF-B2B-PRO',
     price: 15000,
     frequency: 'Mensuel',
+    durationMonths: 12,
+    collectionFrequency: 'Quotidien (Lun-Sam)',
+    maxCollectionsCount: 48,
     description: 'Collecte quotidienne du lundi au samedi, grand conteneur de 1100L fourni, service de désinfection trimestriel.',
+    termsAndConditions: 'Contrat commercial B2B, bac géré, astreinte week-end incluse.',
+    status: 'active',
     allowedVolume: '6600 Litres/Mois'
   }
 ];
@@ -155,7 +173,7 @@ export const INITIAL_SUBSCRIBERS: Subscriber[] = [
     lat: 5.3671,
     lng: -3.9722,
     planId: 'plan_family',
-    status: 'pending',
+    status: 'pending_validation',
     binType: 'Bac Grand 360L',
     lastCollectionDate: 'Jamais',
     currentBinLevel: 0,
@@ -332,3 +350,85 @@ export const INITIAL_NOTIFS: NotificationLog[] = [
     status: 'sent'
   }
 ];
+
+export const INITIAL_EMPLACEMENTS: Emplacement[] = [
+  {
+    id: 'EMP-001',
+    subscriberId: 'SUB-4029',
+    reference: 'RE-26-0001',
+    label: 'Résidence Principale (Villa 14)',
+    type: 'Maison',
+    address: 'Rue des Jardins, Villa 14',
+    neighborhood: 'Cocody',
+    gpsCoordinates: '5.35240, -3.98750',
+    wasteType: 'Ménagers',
+    estimatedVolume: '240L',
+    collectionFrequency: '2 fois par semaine'
+  },
+  {
+    id: 'EMP-002',
+    subscriberId: 'SUB-4029',
+    reference: 'RE-26-0002',
+    label: 'Maquis Chez Jean-Jacques',
+    type: 'Maquis',
+    address: 'Boulevard des Martyrs, Lot 23',
+    neighborhood: 'Cocody',
+    gpsCoordinates: '5.36110, -3.99120',
+    wasteType: 'Organiques',
+    estimatedVolume: '360L',
+    collectionFrequency: 'Quotidien'
+  },
+  {
+    id: 'EMP-003',
+    subscriberId: 'SUB-1933',
+    reference: 'RE-26-0003',
+    label: 'Boutique Prêt-à-Porter Marcory',
+    type: 'Boutique',
+    address: 'Boulevard Valéry Giscard d\'Estaing',
+    neighborhood: 'Marcory',
+    gpsCoordinates: '5.30940, -3.99280',
+    wasteType: 'Cartons & Papiers',
+    estimatedVolume: '1100L',
+    collectionFrequency: 'Quotidien'
+  },
+  {
+    id: 'EMP-004',
+    subscriberId: 'SUB-1933',
+    reference: 'RE-26-0004',
+    label: 'Bureaux Administratifs Plateau',
+    type: 'Bureau',
+    address: 'Avenue de la République, Face BICICI',
+    neighborhood: 'Plateau',
+    gpsCoordinates: '5.32110, -4.01980',
+    wasteType: 'Cartons & Papiers',
+    estimatedVolume: '120L',
+    collectionFrequency: '1 fois par semaine'
+  },
+  {
+    id: 'EMP-005',
+    subscriberId: 'SUB-8842',
+    reference: 'RE-26-0005',
+    label: 'Restaurant Sabor de Abidjan',
+    type: 'Restaurant',
+    address: 'Boulevard de Marseille',
+    neighborhood: 'Marcory',
+    gpsCoordinates: '5.31200, -3.98400',
+    wasteType: 'Organiques',
+    estimatedVolume: '360L',
+    collectionFrequency: '3 fois par semaine'
+  },
+  {
+    id: 'EMP-006',
+    subscriberId: 'SUB-8842',
+    reference: 'RE-26-0006',
+    label: 'Dépôt de Stockage d\'Abobo',
+    type: 'Entrepôt',
+    address: 'Zone Industrielle d\'Abobo, Hangar B',
+    neighborhood: 'Abobo',
+    gpsCoordinates: '5.41500, -4.01900',
+    wasteType: 'Plastiques',
+    estimatedVolume: '1100L',
+    collectionFrequency: '2 fois par semaine'
+  }
+];
+

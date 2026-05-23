@@ -72,7 +72,7 @@ export default function DashboardView({
   const totalSubscribers = subscribers.length;
   const activeSubscribers = useMemo(() => subscribers.filter(s => s.status === 'active').length, [subscribers]);
   const suspendedSubscribers = useMemo(() => subscribers.filter(s => s.status === 'suspended').length, [subscribers]);
-  const pendingSubscribers = useMemo(() => subscribers.filter(s => s.status === 'pending').length, [subscribers]);
+  const pendingSubscribers = useMemo(() => subscribers.filter(s => s.status === 'pending_validation').length, [subscribers]);
 
   // 2. Financials values (This month: Mai 2026 vs Lifetime totals)
   const currentMonthPeriod = 'Mai 2026';

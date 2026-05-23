@@ -131,7 +131,7 @@ export default function NotificationsView({ logs }: NotificationsViewProps) {
               </div>
             </div>
 
-            <div className="overflow-y-auto max-h-[280px]">
+            <div className="overflow-auto max-h-[280px]">
               <table className="w-full text-left font-sans text-xs text-slate-600 border-collapse">
                 <thead className="bg-slate-50/70 border-b border-slate-100 font-bold text-slate-500 uppercase text-[9px]">
                   <tr>
