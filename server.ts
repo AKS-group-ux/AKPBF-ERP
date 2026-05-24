@@ -7,6 +7,24 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import backendApp from "./backend/src/app";
+
+const JWT_SECRET = process.env.JWT_SECRET || "akpbf_erp_jwt_secret_key_2026_uemoa";
+
+const ENTERPRISE_USERS = [
+  { email: 'admin@akpbf.com', passwordText: 'Admin@2026', passwordHash: '', name: 'Alkaïda Benjamin', role: 'ADMINISTRATEUR' },
+  { email: 'comptable@akpbf.com', passwordText: 'Comptable@2026', passwordHash: '', name: 'Doumbia Sylvain (Fisc)', role: 'COMPTABLE' },
+  { email: 'superviseur@akpbf.com', passwordText: 'Superviseur@2026', passwordHash: '', name: 'Gérard Gnakoury (Logistique)', role: 'SUPERVISEUR' },
+  { email: 'chauffeur@akpbf.com', passwordText: 'Chauffeur@2026', passwordHash: '', name: 'Kaboré Moussa', role: 'CHAUFFEUR' },
+  { email: 'agent@akpbf.com', passwordText: 'Agent@2026', passwordHash: '', name: 'Coulibaly Issa', role: 'AGENT' },
+];
+
+ENTERPRISE_USERS.forEach(u => {
+  u.passwordHash = bcrypt.hashSync(u.passwordText, 10);
+  (u as any).passwordText = undefined;
+});
 
 // Initialize Gemini client if API key is provided
 let aiClient: GoogleGenAI | null = null;
@@ -34,17 +52,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Custom middleware for body limits (parsing ERP state in JSON can be slightly heavy)
-  app.use(express.json({ limit: '20mb' }));
-
-  // API Route: Health Check
-  app.get("/api/health", (req, res) => {
-    res.json({ 
-      status: "ok", 
-      liveAiEnabled: !!aiClient,
-      timestamp: new Date().toISOString() 
-    });
-  });
+  // Integration of secure, modular Phase 1 Production Backend Architecture
+  app.use(backendApp);
 
   // API Route: Live Chat with Gemini & ERP State Context
   app.post("/api/ai/chat", async (req, res) => {

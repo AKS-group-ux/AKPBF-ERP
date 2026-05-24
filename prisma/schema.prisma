@@ -1,0 +1,409 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ====================================================
+// AUTH & CONTEXT TABLES
+// ====================================================
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique @db.VarChar(255)
+  passwordHash String     @db.VarChar(255)
+  name         String     @db.VarChar(255)
+  phone        String?    @db.VarChar(50)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Mapped relations
+  userRoles       UserRole[]
+  routeAssignments RouteAssignment[]
+  collections     Collection[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId String @db.Uuid
+  roleId String @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ====================================================
+// SUBSCRIBERS / CUSTOMERS & SUBSCRIPTIONS
+// ====================================================
+
+model Customer {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(255)
+  email        String?  @db.VarChar(255)
+  phone        String   @db.VarChar(50)
+  address      String?  @db.VarChar(255)
+  subscriberId String?  @unique @db.VarChar(100) // matches existing system IDs "ABJ-..."
+  latitude     Float?
+  longitude    Float?
+  status       String   @default("ACTIVE") @db.VarChar(50) // e.g. "ACTIVE", "SUSPENDED", "INACTIVE"
+  balance      Decimal  @default(0.00) @db.Decimal(12, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions Subscription[]
+  invoices      Invoice[]
+  complaints    Complaint[]
+  notifications Notification[]
+  documents     Document[]
+  bins          Bin[]
+
+  @@index([subscriberId])
+  @@index([phone])
+  @@map("customers")
+}
+
+model SubscriptionPlan {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(255)
+  price       Decimal  @db.Decimal(12, 2)
+  frequency   String   @db.VarChar(100) // e.g. "Hebdomadaire", "Mensuel"
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id         String    @id @default(uuid()) @db.Uuid
+  customerId String    @db.Uuid
+  planId     String    @db.Uuid
+  startDate  DateTime  @default(now())
+  endDate    DateTime?
+  status     String    @default("ACTIVE") @db.VarChar(50) // "ACTIVE", "SUSPENDED", "EXPIRED"
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  customer Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  @@index([customerId])
+  @@index([planId])
+  @@map("subscriptions")
+}
+
+// ====================================================
+// FINANCIALS & TRANSACTIONS
+// ====================================================
+
+model Invoice {
+  id                  String    @id @default(uuid()) @db.Uuid
+  customerId          String    @db.Uuid
+  subscriptionId      String?   @db.Uuid
+  amount              Decimal   @db.Decimal(12, 2)
+  dueDate             DateTime
+  status              String    @default("UNPAID") @db.VarChar(50) // "PAID", "UNPAID", "OVERDUE", "CANCELLED"
+  billingPeriodStart DateTime
+  billingPeriodEnd   DateTime
+  pdfPath             String?   @db.VarChar(512)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  payments     Payment[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Payment {
+  id            String   @id @default(uuid()) @db.Uuid
+  invoiceId     String   @db.Uuid
+  amount        Decimal  @db.Decimal(12, 2)
+  method        String   @db.VarChar(50) // e.g. "MOBILE_MONEY", "CASH", "CARD"
+  status        String   @db.VarChar(50) // "SUCCESS", "FAILED", "PENDING"
+  transactionId String?  @db.VarChar(255)
+  createdAt     DateTime @default(now())
+
+  invoice      Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+model Transaction {
+  id          String   @id @default(uuid()) @db.Uuid
+  amount      Decimal  @db.Decimal(12, 2)
+  provider    String   @db.VarChar(50) // "ORANGE", "MOOV", "TELECEL", "CORIS"
+  status      String   @db.VarChar(50) // "PENDING", "SUCCESS", "FAILED"
+  reference   String   @unique @db.VarChar(255)
+  phoneNumber String   @db.VarChar(50)
+  paymentId   String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  payment     Payment?     @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  webhookLogs WebhookLog[]
+
+  @@index([reference])
+  @@index([paymentId])
+  @@map("transactions")
+}
+
+model WebhookLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  transactionId String?  @db.Uuid
+  payload       String   @db.Text
+  receivedAt    DateTime @default(now())
+
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@map("webhook_logs")
+}
+
+// ====================================================
+// VEHICLES, ROUTES & TRACKING
+// ====================================================
+
+model CollectionRoute {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  startPoint  String?  @db.VarChar(255)
+  endPoint    String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments RouteAssignment[]
+  bins        Bin[]
+  collections Collection[]
+
+  @@map("collection_routes")
+}
+
+model RouteAssignment {
+  id        String   @id @default(uuid()) @db.Uuid
+  routeId   String   @db.Uuid
+  driverId  String   @db.Uuid
+  vehicleId String   @db.Uuid
+  date      DateTime
+  status    String   @default("PENDING") @db.VarChar(50) // "PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  route   CollectionRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  driver  User            @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([routeId])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@map("route_assignments")
+}
+
+model Vehicle {
+  id          String   @id @default(uuid()) @db.Uuid
+  plateNumber String   @unique @db.VarChar(50)
+  model       String   @db.VarChar(100)
+  capacity    Float // in metric tons
+  status      String   @default("ACTIVE") @db.VarChar(50) // "ACTIVE", "MAINTENANCE", "INACTIVE"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments      RouteAssignment[]
+  vehicleLocations VehicleLocation[]
+
+  @@map("vehicles")
+}
+
+model VehicleLocation {
+  id        String   @id @default(uuid()) @db.Uuid
+  vehicleId String   @db.Uuid
+  latitude  Float
+  longitude Float
+  timestamp DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_locations")
+}
+
+// ====================================================
+// SMART TRACKING & WAREHOUSE
+// ====================================================
+
+model Bin {
+  id         String   @id @default(uuid()) @db.Uuid
+  qrCode     String   @unique @db.VarChar(100)
+  customerId String?  @db.Uuid
+  routeId    String?  @db.Uuid
+  capacity   Float // in Liters
+  fillLevel  Float    @default(0.0) // 0-100 percentage
+  latitude   Float?
+  longitude  Float?
+  status     String   @default("OK") @db.VarChar(50) // "OK", "FULL", "MAINTENANCE"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer    Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  route       CollectionRoute? @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  collections Collection[]
+
+  @@index([customerId])
+  @@index([routeId])
+  @@map("bins")
+}
+
+model Collection {
+  id        String   @id @default(uuid()) @db.Uuid
+  binId     String   @db.Uuid
+  routeId   String   @db.Uuid
+  agentId   String   @db.Uuid
+  weight    Float? // in Kgs
+  status    String   @default("COLLECTED") @db.VarChar(50) // "COLLECTED", "SKIPPED", "MISSED"
+  timestamp DateTime @default(now())
+
+  bin   Bin             @relation(fields: [binId], references: [id], onDelete: Cascade)
+  route CollectionRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  agent User            @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([binId])
+  @@index([routeId])
+  @@index([agentId])
+  @@map("collections")
+}
+
+// ====================================================
+// ADMINISTRATIVE & AUXILIARY
+// ====================================================
+
+model Complaint {
+  id          String   @id @default(uuid()) @db.Uuid
+  customerId  String   @db.Uuid
+  category    String   @db.VarChar(100) // "NON_COLLECTE", "FACTURATION", "AUTRE"
+  description String   @db.Text
+  status      String   @default("OPEN") @db.VarChar(50) // "OPEN", "RESOLVED", "CLOSED"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("complaints")
+}
+
+model Notification {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  customerId String?  @db.Uuid
+  title      String   @db.VarChar(255)
+  content    String   @db.Text
+  isSms      Boolean  @default(false)
+  isEmail    Boolean  @default(false)
+  status     String   @default("SENT") @db.VarChar(50) // "SENT", "FAILED", "PENDING"
+  createdAt  DateTime @default(now())
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([customerId])
+  @@map("notifications")
+}
+
+model Document {
+  id         String   @id @default(uuid()) @db.Uuid
+  customerId String?  @db.Uuid
+  fileName   String   @db.VarChar(255)
+  filePath   String   @db.VarChar(512)
+  fileType   String   @db.VarChar(100) // "PDF", "CONTRACT", "RECEIPT", "INVOICE"
+  isSecure   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@map("documents")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @db.Uuid
+  action    String   @db.VarChar(255) // "UPDATE_CLIENT", "CREATE_PAYMENT", "LOGIN", etc.
+  ipAddress String?  @db.VarChar(100)
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+model Setting {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique @db.VarChar(255)
+  value     String   @db.Text
+  desc      String?  @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

@@ -1,0 +1,771 @@
+import { useState, useEffect } from 'react';
+import { 
+  Mail, 
+  Send, 
+  RefreshCw, 
+  Trash2, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle, 
+  FileText, 
+  Inbox, 
+  Sparkles, 
+  Info,
+  Layers,
+  ChevronRight,
+  Database
+} from 'lucide-react';
+
+interface EmailQueueItem {
+  id: string;
+  to: string;
+  subject: string;
+  status: 'PENDING' | 'SENT' | 'FAILED';
+  attempts: number;
+  maxAttempts: number;
+  templateType: string;
+  lastError?: string;
+  createdAt?: string;
+}
+
+interface DbEmailLog {
+  id: string;
+  to: string;
+  subject: string;
+  status: 'SENT' | 'FAILED' | 'PENDING';
+  createdAt: string;
+  content: string;
+}
+
+export default function EmailsManagementView() {
+  const [activeSubTab, setActiveSubTab] = useState<'SANDBOX' | 'MONITORING'>('SANDBOX');
+  const [toEmail, setToEmail] = useState('');
+  const [templateType, setTemplateType] = useState('WELCOME');
+  
+  // Customizable parameters for testing mock data
+  const [clientName, setClientName] = useState('Jean-Pierre Kouadio');
+  const [amount, setAmount] = useState('3500');
+  const [invoiceId, setInvoiceId] = useState('FAC-MAY-2026-891');
+  const [dueDate, setDueDate] = useState('10 Juin 2026');
+  const [reference, setReference] = useState('TXN-WAVE-8921-CIV');
+  const [complaintId, setComplaintId] = useState('REC-Cocody-3392');
+  const [category, setCategory] = useState('NON_COLLECTE');
+  const [replyText, setReplyText] = useState('Nos équipes d\'assainissement passeront vider votre bac Riviera 3 en urgence ce mardi soir (23h).');
+
+  // Logs states
+  const [queue, setQueue] = useState<EmailQueueItem[]>([]);
+  const [dbLogs, setDbLogs] = useState<DbEmailLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // Load the logs from the backend safely
+  const fetchLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const token = localStorage.getItem('akpbf_erp_jwt_token');
+      const res = await fetch('/api/email/logs', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQueue(data.queue || []);
+        setDbLogs(data.dbLogs || []);
+      } else {
+        console.warn('[SMTP SYSTEM WARNING] Failed loading server email logs.');
+      }
+    } catch (err) {
+      console.error('[CONNECTION ERROR LOGS]:', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, [activeSubTab]);
+
+  // Sends email test requesting backend
+  const handleSendTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!toEmail) {
+      setActionMessage({ type: 'error', text: 'Veuillez saisir une adresse email de destination.' });
+      return;
+    }
+
+    setSendingTest(true);
+    setActionMessage(null);
+    try {
+      const token = localStorage.getItem('akpbf_erp_jwt_token');
+      const res = await fetch('/api/email/send-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          toEmail,
+          templateType,
+          clientName,
+          amount,
+          invoiceId,
+          dueDate,
+          reference,
+          complaintId,
+          category,
+          replyText
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setActionMessage({
+          type: 'success',
+          text: `Succès : L'email test '${templateType}' a été mis en file avec succès [ID: ${data.emailId}]. Le serveur tente l'expédition SMTP Zoho Mail instantanée.`
+        });
+        fetchLogs();
+      } else {
+        setActionMessage({
+          type: 'error',
+          text: `Échec d'envoi : ${data.error || 'Erreur inconnue lors du relais SMTP.'}`
+        });
+      }
+    } catch (err: any) {
+      setActionMessage({
+        type: 'error',
+        text: `Erreur RPC : Impossible de contacter la passerelle d'API d'assainissement.`
+      });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  // Trigger bulk retry
+  const handleRetryFailed = async () => {
+    try {
+      const token = localStorage.getItem('akpbf_erp_jwt_token');
+      const res = await fetch('/api/email/retry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActionMessage({ type: 'success', text: data.message });
+        fetchLogs();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Pure the queue logs
+  const handlePurgeQueue = async () => {
+    if (!confirm('Voulez-vous purger complètement la file d\'attente d\'email temporaire ?')) return;
+    try {
+      const token = localStorage.getItem('akpbf_erp_jwt_token');
+      const res = await fetch('/api/email/purge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      if (res.ok) {
+        setActionMessage({ type: 'success', text: 'File d\'envoi vidée des éléments passés.' });
+        fetchLogs();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Map descriptions for the 9 templates
+  const templateDescriptionMap: Record<string, { title: string, desc: string, icon: string }> = {
+    WELCOME: {
+      title: 'Email de bienvenue',
+      desc: 'Souhaiter la bienvenue au citoyen nouvellement inscrit, lui fournir son ID d\'abonné d\'Abidjan et détailler les fonctionnalités du portail d\'assainissement.',
+      icon: 'BIENVENUE'
+    },
+    SUBSCRIPTION_CONFIRM: {
+      title: 'Confirmation d\'abonnement',
+      desc: 'Notifier officiellement que le contrat d\'assainissement (ex: Riviera, Cocody) a été activé en base, avec détails de prix et engagement.',
+      icon: 'CONTRAT ACTIF'
+    },
+    INVOICE_PDF: {
+      title: 'Génération de facture d\'assainissement',
+      desc: 'Alerter le citoyen de la disponibilité de son nouveau titre mensuel de recette avec montant, instructions de paiement et échéance légale.',
+      icon: 'FACTURE ÉMISE'
+    },
+    PAYMENT_CONFIRM: {
+      title: 'Reçu de paiement sécurisé',
+      desc: 'Remercier le client et émettre instantanément un acte d\'acquittement suite à son virement Mobile Money (Wave, Orange, MTN).',
+      icon: 'PAIEMENT REÇU'
+    },
+    DUNNING_REMINDER: {
+      title: 'Relance de retard de cotisation',
+      desc: 'Mise en demeure impérative signalant une facture d\'assainissement impayée au-delà des échéances légales avec risques de majorations.',
+      icon: 'RAPPEL CRITIQUE'
+    },
+    SUSPENSION_ALERT: {
+      title: 'Notification de suspension automatique',
+      desc: 'Avis officiel d\'interruption du ramassage et de mise hors-service RFID des installations suite à un défaut financier persistant.',
+      icon: 'CESSATION ADM'
+    },
+    REACTIVATION_ALERT: {
+      title: 'Réactivation et restauration de service',
+      desc: 'Confirmer la réactivation du contrat et la replanification immédiate du camion à domicile suite à l\'apurement complet de l\'arriéré.',
+      icon: 'REPRISE EFFECTIVE'
+    },
+    COMPLAINT_REPLY: {
+      title: 'Réponse officielle à une réclamation',
+      desc: 'Émettre un avis d\'intervention logistique en réponse à une plainte de citoyen (ex: bac Riviera non collecté).',
+      icon: 'RÉCLAMATION TRAITÉE'
+    },
+    ADMIN_NOTIF: {
+      title: 'Alerte administrative et technique',
+      desc: 'Transmission d\'un rapport d\'écart technique automatique destiné aux cadres ERP de Plateau, Abidjan.',
+      icon: 'ALERTE SYSTÈME'
+    }
+  };
+
+  return (
+    <div id="email-module-container" className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <Mail className="h-6.5 w-6.5 text-emerald-500 shrink-0" />
+            <span>Gestion de la Messagerie Professionnelle</span>
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 leading-relaxed">
+            Relais d'envois transactionnels Zoho Mail SMTP, file d'attente résiliente de retry et archivage SQL des correspondances.
+          </p>
+        </div>
+
+        {/* Sync panel */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={fetchLogs}
+            className="flex items-center gap-1.5 p-2 px-3 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold rounded-lg cursor-pointer shadow-xs transition"
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingLogs ? 'animate-spin' : ''}`} />
+            <span>Actualiser</span>
+          </button>
+        </div>
+      </div>
+
+      {actionMessage && (
+        <div className={`p-4 rounded-xl border flex items-start gap-3 transition font-medium text-xs leading-relaxed ${
+          actionMessage.type === 'success' 
+            ? 'bg-emerald-55/70 border-emerald-250 text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-300' 
+            : 'bg-red-50/70 border-red-200 text-red-900 dark:bg-red-950/20 dark:border-red-900 dark:text-red-300'
+        }`}>
+          {actionMessage.type === 'success' ? <CheckCircle2 className="h-5 w-5 text-emerald-550 shrink-0 mt-0.5" /> : <AlertCircle className="h-5 w-5 text-red-550 shrink-0 mt-0.5" />}
+          <div className="flex-1 shrink-0">{actionMessage.text}</div>
+          <button onClick={() => setActionMessage(null)} className="font-bold hover:text-slate-750 p-0.5 shrink-0 opacity-60">✕</button>
+        </div>
+      )}
+
+      {/* Internal subtab navigation */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-1 overflow-x-auto">
+        <button
+          onClick={() => setActiveSubTab('SANDBOX')}
+          className={`px-4 py-2 text-xs font-bold leading-normal transition-all shrink-0 cursor-pointer ${
+            activeSubTab === 'SANDBOX' 
+              ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-extrabold' 
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          🎮 Bac à Sable SMTP (9 Modèles tests)
+        </button>
+        <button
+          onClick={() => setActiveSubTab('MONITORING')}
+          className={`px-4 py-2 text-xs font-bold leading-normal transition-all shrink-0 cursor-pointer ${
+            activeSubTab === 'MONITORING' 
+              ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-extrabold' 
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          📊 File d'Attente & Historiques PostgreSQL ({dbLogs.length})
+        </button>
+      </div>
+
+      {activeSubTab === 'SANDBOX' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* Left Column Form */}
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-100 dark:border-slate-800/80 shadow-xs space-y-5">
+            <h3 className="text-sm font-black text-slate-850 dark:text-slate-250 flex items-center gap-1.5 uppercase font-mono tracking-wider">
+              <Sparkles className="h-4.5 w-4.5 text-amber-500 shrink-0 animate-pulse" />
+              <span>Générateur de Tests Transactionnels</span>
+            </h3>
+
+            <form onSubmit={handleSendTest} className="space-y-4 text-xs font-medium text-slate-700 dark:text-slate-350">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider">Email Destinataire (Pour tester)</label>
+                  <input 
+                    type="email" 
+                    required
+                    placeholder="exemple-recept@gmail.com" 
+                    value={toEmail}
+                    onChange={(e) => setToEmail(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-550"
+                  />
+                  <span className="text-[10px] text-slate-400 block">Saisissez l'adresse de réception pour tester.</span>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] text-slate-450 uppercase font-bold tracking-wider">Gabarit d'Email Zoho</label>
+                  <select 
+                    value={templateType}
+                    onChange={(e) => setTemplateType(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-550 font-bold"
+                  >
+                    <option value="WELCOME">WELCOME (Bienvenue au citoyen)</option>
+                    <option value="SUBSCRIPTION_CONFIRM">SUBSCRIPTION_CONFIRM (Abonnement valide)</option>
+                    <option value="INVOICE_PDF">INVOICE_PDF (Disponibilité Facture)</option>
+                    <option value="PAYMENT_CONFIRM">PAYMENT_CONFIRM (Validation de Caisse)</option>
+                    <option value="DUNNING_REMINDER">DUNNING_REMINDER (Injonction de payer)</option>
+                    <option value="SUSPENSION_ALERT">SUSPENSION_ALERT (Avis d'interruption)</option>
+                    <option value="REACTIVATION_ALERT">REACTIVATION_ALERT (Restauration service)</option>
+                    <option value="COMPLAINT_REPLY">COMPLAINT_REPLY (Résolution réclamation)</option>
+                    <option value="ADMIN_NOTIF">ADMIN_NOTIF (Alerte Admin Technique)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Dynamic Customizable template parameters fields */}
+              <div className="bg-slate-50 dark:bg-slate-955 rounded-xl p-4 border border-slate-100 dark:border-slate-800/60 mt-2 space-y-3">
+                <span className="text-[10px] font-bold text-amber-500 font-mono tracking-wider block uppercase">🧬 Variables Dynamiques Injectées</span>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[9px] uppercase font-bold text-slate-450">Nom complet citoyen :</label>
+                    <input 
+                      type="text" 
+                      value={clientName} 
+                      onChange={(e) => setClientName(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800 rounded-md text-[11px]" 
+                    />
+                  </div>
+
+                  {['INVOICE_PDF', 'PAYMENT_CONFIRM', 'SUBSCRIPTION_CONFIRM', 'DUNNING_REMINDER'].includes(templateType) && (
+                    <div className="space-y-1">
+                      <label className="text-[9px] uppercase font-bold text-slate-450">Frais d'Assainissement (FCFA) :</label>
+                      <input 
+                        type="text" 
+                        value={amount} 
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800 rounded-md text-[11px]" 
+                      />
+                    </div>
+                  )}
+
+                  {templateType === 'INVOICE_PDF' && (
+                    <div className="space-y-1">
+                      <label className="text-[9px] uppercase font-bold text-slate-450">Référence de Facture :</label>
+                      <input 
+                        type="text" 
+                        value={invoiceId} 
+                        onChange={(e) => setInvoiceId(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800 rounded-md text-[11px]" 
+                      />
+                    </div>
+                  )}
+
+                  {['INVOICE_PDF', 'DUNNING_REMINDER'].includes(templateType) && (
+                    <div className="space-y-1">
+                      <label className="text-[9px] uppercase font-bold text-slate-450">Échéance Règlement :</label>
+                      <input 
+                        type="text" 
+                        value={dueDate} 
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800 rounded-md text-[11px]" 
+                      />
+                    </div>
+                  )}
+
+                  {templateType === 'PAYMENT_CONFIRM' && (
+                    <div className="space-y-1">
+                      <label className="text-[9px] uppercase font-bold text-slate-450">Référence Transaction Mobile Money :</label>
+                      <input 
+                        type="text" 
+                        value={reference} 
+                        onChange={(e) => setReference(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800 rounded-md text-[11px]" 
+                      />
+                    </div>
+                  )}
+
+                  {templateType === 'COMPLAINT_REPLY' && (
+                    <>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-bold text-slate-450">No de Réclamation :</label>
+                        <input 
+                          type="text" 
+                          value={complaintId} 
+                          onChange={(e) => setComplaintId(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800 rounded-md text-[11px]" 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-bold text-slate-450">Rubrique de la Plainte :</label>
+                        <select 
+                          value={category} 
+                          onChange={(e) => setCategory(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 p-1.5 border border-slate-200 dark:border-slate-800 rounded-md text-[11px] font-bold"
+                        >
+                          <option value="NON_COLLECTE">NON_COLLECTE (Déchet ménager oublié)</option>
+                          <option value="FACTURATION">FACTURATION (Anomalie comptable)</option>
+                          <option value="AUTRE">AUTRE (Incident matériel)</option>
+                        </select>
+                      </div>
+                      <div className="col-span-1 md:col-span-2 space-y-1">
+                        <label className="text-[9px] uppercase font-bold text-slate-450">Résolution / Réponse Administrative officielle :</label>
+                        <textarea 
+                          rows={2} 
+                          value={replyText} 
+                          onChange={(e) => setReplyText(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800 rounded-md text-[11px]" 
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={sendingTest}
+                  className="flex items-center gap-2 p-2.5 px-5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl cursor-pointer disabled:opacity-50 select-none shadow-md hover:scale-[1.01] active:scale-95 transition-all"
+                >
+                  {sendingTest ? <RefreshCw className="h-4.5 w-4.5 animate-spin" /> : <Send className="h-4.5 w-4.5" />}
+                  <span>Déclencher l'Email via Zoho SMTP</span>
+                </button>
+              </div>
+
+            </form>
+          </div>
+
+          {/* Right Column Preview card */}
+          <div className="lg:col-span-5 bg-slate-900 text-slate-200 rounded-xl border border-slate-800 p-5 shadow-lg space-y-4 min-h-[460px] flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-800">
+                <div className="flex items-center gap-1.5">
+                  <div className="bg-emerald-500 text-white font-mono uppercase font-black text-[9px] p-1 rounded-sm">AKPBF CRM</div>
+                  <span className="text-xs font-black text-slate-300">Gabarit d'Écran Transactionnel</span>
+                </div>
+                <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 p-0.5 px-2 rounded-full font-mono">{templateType}</span>
+              </div>
+
+              {templateDescriptionMap[templateType] && (
+                <div className="text-xs space-y-2 leading-relaxed">
+                  <div className="font-extrabold text-white text-md tracking-tight flex items-center gap-2">
+                    <Info className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>{templateDescriptionMap[templateType].title}</span>
+                  </div>
+                  <p className="text-slate-400 font-medium text-[11px] bg-slate-950 p-2.5 rounded-lg border border-slate-800/50">
+                    {templateDescriptionMap[templateType].desc}
+                  </p>
+                </div>
+              )}
+
+              {/* Pseudo email header */}
+              <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1 text-[11px] font-mono leading-relaxed text-slate-400">
+                <div><span className="text-slate-600 font-bold">De :</span> noreply@akpbf.com (AKPBF Assainissement Public)</div>
+                <div><span className="text-slate-600 font-bold">À :</span> {toEmail || '[Mail du destinataire civique]'}</div>
+                <div><span className="text-slate-600 font-bold">Sujet :</span> {
+                  templateType === 'WELCOME' ? 'Bienvenue chez AKPBF - Portail Citoyen d\'Assainissement' :
+                  templateType === 'SUBSCRIPTION_CONFIRM' ? 'Confirmation de votre contrat d\'abonnement d\'assainissement' :
+                  templateType === 'INVOICE_PDF' ? `Nouvelle facture AKPBF disponible [Ref: ${invoiceId || 'INV-2026-618'}]` :
+                  templateType === 'PAYMENT_CONFIRM' ? `Confirmation de paiement reçu - Ref: ${reference || 'TXN-812'}` :
+                  templateType === 'DUNNING_REMINDER' ? 'RAPPEL CRITIQUE : Régularisation urgente de vos frais d\'assainissement' :
+                  templateType === 'SUSPENSION_ALERT' ? 'NOTIFICATION DE SUSPENSION : Cessation du service d\'assainissement public AKPBF' :
+                  templateType === 'REACTIVATION_ALERT' ? 'RÉACTIVATION EFFECTIVE : Restauration de vos services de collecte AKPBF' :
+                  templateType === 'COMPLAINT_REPLY' ? `Réponse officielle AKPBF à votre réclamation [Dossier #${complaintId || 'REC-90'}]` :
+                  'Alerte administrative d\'exploitation'
+                }</div>
+              </div>
+
+              {/* Styled Mini Template Preview Representation */}
+              <div className="bg-white text-slate-800 rounded-xl overflow-hidden shadow-md text-[10px] space-y-3 font-medium leading-normal border border-slate-100 max-h-[220px] overflow-y-auto p-4 flex flex-col justify-between">
+                
+                {/* Header widget */}
+                <div className="text-center pb-2.5 border-b border-amber-500/80 bg-emerald-600 -m-4 mb-2 p-3 text-white">
+                  <span className="font-extrabold tracking-wide uppercase text-[12px] block">AKPBF ERP</span>
+                  <span className="text-[7.5px] tracking-widest text-emerald-250 uppercase font-black">Salubrité de Côte d'Ivoire</span>
+                </div>
+
+                {/* Email text custom representations */}
+                {templateType === 'WELCOME' && (
+                  <div className="space-y-1 text-slate-600 pt-1">
+                    <span className="inline-block bg-emerald-100 text-emerald-800 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">BIENVENUE</span>
+                    <p className="font-bold text-slate-800 text-xs">Bonjour {clientName},</p>
+                    <p>Nous sommes ravis de vous compter parmi les citoyens abonnés d'AKPBF d'Abidjan. Notre engagement principal consiste à garder notre capitale propre.</p>
+                    <div className="bg-slate-50 p-2 rounded border-l-2 border-emerald-500 font-extrabold text-slate-800">
+                      Identifiant Unique d'Abonné : portail d'Abidjan actif.
+                    </div>
+                  </div>
+                )}
+
+                {templateType === 'SUBSCRIPTION_CONFIRM' && (
+                  <div className="space-y-1 text-slate-600">
+                    <span className="inline-block bg-emerald-100 text-emerald-800 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">CONTRAT ACTIF</span>
+                    <p className="font-bold text-slate-800 text-xs">Bonjour {clientName},</p>
+                    <p>Votre contrat d'abonnement d'assainissement régulier AKPBF a été validé et mis en service par nos agents financiers.</p>
+                  </div>
+                )}
+
+                {templateType === 'INVOICE_PDF' && (
+                  <div className="space-y-1 text-slate-600">
+                    <span className="inline-block bg-amber-100 text-amber-800 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">FACTURE ÉMISE</span>
+                    <p className="font-bold text-slate-800 text-xs">Bonjour {clientName},</p>
+                    <p>Votre facture pour la période d'assainissement est émise.</p>
+                    <div className="bg-amber-50 p-2 rounded border-l-2 border-amber-500 font-extrabold text-slate-800 font-mono">
+                      Montant : {amount} FCFA | Échéance : {dueDate}
+                    </div>
+                  </div>
+                )}
+
+                {templateType === 'PAYMENT_CONFIRM' && (
+                  <div className="space-y-1 text-slate-600">
+                    <span className="inline-block bg-emerald-100 text-emerald-800 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">PAIEMENT REÇU</span>
+                    <p className="font-bold text-slate-800 text-xs">Merci pour votre paiement !</p>
+                    <div className="bg-slate-50 p-2 rounded border-l-2 border-emerald-500 font-extrabold text-slate-800 font-mono">
+                      Transaction : {reference} | Montant : {amount} FCFA
+                    </div>
+                  </div>
+                )}
+
+                {templateType === 'DUNNING_REMINDER' && (
+                  <div className="space-y-1 text-slate-700">
+                    <span className="inline-block bg-red-100 text-red-800 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">RAPPEL CRITIQUE</span>
+                    <p className="font-bold text-slate-900 text-xs text-red-650">Bonjour {clientName},</p>
+                    <p>La facture d'assainissement de {amount} FCFA a dépassé la date d'échéance légale du {dueDate}.</p>
+                  </div>
+                )}
+
+                {templateType === 'SUSPENSION_ALERT' && (
+                  <div className="space-y-1 text-slate-700">
+                    <span className="inline-block bg-zinc-900 text-slate-200 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">SUSPENSION ADM</span>
+                    <p className="font-bold text-slate-900 text-xs text-red-650">Avis de cessation de service</p>
+                    <p>En raison d'un défaut persistant de règlement de vos cotisations environnementales, votre dossier a été basculé au statut SUSPENDU.</p>
+                  </div>
+                )}
+
+                {templateType === 'REACTIVATION_ALERT' && (
+                  <div className="space-y-1 text-slate-600">
+                    <span className="inline-block bg-teal-100 text-teal-850 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">COMPTE RÉACTIVÉ</span>
+                    <p className="font-bold text-slate-800 text-xs text-emerald-650">Vos services sont de retour !</p>
+                    <p>Votre statut a été restauré à ACTIF. Nous confirmons la reprise de la collecte et l'ouverture RFID de vos installations bacs.</p>
+                  </div>
+                )}
+
+                {templateType === 'COMPLAINT_REPLY' && (
+                  <div className="space-y-1 text-slate-600">
+                    <span className="inline-block bg-indigo-100 text-indigo-800 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">RECLAMATION TRAITEE</span>
+                    <p className="font-bold text-slate-800 text-xs">Bonjour {clientName},</p>
+                    <div className="bg-slate-50 p-2.5 rounded border border-slate-200 font-semibold text-slate-700 italic">
+                      Catégorie d'Incident : {category} <br/>
+                      "{replyText}"
+                    </div>
+                  </div>
+                )}
+
+                {templateType === 'ADMIN_NOTIF' && (
+                  <div className="space-y-1 text-slate-600">
+                    <span className="inline-block bg-rose-100 text-rose-800 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">ALERTE SYSTÈME</span>
+                    <p className="font-bold text-slate-800 text-xs text-red-500">Alerte administrative d'exploitation d'Abidjan :</p>
+                    <p>Cette alerte technique a été générée par l'automate de l'ERP AKPBF pour notifier le comité directeur.</p>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-slate-100 font-mono text-[8px] text-slate-400 text-center leading-normal">
+                  AKPBF ERP CI - Bureau Régional <br /> Plateau, Abidjan, Côte d'Ivoire
+                </div>
+
+              </div>
+
+            </div>
+
+            <p className="text-[10px] text-slate-500 text-center italic mt-2.5 leading-normal">
+              Note : En mode production, les emails sont transmis d'Abidjan via Zoho SMTP (Port 465 SSL sécurisé).
+            </p>
+          </div>
+
+        </div>
+      ) : (
+        <div className="space-y-6">
+          
+          {/* Monitoring Queue and PostgreSQL histories */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            
+            {/* Queue Management list */}
+            <div className="xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl p-5 shadow-xs space-y-4">
+              <div className="flex justify-between items-center pb-2.5 border-b border-slate-150 dark:border-slate-850">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-350 flex items-center gap-1.5 uppercase font-mono tracking-wider">
+                  <Clock className="h-4.5 w-4.5 text-amber-500 shrink-0" />
+                  <span>File d'Attente active ({queue.length})</span>
+                </span>
+                
+                <div className="flex gap-1">
+                  <button 
+                    onClick={handleRetryFailed}
+                    disabled={queue.filter(q => q.status === 'FAILED').length === 0}
+                    className="p-1 px-2 pointer-events-auto bg-amber-50 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-900 hover:bg-amber-100 text-amber-800 dark:text-amber-400 font-bold text-[10px] rounded-md disabled:opacity-50 select-none shadow-xs cursor-pointer transition active:scale-95"
+                    title="Retenter d'envoyer tous les courriels en échec"
+                  >
+                    Réessayer les échecs
+                  </button>
+                  <button 
+                    onClick={handlePurgeQueue}
+                    disabled={queue.length === 0}
+                    className="p-1 px-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-red-700 font-bold text-[10px] rounded-md disabled:opacity-50 select-none shadow-xs cursor-pointer transition active:scale-95"
+                    title="Vider la queue de rejets"
+                  >
+                    Purger
+                  </button>
+                </div>
+              </div>
+
+              {queue.length === 0 ? (
+                <div className="py-12 flex flex-col items-center justify-center text-slate-400 text-center text-xs space-y-2 leading-relaxed">
+                  <Inbox className="h-10 w-10 text-slate-300 dark:text-slate-700 shrink-0" />
+                  <div>
+                    <p className="font-extrabold text-slate-700 dark:text-slate-400">File de messagerie vide</p>
+                    <p className="text-slate-400">Tous les emails se sont transmis directement.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                  {queue.map(item => (
+                    <div 
+                      key={item.id} 
+                      className={`p-3 rounded-lg border text-[11px] font-medium leading-relaxed flex flex-col justify-between space-y-2 ${
+                        item.status === 'SENT' 
+                          ? 'bg-emerald-50/50 border-emerald-150 dark:bg-emerald-950/10 dark:border-emerald-900/65' 
+                          : item.status === 'FAILED'
+                            ? 'bg-red-50/50 border-red-150 dark:bg-red-950/10 dark:border-red-900/65'
+                            : 'bg-indigo-50/50 border-indigo-150 dark:bg-indigo-950/10 dark:border-indigo-900/65'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center font-bold">
+                        <span className="text-slate-800 dark:text-slate-300 font-mono text-[10px]">{item.id}</span>
+                        <span className={`p-0.5 px-2 text-[8px] font-black tracking-wider uppercase rounded-full ${
+                          item.status === 'SENT' 
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' 
+                            : item.status === 'FAILED'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 animate-pulse'
+                              : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </div>
+
+                      <div className="space-y-0.5 font-sans">
+                        <div className="text-slate-750 dark:text-slate-300"><span className="text-slate-400 font-bold">À :</span> {item.to}</div>
+                        <div className="text-slate-800 dark:text-slate-350 font-bold truncate"><span className="text-slate-400 font-bold">Sujet :</span> {item.subject}</div>
+                        <div className="text-slate-500 text-[10px]"><span className="text-slate-400 font-bold font-mono">Template :</span> {item.templateType} | Essais : {item.attempts}/{item.maxAttempts}</div>
+                      </div>
+
+                      {item.lastError && (
+                        <div className="bg-red-50 dark:bg-red-955 p-2 rounded-md border border-red-100 dark:border-red-900/40 text-[9.5px] text-red-750 dark:text-red-400 font-mono tracking-tight break-all leading-normal whitespace-pre-wrap">
+                          ⚠️ {item.lastError}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* PostgreSQL Logger DB View */}
+            <div className="xl:col-span-8 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl overflow-hidden shadow-xs">
+              <div className="p-4 bg-slate-50/60 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-350 flex items-center gap-1.5 uppercase font-mono tracking-wider">
+                  <Database className="h-4.5 w-4.5 text-emerald-500" />
+                  <span>Registre Général Historique d'Emails (Base PostgreSQL : {dbLogs.length})</span>
+                </span>
+                <span className="text-[10px] font-bold bg-indigo-50/70 border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/50 text-indigo-750 dark:text-indigo-300 p-0.5 px-3.5 rounded-full font-mono tracking-tight">
+                  PRISMA CONTEXT ACTIVE
+                </span>
+              </div>
+
+              {dbLogs.length === 0 ? (
+                <div className="py-24 text-center flex flex-col justify-center items-center text-slate-400 text-xs space-y-2">
+                  <FileText className="h-12 w-12 text-slate-300 dark:text-slate-700 animate-pulse shrink-0" />
+                  <div>
+                    <p className="font-extrabold text-slate-800 dark:text-slate-400">Aucun log en base de données PostgreSQL</p>
+                    <p className="text-slate-400 mt-0.5">Utilisez le Bac à Sable SMTP pour générer vos premières expéditions tests Zoho Mail.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-600 dark:text-slate-450 border-collapse">
+                    <thead className="bg-slate-50/70 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 font-bold text-slate-500 uppercase text-[9px] tracking-wider select-none">
+                      <tr>
+                        <th className="p-3">Citoyen Destinataire</th>
+                        <th className="p-3">Sujet de l'Email</th>
+                        <th className="p-3 font-mono text-center">Statut Acte SQL</th>
+                        <th className="p-3 font-mono text-right">Datation UTC</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70 font-semibold font-sans">
+                      {dbLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-55/30 hover:dark:bg-slate-850/40 transition">
+                          <td className="p-3">
+                            <div className="font-bold text-slate-850 dark:text-slate-250 truncate max-w-[190px]">
+                              {log.to}
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="text-slate-700 dark:text-slate-350 truncate max-w-[340px]" title={log.subject}>
+                              {log.subject}
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase ${
+                              log.status === 'SENT' 
+                                ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300' 
+                                : log.status === 'FAILED'
+                                  ? 'bg-red-100 dark:bg-red-955/20 text-red-800 dark:text-red-300'
+                                  : 'bg-indigo-100 dark:bg-indigo-955/20 text-indigo-800 dark:text-indigo-300'
+                            }`}>
+                              {log.status === 'SENT' ? 'Délivré' : log.status === 'FAILED' ? 'En Échec' : 'En Attente'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right text-slate-400 font-mono text-[10px]/normal tracking-tight">
+                            {new Date(log.createdAt).toLocaleString('fr-FR')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          <div className="bg-amber-500/10 dark:bg-amber-950/10 rounded-xl p-4 border border-amber-500/20 text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-start gap-2.5 font-sans leading-relaxed">
+            <Info className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-extrabold pb-0.5">🔒 Résilience de la Messagerie d'Assainissement AKPBF :</p>
+              <p>Chaque fois qu'un processus administratif ou logistique (comme la mise en service d'un abonnement Riviera, l'apurement de compte ou la génération périodique de factures papier PDF) s'exécute, l'ERP insère automatiquement les correspondances d'avis au sein de l'index PostgreSQL avec acte sécurisé "PENDING" ou "SENT". Si des dysfonctionnements du serveur SMTP surviennent, le worker intelligent d'Abidjan active automatiquement un algorithme d'attente à rétroaction exponentielle (Exponential Backoff, multiplier: 2.0x) pour surmonter les pannes d'Internet temporaires.</p>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+    </div>
+  );
+}

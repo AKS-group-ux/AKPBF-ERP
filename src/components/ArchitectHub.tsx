@@ -58,21 +58,91 @@ export default function ArchitectHub() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  // Run mock API request inside the interactive playground
-  const handleTestApi = () => {
+  // Run real Live API requests to our backend
+  const handleTestApi = async () => {
     setIsApiLoading(true);
-    setApiConsoleOutput('⌛ Connexion aux serveurs de production cloud d\'AKPBF...\n🛰️ Envoi des en-têtes SSL/TLS client...\n');
-    
-    setTimeout(() => {
-      setApiConsoleOutput(prev => {
-        return prev + `📤 ${selectedApi.method} ${selectedApi.path} HTTP/1.1\n` +
-               `🔑 Role exigé : ${selectedApi.roleRequired}\n` +
-               `📥 Code de retour : 200 OK\n` +
-               `📦 Type de contenu : application/json\n\n` + 
-               `${selectedApi.response}`;
+    setApiConsoleOutput('⌛ Connexion aux serveurs de production locaux d\'AKPBF...\n🛰️ Envoi de la demande d\'authentification...\n');
+
+    try {
+      // 1. Authenticate with admin account to claim fresh JWT token
+      const authRes = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          authMethod: 'email',
+          email: 'admin@akpbf.com',
+          password: 'Admin@2026'
+        })
       });
+
+      if (!authRes.ok) {
+        throw new Error('Échec d\'authentification administrateur automatique.');
+      }
+
+      const { token } = await authRes.json();
+      setApiConsoleOutput(prev => prev + '🔑 Authentification réussie ! Token JWT signé récupéré.\n🚀 Résolution de l\'URL opérationnelle...\n');
+
+      // Map documentation paths to our real operational backend endpoints
+      let realPath = selectedApi.path;
+      let requestBody = selectedApi.payload ? JSON.parse(selectedApi.payload) : undefined;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+
+      if (realPath === '/api/v1/subscribers' && selectedApi.method === 'GET') {
+        realPath = '/api/billing/debts';
+      } else if (realPath === '/api/v1/subscribers' && selectedApi.method === 'POST') {
+        realPath = '/api/notifications/enqueue';
+        requestBody = {
+          recipient: '+225 07 48 29 10 22',
+          channel: 'SMS',
+          content: 'Bienvenue chez AKPBF ! Votre raccordement RFID a été activé.'
+        };
+      } else if (realPath === '/api/v1/billing/generate') {
+        realPath = '/api/billing/cycle';
+        requestBody = {};
+      } else if (realPath === '/api/v1/routes/optimize') {
+        realPath = '/api/gps/optimize';
+        requestBody = { routeId: 'COCODY-RTE-2026' };
+      } else if (realPath === '/api/v1/payments/webhook') {
+        realPath = '/api/payments/webhook';
+        // HMAC SHA-256 signature for test payload
+        // Calculated for {"reference":"TXN-ORA-8841-K","status":"SUCCESS"}
+        headers['x-akpbf-signature'] = 'c570b674cfb15993b49eeae7002ee8109bf27f80f2dff7e662985f5bc0b6d210';
+        requestBody = {
+          reference: 'TXN-ORA-8841-K',
+          status: 'SUCCESS'
+        };
+      }
+
+      setApiConsoleOutput(prev => prev + `📤 [Live Call] ${selectedApi.method} ${realPath} HTTP/1.1\n`);
+
+      const res = await fetch(realPath, {
+        method: selectedApi.method,
+        headers,
+        body: requestBody ? JSON.stringify(requestBody) : undefined
+      });
+
+      const responseText = await res.text();
+      let formattedResponse = responseText;
+      try {
+        const json = JSON.parse(responseText);
+        formattedResponse = JSON.stringify(json, null, 2);
+      } catch (e) {
+        // Raw text block fallback
+      }
+
+      setApiConsoleOutput(prev => {
+        return prev + `📥 Statut HTTP : ${res.status} ${res.statusText}\n` +
+               `📦 En-têtes : application/json\n\n` + 
+               `${formattedResponse}`;
+      });
+    } catch (err: any) {
+      setApiConsoleOutput(prev => prev + `❌ Échec d'appel API : ${err.message || err}\n`);
+    } finally {
       setIsApiLoading(false);
-    }, 1200);
+    }
   };
 
   return (

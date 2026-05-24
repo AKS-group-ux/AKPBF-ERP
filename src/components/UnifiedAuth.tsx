@@ -19,6 +19,7 @@ import {
   Info
 } from 'lucide-react';
 import { Subscriber } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface UnifiedAuthProps {
   subscribers: Subscriber[];
@@ -62,88 +63,55 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
     { email: 'agent@akpbf.com', password: 'Agent@2026', name: 'Coulibaly Issa', role: 'AGENT' as const },
   ];
 
-  const handleLoginSubmit = (e: FormEvent) => {
+  const { login: authLogin, error: authError } = useAuth();
+
+  const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoginError('');
 
+    const credentials: any = { authMethod };
+
     if (authMethod === 'email') {
-      const canonicalEmail = email.trim().toLowerCase();
-      
-      // 1. Check corporate administrative users first
-      const matchedCorp = ENTERPRISE_USERS.find(u => u.email === canonicalEmail);
-      if (matchedCorp) {
-        if (password === matchedCorp.password) {
-          onLogin({
-            id: matchedCorp.email,
-            name: matchedCorp.name,
-            email: matchedCorp.email,
-            role: matchedCorp.role,
-            phone: '+225 05 00 00 00 01'
-          });
-          return;
-        } else {
-          setLoginError('Mot de passe corporatif erroné ou expiré.');
-          return;
-        }
-      }
-
-      // 2. Check if it's a client account
-      const matchedClient = subscribers.find(s => s.email.toLowerCase() === canonicalEmail);
-      if (matchedClient) {
-        if (password === 'Test@2026' || password === '••••••••' || password === matchedClient.id) {
-          onLogin({
-            id: matchedClient.id,
-            name: matchedClient.name,
-            email: matchedClient.email,
-            role: 'CLIENT',
-            phone: matchedClient.phone,
-            subscriberId: matchedClient.id
-          });
-          return;
-        } else {
-          setLoginError("Mot de passe incorrect pour le Portail Citoyen. Rappel d'évaluation : utilisez 'Test@2026'.");
-          return;
-        }
-      }
-
-      setLoginError(`Aucun utilisateur AKPBF n'est enregistré sous l'adresse e-mail "${email}".`);
-    }
-
-    else if (authMethod === 'id') {
-      const canonId = subscriberIdInput.trim().toUpperCase();
-      const matchedClient = subscribers.find(s => s.id.toUpperCase() === canonId || s.id.toUpperCase().includes(canonId));
-      if (matchedClient) {
-        onLogin({
-          id: matchedClient.id,
-          name: matchedClient.name,
-          email: matchedClient.email,
-          role: 'CLIENT',
-          phone: matchedClient.phone,
-          subscriberId: matchedClient.id
-        });
-      } else {
-        setLoginError(`ID Client "${subscriberIdInput}" introuvable dans le portefeuille d'abonnés de la mairie.`);
-      }
-    }
-
-    else if (authMethod === 'phone') {
+      credentials.email = email;
+      credentials.password = password;
+    } else if (authMethod === 'id') {
+      credentials.subscriberId = subscriberIdInput;
+    } else if (authMethod === 'phone') {
       if (!otpSent) {
         setOtpSent(true);
         return;
       }
-      const matchedClient = subscribers.find(s => s.phone.replace(/\s+/g, '').includes(phoneNumber.replace(/\s+/g, '')));
-      if (matchedClient) {
-        onLogin({
-          id: matchedClient.id,
-          name: matchedClient.name,
-          email: matchedClient.email,
-          role: 'CLIENT',
-          phone: matchedClient.phone,
-          subscriberId: matchedClient.id
-        });
+      credentials.phone = phoneNumber;
+      credentials.otp = phoneOtp;
+    }
+
+    try {
+      const success = await authLogin(credentials, subscribers);
+      if (success) {
+        // Retrieve newly active session token to notify outer controllers through onLogin callback
+        const persistedToken = localStorage.getItem('akpbf_erp_token');
+        if (persistedToken) {
+          const parts = persistedToken.split('.');
+          if (parts.length === 3) {
+            const rawPayload = window.atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+            const payload = JSON.parse(rawPayload);
+            onLogin({
+              id: payload.id,
+              name: payload.name,
+              email: payload.email,
+              role: payload.role,
+              phone: payload.phone,
+              subscriberId: payload.subscriberId
+            });
+          }
+        }
       } else {
-        setLoginError(`Aucune fiche d'abonné n'est rattachée au numéro "${phoneNumber}".`);
+        // Highlight active issue returned by server on screen
+        // If authError contains more details, use them, otherwise default
+        setLoginError(authError || "Erreur d'authentification ou mot de passe incorrect.");
       }
+    } catch (err: any) {
+      setLoginError(err.message || "Problème de communication avec le serveur d'authentification.");
     }
   };
 

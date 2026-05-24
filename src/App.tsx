@@ -28,6 +28,7 @@ import {
   Sparkles,
   Camera,
   Cpu,
+  Mail,
   FileText
 } from 'lucide-react';
 
@@ -50,6 +51,7 @@ import BillingView from './components/BillingView';
 import RoutesView from './components/RoutesView';
 import AgentsView from './components/AgentsView';
 import NotificationsView from './components/NotificationsView';
+import EmailsManagementView from './components/EmailsManagementView';
 import ArchitectHub from './components/ArchitectHub';
 
 // New missing views imports
@@ -61,8 +63,12 @@ import GpsMapView from './components/GpsMapView';
 import UnpaidDebtsView from './components/UnpaidDebtsView';
 import BinsManagementView from './components/BinsManagementView';
 import AiPredictionsView from './components/AiPredictionsView';
+import { BrowserRouter as Router, Routes, Route as RouterRoute, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import LandingPage from './components/LandingPage';
 import ClientPortalView from './components/ClientPortalView';
 import UnifiedAuth from './components/UnifiedAuth';
+import { useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Enterprise ERP Modules imports
 import AccountingView from './components/AccountingView';
@@ -211,42 +217,26 @@ function generateInitialReceipts(): PaymentReceipt[] {
 const LOCAL_STORAGE_KEY = 'akpbf_erp_state_v2';
 
 export default function App() {
-  // Central Auth session user state
-  const [sessionUser, setSessionUser] = useState<{
-    id: string;
-    name: string;
-    email: string;
-    role: 'ADMINISTRATEUR' | 'COMPTABLE' | 'SUPERVISEUR' | 'CHAUFFEUR' | 'AGENT' | 'CLIENT';
-    phone?: string;
-    subscriberId?: string;
-  } | null>(() => {
-    const saved = localStorage.getItem('akpbf_erp_session');
-    try {
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
-  });
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+}
 
-  const [lastRole, setLastRole] = useState<string | null>(() => {
-    const saved = localStorage.getItem('akpbf_erp_session');
-    try {
-      return saved ? JSON.parse(saved).role : null;
-    } catch (e) {
-      return null;
-    }
-  });
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user: sessionUser, logout: handleLogoutContext, loading: authSessionLoading } = useAuth();
+  const [lastRole, setLastRole] = useState<string | null>(null);
 
   // Strict role switch separation security check
   useEffect(() => {
     if (sessionUser) {
       if (lastRole && lastRole !== sessionUser.role) {
         // Clear everything immediately - security protocol
-        localStorage.removeItem('akpbf_erp_session');
-        localStorage.removeItem('akpbf_jwt_token');
-        localStorage.removeItem('akpbf_user_preferences');
-        setSessionUser(null);
         setLastRole(null);
+        handleLogoutContext();
         alert('Sécurité : Un changement de rôle nécessite une nouvelle authentification.');
       } else {
         setLastRole(sessionUser.role);
@@ -254,7 +244,7 @@ export default function App() {
     } else {
       setLastRole(null);
     }
-  }, [sessionUser, lastRole]);
+  }, [sessionUser, lastRole, handleLogoutContext]);
 
   // Odoo Subscription actions historical audit logs
   const [auditLogs, setAuditLogs] = useState<SubscriptionHistoryLog[]>(() => {
@@ -315,51 +305,47 @@ export default function App() {
   };
 
   const handleLogin = (user: typeof sessionUser) => {
-    setSessionUser(user);
     if (user) {
-      localStorage.setItem('akpbf_erp_session', JSON.stringify(user));
-      // Redirection logic to appropriate spaces as requested
+      // Redirection logic to appropriate spaces as requested (Phase 2 core)
       if (user.role === 'CLIENT') {
         setActiveTab('client_portal');
+        navigate('/client');
       } else if (user.role === 'COMPTABLE') {
-        setActiveTab('accounting');
+        setActiveTab('billing');
+        navigate('/cashier');
       } else if (user.role === 'SUPERVISEUR') {
         setActiveTab('dashboard');
+        navigate('/supervisor');
       } else if (user.role === 'CHAUFFEUR' || user.role === 'AGENT') {
         setActiveTab('routes');
+        navigate('/agent');
       } else {
         // ADMINISTRATEUR
         setActiveTab('dashboard');
+        navigate('/admin');
       }
     }
   };
 
   const handleLogout = () => {
-    // 1. Destroy and void security JWT tokens
-    localStorage.removeItem('akpbf_jwt_token');
-    
-    // 2. Terminate session
-    localStorage.removeItem('akpbf_erp_session');
-    
-    // 3. Clear customer/operator cached preferences and settings databases
-    localStorage.removeItem('akpbf_user_preferences');
-    localStorage.removeItem('akpbf_user_cache');
-    
-    // Clear session storage
-    sessionStorage.clear();
-    
-    // 4. Force state replacement to clear navigation history context
-    try {
-      window.history.replaceState(null, '', window.location.pathname + '#/login');
-    } catch (e) {
-      console.log('Failed to alter browser history state', e);
-    }
-    
-    // 5. Set auth session null (Unified Login redirect)
-    setSessionUser(null);
-    setLastRole(null);
+    handleLogoutContext();
     setActiveTab('dashboard');
+    navigate('/');
   };
+
+  // Sync URIs with matching active workspace tabs
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/agent') {
+      setActiveTab('routes');
+    } else if (path === '/cashier') {
+      setActiveTab('billing');
+    } else if (path === '/supervisor') {
+      setActiveTab('dashboard');
+    } else if (path === '/admin') {
+      setActiveTab('dashboard');
+    }
+  }, [location.pathname]);
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -751,7 +737,7 @@ export default function App() {
 
   const handleSendMockReminders = () => {
     // Send standard SMS alerts for any non-paid bills
-    const overdueInvs = invoices.filter(i => i.status === 'overdue' || i.status === 'unpaid');
+    const overdueInvs = invoices.filter(i => i.status === 'overdue' || (i.status as string) === 'unpaid');
     
     const newLogs: NotificationLog[] = overdueInvs.map(inv => ({
       id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -861,11 +847,11 @@ export default function App() {
     if (r === 'ADMINISTRATEUR') return true;
     
     if (r === 'COMPTABLE') {
-      return ['dashboard', 'billing', 'payments', 'unpaid_debts', 'reports', 'accounting', 'expenses', 'contracts'].includes(tab);
+      return ['dashboard', 'billing', 'payments', 'unpaid_debts', 'reports', 'accounting', 'expenses', 'contracts', 'emails'].includes(tab);
     }
     
     if (r === 'SUPERVISEUR') {
-      return ['dashboard', 'subscribers', 'bins', 'routes', 'gps', 'agents', 'notifications', 'fleet', 'contracts', 'emplacements'].includes(tab);
+      return ['dashboard', 'subscribers', 'bins', 'routes', 'gps', 'agents', 'notifications', 'fleet', 'contracts', 'emplacements', 'emails'].includes(tab);
     }
     
     if (r === 'CHAUFFEUR') {
@@ -879,61 +865,121 @@ export default function App() {
     return false;
   };
 
-  if (!sessionUser) {
+  if (authSessionLoading) {
     return (
-      <UnifiedAuth 
-        onLogin={handleLogin} 
-        subscribers={subscribers} 
-      />
+      <div id="auth-loading-screen" className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-200 font-sans">
+        <div className="relative flex items-center justify-center">
+          <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+          <div className="absolute font-mono text-xs text-emerald-400 font-black animate-pulse">AK</div>
+        </div>
+        <p className="mt-4 text-xs font-bold text-slate-400 tracking-widest uppercase animate-pulse">Vérification de session sécurisée...</p>
+      </div>
     );
   }
 
-  if (sessionUser.role === 'CLIENT') {
-    const clientSub = subscribers.find(s => s.phone === sessionUser.phone || s.email === sessionUser.email || s.id === sessionUser.subscriberId) || subscribers[0];
-    return (
-      <ClientPortalView 
-        subscribers={subscribers}
-        invoices={invoices}
-        plans={plans}
-        routes={routes}
-        contracts={contracts}
-        receipts={receipts}
-        emplacements={emplacements}
-        onAddEmplacement={handleAddEmplacement}
-        onUpdateEmplacement={handleUpdateEmplacement}
-        onDeleteEmplacement={handleDeleteEmplacement}
-        onUpdateSubscriber={handleUpdateSubscriber}
-        onPayInvoice={handlePayInvoice}
-        onAddNotification={(newNotif) => {
-          const logs = [newNotif, ...notifLogs];
-          setNotifLogs(logs);
-          saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, logs, contracts, templates, receipts);
-        }}
-        onAddContract={(cnt) => {
-          const updated = [cnt, ...contracts];
-          setContracts(updated);
-          saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, updated, templates, receipts);
-        }}
-        onUpdateContract={(cnt) => {
-          const updated = contracts.map(c => c.id === cnt.id ? cnt : c);
-          setContracts(updated);
-          saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, updated, templates, receipts);
-        }}
-        onAddReceipt={(rec) => {
-          const updated = [...receipts, rec];
-          setReceipts(updated);
-          saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, contracts, templates, updated);
-        }}
-        onAddHistoryLog={(log) => {
-          logAuditAction(log.subscriberId, log.subscriberName, log.action, log.description, log.oldState, log.newState);
-        }}
-        loggedClient={clientSub}
-        onLogoutCentral={handleLogout}
-      />
-    );
-  }
+  const clientSub = sessionUser ? subscribers.find(s => s.phone === sessionUser.phone || s.email === sessionUser.email || s.id === sessionUser.subscriberId) || subscribers[0] : null;
 
   return (
+    <Routes>
+      <RouterRoute path="/" element={
+        <LandingPage 
+          plans={plans}
+          subscribers={subscribers}
+          onAddSubscriber={handleAddSubscriber}
+          onLogin={handleLogin}
+          onAddNotificationLogs={(notif) => {
+            const logs = [notif, ...notifLogs];
+            setNotifLogs(logs);
+            saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, logs, contracts, templates, receipts);
+          }}
+        />
+      } />
+
+      <RouterRoute path="/client" element={
+        sessionUser && sessionUser.role === 'CLIENT' && clientSub ? (
+          <ClientPortalView 
+            subscribers={subscribers}
+            invoices={invoices}
+            plans={plans}
+            routes={routes}
+            contracts={contracts}
+            receipts={receipts}
+            emplacements={emplacements}
+            onAddEmplacement={handleAddEmplacement}
+            onUpdateEmplacement={handleUpdateEmplacement}
+            onDeleteEmplacement={handleDeleteEmplacement}
+            onUpdateSubscriber={handleUpdateSubscriber}
+            onPayInvoice={handlePayInvoice}
+            onAddNotification={(newNotif) => {
+              const logs = [newNotif, ...notifLogs];
+              setNotifLogs(logs);
+              saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, logs, contracts, templates, receipts);
+            }}
+            onAddContract={(cnt) => {
+              const updated = [cnt, ...contracts];
+              setContracts(updated);
+              saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, updated, templates, receipts);
+            }}
+            onUpdateContract={(cnt) => {
+              const updated = contracts.map(c => c.id === cnt.id ? cnt : c);
+              setContracts(updated);
+              saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, updated, templates, receipts);
+            }}
+            onAddReceipt={(rec) => {
+              const updated = [...receipts, rec];
+              setReceipts(updated);
+              saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, notifLogs, contracts, templates, updated);
+            }}
+            onAddHistoryLog={(log) => {
+              logAuditAction(log.subscriberId, log.subscriberName, log.action, log.description, log.oldState, log.newState);
+            }}
+            loggedClient={clientSub}
+            onLogoutCentral={handleLogout}
+          />
+        ) : (
+          <Navigate to="/" replace />
+        )
+      } />
+
+      {/* Internal ERP Dashboard paths */}
+      <RouterRoute path="/agent" element={
+        sessionUser && (sessionUser.role === 'AGENT' || sessionUser.role === 'CHAUFFEUR' || sessionUser.role === 'SUPERVISEUR' || sessionUser.role === 'ADMINISTRATEUR') ? (
+          adminWorkspace()
+        ) : (
+          <Navigate to="/" replace />
+        )
+      } />
+
+      <RouterRoute path="/cashier" element={
+        sessionUser && (sessionUser.role === 'COMPTABLE' || sessionUser.role === 'ADMINISTRATEUR') ? (
+          adminWorkspace()
+        ) : (
+          <Navigate to="/" replace />
+        )
+      } />
+
+      <RouterRoute path="/supervisor" element={
+        sessionUser && (sessionUser.role === 'SUPERVISEUR' || sessionUser.role === 'ADMINISTRATEUR') ? (
+          adminWorkspace()
+        ) : (
+          <Navigate to="/" replace />
+        )
+      } />
+
+      <RouterRoute path="/admin" element={
+        sessionUser && sessionUser.role === 'ADMINISTRATEUR' ? (
+          adminWorkspace()
+        ) : (
+          <Navigate to="/" replace />
+        )
+      } />
+
+      <RouterRoute path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+
+  function adminWorkspace() {
+    return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row antialiased">
       
       {/* MOBILE HEADER RESPONSIVE TOGGLE */}
@@ -1210,6 +1256,21 @@ export default function App() {
               </button>
             )}
 
+            {canAccessTab('emails') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('emails'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'emails' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <Mail className="h-4 w-4 shrink-0 text-emerald-400" />
+                Emails Professionnels
+              </button>
+            )}
+
             {(canAccessTab('accounting') || canAccessTab('expenses') || canAccessTab('stock') || canAccessTab('fleet') || canAccessTab('hr')) && (
               <div className="pt-3 border-t border-slate-800 mt-3 block">
                 <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest block px-3 mb-1.5 font-mono">FINANCES & OPÉRATIONS</span>
@@ -1319,7 +1380,7 @@ export default function App() {
           </div>
           <button 
             type="button"
-            onClick={() => { loadInitialPresets(); localStorage.removeItem(LOCAL_STORAGE_KEY); location.reload(); }}
+            onClick={() => { loadInitialPresets(); localStorage.removeItem(LOCAL_STORAGE_KEY); window.location.reload(); }}
             className="w-full text-left text-[11px] font-bold text-slate-500 hover:text-white flex items-center gap-1.5 px-3 py-1 bg-slate-850 hover:bg-slate-800 rounded transition cursor-pointer"
           >
             Réinitialiser les données
@@ -1360,7 +1421,32 @@ export default function App() {
 
         {/* INNER SCROLL CONTENT - VIEWS SWITCH */}
         <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-          {activeTab === 'dashboard' && (
+          <ProtectedRoute allowedRoles={
+            activeTab === 'dashboard' ? ['ADMINISTRATEUR', 'COMPTABLE', 'SUPERVISEUR'] :
+            activeTab === 'subscribers' ? ['ADMINISTRATEUR', 'SUPERVISEUR'] :
+            activeTab === 'bins' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR', 'AGENT'] :
+            activeTab === 'ai' ? ['ADMINISTRATEUR'] :
+            activeTab === 'plans' ? ['ADMINISTRATEUR'] :
+            activeTab === 'billing' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
+            activeTab === 'payments' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
+            activeTab === 'unpaid_debts' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
+            activeTab === 'routes' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR', 'AGENT'] :
+            activeTab === 'gps' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR'] :
+            activeTab === 'reports' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
+            activeTab === 'agents' ? ['ADMINISTRATEUR', 'SUPERVISEUR'] :
+            activeTab === 'notifications' ? ['ADMINISTRATEUR', 'SUPERVISEUR'] :
+            activeTab === 'emails' ? ['ADMINISTRATEUR', 'COMPTABLE', 'SUPERVISEUR'] :
+            activeTab === 'contracts' ? ['ADMINISTRATEUR', 'COMPTABLE', 'SUPERVISEUR'] :
+            activeTab === 'emplacements' ? ['ADMINISTRATEUR', 'SUPERVISEUR'] :
+            activeTab === 'accounting' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
+            activeTab === 'expenses' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
+            activeTab === 'stock' ? ['ADMINISTRATEUR'] :
+            activeTab === 'fleet' ? ['ADMINISTRATEUR', 'SUPERVISEUR'] :
+            activeTab === 'hr' ? ['ADMINISTRATEUR'] :
+            activeTab === 'architect_hub' ? ['ADMINISTRATEUR'] :
+            []
+          }>
+            {activeTab === 'dashboard' && (
             <DashboardView 
               subscribers={subscribers} 
               invoices={invoices} 
@@ -1483,6 +1569,10 @@ export default function App() {
             <NotificationsView logs={notifLogs} />
           )}
 
+          {activeTab === 'emails' && (
+            <EmailsManagementView />
+          )}
+
           {activeTab === 'contracts' && (
             <ContractsView 
               contracts={contracts}
@@ -1554,8 +1644,10 @@ export default function App() {
           {activeTab === 'architect_hub' && (
             <ArchitectHub />
           )}
+          </ProtectedRoute>
         </div>
       </main>
     </div>
-  );
+    );
+  }
 }

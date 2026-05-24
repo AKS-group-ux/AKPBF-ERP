@@ -155,4 +155,22 @@ export interface Emplacement {
   collectionFrequency: string; // "2 fois par semaine", "Quotidien", etc.
 }
 
+export type UserRole = 'ADMINISTRATEUR' | 'COMPTABLE' | 'SUPERVISEUR' | 'CHAUFFEUR' | 'AGENT' | 'CLIENT';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  phone?: string;
+  subscriberId?: string; // used for clients
+  isActive?: boolean;
+}
+
+export interface AuthSession {
+  user: User;
+  token: string;
+}
+
+
 
