@@ -6,6 +6,10 @@ import slowDown from 'express-slow-down';
 
 // 1. Logging and Security Auditor
 export function securityLogger(req: Request, res: Response, next: NextFunction) {
+  // Only target API transactions to avoid logging frontend static/source files like ErrorBoundary.tsx
+  if (!req.path.startsWith('/api')) {
+    return next();
+  }
   const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const userAgent = req.headers['user-agent'] || 'Unknown';
   console.log(`[SECURITY AUDIT LOG] - ${new Date().toISOString()} - IP: ${ip} - Method: ${req.method} - URL: ${req.originalUrl} - Agent: ${userAgent}`);
@@ -14,6 +18,10 @@ export function securityLogger(req: Request, res: Response, next: NextFunction) 
 
 // 2. SQL Injection and Common XSS Shield (Sanitization checks)
 export function sqlAndXssShield(req: Request, res: Response, next: NextFunction) {
+  // Only inspect API payload requests
+  if (!req.path.startsWith('/api')) {
+    return next();
+  }
   const sqlPattern = /('|--|#|\/\*|\*\/|union|select|insert|delete|update|drop|alter|where|and|or|like)/i;
   const xssPattern = /(<script|<iframe|<object|<embed|javascript:|onclick|onerror|onmouseover)/i;
 
@@ -75,6 +83,7 @@ export const globalLimiter = rateLimit({
   message: { error: 'Nombre maximal de requêtes globales dépassé pour cet IP. Veuillez patienter.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => !req.path.startsWith('/api'),
 });
 
 // 5. Speed Damping (Slow Down)
@@ -82,6 +91,7 @@ export const speedDampener = (slowDown as any)({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 100, // Slow down requests after 100 queries are made
   delayMs: () => 500, // Add 500ms delay to each request above threshold
+  skip: (req: any) => !req.path.startsWith('/api'),
 });
 
 // 6. Secure security headers using Helmet
