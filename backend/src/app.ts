@@ -12,6 +12,7 @@ import authRoutes from './routes/authRoutes';
 import apiRoutes from './routes/apiRoutes';
 
 const app = express();
+app.set('trust proxy', 1);
 
 // 1. Audit log monitor
 app.use(securityLogger);

@@ -84,6 +84,7 @@ export const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => !req.path.startsWith('/api'),
+  validate: { trustProxy: false },
 });
 
 // 5. Speed Damping (Slow Down)
