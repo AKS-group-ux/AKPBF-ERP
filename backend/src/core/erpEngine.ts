@@ -50,30 +50,34 @@ export class ErpEngine {
   private static async validateCustomerRules(email: string, phone: string, excludeCustomerId?: string) {
     const prisma = getPrismaClient();
     const canonEmail = email.trim().toLowerCase();
-    const cleanPhone = phone.trim();
+    // Normaliser le telephone: enlever espaces, tirets, +225 etc pour comparaison
+    const normalizedPhone = phone.replace(/[\s\-\+]/g, '').replace(/^225/, '').replace(/^00225/, '');
 
-    // 1. Email unique check
-    const duplicateEmail = await prisma.customer.findFirst({
-      where: {
-        email: { equals: canonEmail, mode: 'insensitive' },
-        ...(excludeCustomerId ? { id: { not: excludeCustomerId } } : {})
+    // 1. Email unique check (si email fourni)
+    if (canonEmail) {
+      const duplicateEmail = await prisma.customer.findFirst({
+        where: {
+          email: { equals: canonEmail, mode: 'insensitive' },
+          ...(excludeCustomerId ? { id: { not: excludeCustomerId } } : {})
+        }
+      });
+
+      if (duplicateEmail) {
+        throw new Error(`Erreur: Cette adresse email '${email}' est deja associee a un autre compte. Veuillez utiliser une adresse differente.`);
       }
-    });
-
-    if (duplicateEmail) {
-      throw new Error(`Règle d'intégrité violée : L'adresse email '${email}' est déjà enregistrée.`);
     }
 
-    // 2. Phone unique check
-    const duplicatePhone = await prisma.customer.findFirst({
-      where: {
-        phone: cleanPhone,
-        ...(excludeCustomerId ? { id: { not: excludeCustomerId } } : {})
-      }
+    // 2. Phone unique check - compare normalized phone numbers
+    const allCustomers = await prisma.customer.findMany({
+      where: excludeCustomerId ? { id: { not: excludeCustomerId } } : {},
+      select: { id: true, phone: true, name: true }
     });
 
-    if (duplicatePhone) {
-      throw new Error(`Règle d'intégrité violée : Le numéro de téléphone '${phone}' est déjà utilisé.`);
+    for (const customer of allCustomers) {
+      const existingNormalized = customer.phone.replace(/[\s\-\+]/g, '').replace(/^225/, '').replace(/^00225/, '');
+      if (existingNormalized === normalizedPhone || existingNormalized.endsWith(normalizedPhone) || normalizedPhone.endsWith(existingNormalized)) {
+        throw new Error(`Erreur: Ce numero de telephone '${phone}' est deja utilise par l'abonne ${customer.name}. Un seul compte par numero de telephone est autorise.`);
+      }
     }
   }
 

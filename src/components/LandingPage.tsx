@@ -103,7 +103,7 @@ export default function LandingPage({
     setRegError(null);
 
     if (!regName || !regEmail || !regPhone || !regAddress) {
-      setRegError("S'il vous plaît complétez tous les champs requis.");
+      setRegError("S'il vous plait completez tous les champs requis.");
       return;
     }
 
@@ -114,10 +114,31 @@ export default function LandingPage({
       return;
     }
 
-    // Phone format checks (Côte d'Ivoire phone length is usually 10 digits post-2021)
+    // Check if email already exists in local subscribers list
+    const normalizedEmail = regEmail.trim().toLowerCase();
+    const existingEmailSub = subscribers.find(s => s.email?.toLowerCase() === normalizedEmail);
+    if (existingEmailSub) {
+      setRegError(`Cette adresse email est deja utilisee par l'abonne ${existingEmailSub.name}. Veuillez utiliser une adresse email differente.`);
+      return;
+    }
+
+    // Phone format checks (Cote d'Ivoire phone length is usually 10 digits post-2021)
     const cleanPh = regPhone.replace(/[\s\-\+]/g, '');
     if (cleanPh.length < 8) {
-      setRegError("Le numéro de téléphone est trop court ou invalide.");
+      setRegError("Le numero de telephone est trop court ou invalide.");
+      return;
+    }
+
+    // Check if phone already exists in local subscribers list (normalized comparison)
+    const normalizedPhone = cleanPh.replace(/^225/, '').replace(/^00225/, '');
+    const existingPhoneSub = subscribers.find(s => {
+      const existingNormalized = s.phone.replace(/[\s\-\+]/g, '').replace(/^225/, '').replace(/^00225/, '');
+      return existingNormalized === normalizedPhone || 
+             existingNormalized.endsWith(normalizedPhone) || 
+             normalizedPhone.endsWith(existingNormalized);
+    });
+    if (existingPhoneSub) {
+      setRegError(`Ce numero de telephone est deja utilise par l'abonne ${existingPhoneSub.name}. Un seul compte par numero est autorise.`);
       return;
     }
 
