@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
   Trash2, 
@@ -32,7 +32,7 @@ import {
   FileText
 } from 'lucide-react';
 
-import { Subscriber, Invoice, CollectorAgent, Route, NotificationLog, SubscriptionPlan, SubscriptionHistoryLog, Contract, ContractTemplate, PaymentReceipt, Emplacement } from './types';
+import { Subscriber, Invoice, CollectorAgent, Route, NotificationLog, SubscriptionPlan, SubscriptionHistoryLog, Contract, ContractTemplate, PaymentReceipt, Emplacement, CollectionProof } from './types';
 import { 
   INITIAL_PLANS, 
   INITIAL_SUBSCRIBERS, 
@@ -58,6 +58,7 @@ import ArchitectHub from './components/ArchitectHub';
 import SubscriptionPlansView from './components/SubscriptionPlansView';
 import ContractsView from './components/ContractsView';
 import PaymentsView from './components/PaymentsView';
+import QuickPaymentView from './components/QuickPaymentView';
 import ReportsView from './components/ReportsView';
 import GpsMapView from './components/GpsMapView';
 import UnpaidDebtsView from './components/UnpaidDebtsView';
@@ -179,6 +180,68 @@ function generateInitialContracts(): Contract[] {
       status: 'suspended',
       signatureDate: '2025-10-01',
       termsAndConditions: `CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ AKPBF\nNuméro du contrat : CNT-2026-8842\nClient Citoyen d'Abidjan : Mamadou Diallo (N° Citoyen: SUB-8842)\n\nIl est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine et l'Abonné(e) désigné(e) ci-dessus :\n\n- Type de forfait : Standard Municipal au prix mensuel fixe de 3 500 FCFA.\n- Engagement : Du 2025-10-01 au 2026-09-30.`
+    }
+  ];
+}
+
+function generateInitialCollectionProofs(): CollectionProof[] {
+  return [
+    {
+      id: "PRF-1042",
+      collectionDate: "2026-05-20",
+      collectionTime: "07:29",
+      clientId: "SUB-4029",
+      clientName: "Koffi Jean-Jacques",
+      contractRef: "CNT-2026-6081",
+      planName: "Contrat Premium (3 passages)",
+      agentName: "Agent Kouassi (Camion B04)",
+      vehiclePlate: "CI-225-B04",
+      status: "Complétée",
+      comments: "Poids résiduel collecté : 12 Kg • Statut : Traitée",
+      photoBeforeUrl: "https://images.unsplash.com/photo-1591193686104-fddba4d0e4d8?w=500&auto=format&fit=crop&q=60",
+      photoAfterUrl: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=500&auto=format&fit=crop&q=60",
+      gpsLatitude: 5.3489,
+      gpsLongitude: -3.9995,
+      clientSignature: "STAMP-E-104288",
+      qrCodeVal: "RFID-SUB-4029"
+    },
+    {
+      id: "PRF-884",
+      collectionDate: "2026-05-16",
+      collectionTime: "08:05",
+      clientId: "SUB-1933",
+      clientName: "Soro Aminata",
+      contractRef: "CNT-2026-1933",
+      planName: "Professionnel & Commerce",
+      agentName: "Agent Kouassi (Camion B04)",
+      vehiclePlate: "CI-225-B42",
+      status: "Complétée",
+      comments: "Poids résiduel collecté : 9 Kg • Statut : Traitée",
+      photoBeforeUrl: "https://images.unsplash.com/photo-1591193686104-fddba4d0e4d8?w=500&auto=format&fit=crop&q=60",
+      photoAfterUrl: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=500&auto=format&fit=crop&q=60",
+      gpsLatitude: 5.3512,
+      gpsLongitude: -4.0012,
+      clientSignature: "STAMP-E-884023",
+      qrCodeVal: "RFID-SUB-1933"
+    },
+    {
+      id: "PRF-221",
+      collectionDate: "2026-05-10",
+      collectionTime: "07:15",
+      clientId: "SUB-8842",
+      clientName: "Mamadou Diallo",
+      contractRef: "CNT-2026-8842",
+      planName: "Standard Municipal (1 passage)",
+      agentName: "Agent Coulibaly (Camion C08)",
+      vehiclePlate: "CI-225-C08",
+      status: "Complétée",
+      comments: "Prise en charge régulière. Matériel inspecté.",
+      photoBeforeUrl: "https://images.unsplash.com/photo-1591193686104-fddba4d0e4d8?w=500&auto=format&fit=crop&q=60",
+      photoAfterUrl: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=500&auto=format&fit=crop&q=60",
+      gpsLatitude: 5.3456,
+      gpsLongitude: -3.9876,
+      clientSignature: "STAMP-E-221045",
+      qrCodeVal: "RFID-SUB-8842"
     }
   ];
 }
@@ -410,37 +473,102 @@ function AppContent() {
   const [templates, setTemplates] = useState<ContractTemplate[]>([]);
   const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
   const [emplacements, setEmplacements] = useState<Emplacement[]>([]);
+  const [collectionProofs, setCollectionProofs] = useState<CollectionProof[]>([]);
 
-  // Load state from local storage on mount
-  useEffect(() => {
-    const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        setPlans(parsed.plans && parsed.plans.length > 0 ? parsed.plans : generateAllDemoData().plans);
-        setSubscribers(parsed.subscribers && parsed.subscribers.length > 0 ? parsed.subscribers : generateAllDemoData().subscribers);
-        setInvoices(parsed.invoices && parsed.invoices.length > 0 ? parsed.invoices : generateAllDemoData().invoices);
-        setAgents(parsed.agents && parsed.agents.length > 0 ? parsed.agents : generateAllDemoData().agents);
-        setRoutes(parsed.routes && parsed.routes.length > 0 ? parsed.routes : generateAllDemoData().routes);
-        setNotifLogs(parsed.notifLogs && parsed.notifLogs.length > 0 ? parsed.notifLogs : generateAllDemoData().notifLogs);
-        
-        // Load contracts, templates, receipts, or seed them if empty
-        setContracts(parsed.contracts && parsed.contracts.length > 0 ? parsed.contracts : generateInitialContracts());
-        setTemplates(parsed.templates && parsed.templates.length > 0 ? parsed.templates : INITIAL_TEMPLATES);
-        setReceipts(parsed.receipts && parsed.receipts.length > 0 ? parsed.receipts : generateInitialReceipts());
-        setEmplacements(parsed.emplacements && parsed.emplacements.length > 0 ? parsed.emplacements : INITIAL_EMPLACEMENTS);
-      } catch (e) {
-        console.error('Error parsing local storage ERP state - loading high fidelity presets', e);
-        loadInitialPresets();
+  const loadStateFromServer = useCallback(async () => {
+    const token = localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token');
+    if (!token) return;
+    try {
+      const response = await fetch('/api/erp/state', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.plans && data.plans.length > 0) setPlans(data.plans);
+        if (data.subscribers && data.subscribers.length > 0) setSubscribers(data.subscribers);
+        if (data.invoices && data.invoices.length > 0) setInvoices(data.invoices);
+        if (data.contracts && data.contracts.length > 0) setContracts(data.contracts);
+        if (data.receipts && data.receipts.length > 0) setReceipts(data.receipts);
+        if (data.emplacements && data.emplacements.length > 0) setEmplacements(data.emplacements);
+        if (data.notifLogs && data.notifLogs.length > 0) setNotifLogs(data.notifLogs);
+        if (data.auditLogs && data.auditLogs.length > 0) setAuditLogs(data.auditLogs);
+        if (data.collectionProofs && data.collectionProofs.length > 0) setCollectionProofs(data.collectionProofs);
       }
-    } else {
-      loadInitialPresets();
+    } catch (err) {
+      console.error("Failed to load ERP state from postgres server:", err);
     }
   }, []);
+
+  const syncLedgerToServer = useCallback(async (
+    updatedContracts: any[],
+    updatedReceipts: any[],
+    updatedEmplacements: any[],
+    updatedNotifs: any[],
+    updatedAudits: any[],
+    updatedCollectionProofs?: any[]
+  ) => {
+    const token = localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token');
+    if (!token) return;
+    try {
+      await fetch('/api/erp/ledger', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          contracts: updatedContracts,
+          receipts: updatedReceipts,
+          emplacements: updatedEmplacements,
+          notifLogs: updatedNotifs,
+          auditLogs: updatedAudits,
+          collectionProofs: updatedCollectionProofs !== undefined ? updatedCollectionProofs : collectionProofs
+        })
+      });
+    } catch (err) {
+      console.error("Failed to sync ledger:", err);
+    }
+  }, [collectionProofs]);
+
+  // Load state from local storage or real server backend on mount
+  useEffect(() => {
+    const token = localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token');
+    if (token) {
+      loadStateFromServer();
+    } else {
+      const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedState) {
+        try {
+          const parsed = JSON.parse(savedState);
+          setPlans(parsed.plans && parsed.plans.length > 0 ? parsed.plans : generateAllDemoData().plans);
+          setSubscribers(parsed.subscribers && parsed.subscribers.length > 0 ? parsed.subscribers : generateAllDemoData().subscribers);
+          setInvoices(parsed.invoices && parsed.invoices.length > 0 ? parsed.invoices : generateAllDemoData().invoices);
+          setAgents(parsed.agents && parsed.agents.length > 0 ? parsed.agents : generateAllDemoData().agents);
+          setRoutes(parsed.routes && parsed.routes.length > 0 ? parsed.routes : generateAllDemoData().routes);
+          setNotifLogs(parsed.notifLogs && parsed.notifLogs.length > 0 ? parsed.notifLogs : generateAllDemoData().notifLogs);
+          
+          // Load contracts, templates, receipts, or seed them if empty
+          setContracts(parsed.contracts && parsed.contracts.length > 0 ? parsed.contracts : generateInitialContracts());
+          setTemplates(parsed.templates && parsed.templates.length > 0 ? parsed.templates : INITIAL_TEMPLATES);
+          setReceipts(parsed.receipts && parsed.receipts.length > 0 ? parsed.receipts : generateInitialReceipts());
+          setEmplacements(parsed.emplacements && parsed.emplacements.length > 0 ? parsed.emplacements : INITIAL_EMPLACEMENTS);
+          setCollectionProofs(parsed.collectionProofs && parsed.collectionProofs.length > 0 ? parsed.collectionProofs : generateInitialCollectionProofs());
+        } catch (e) {
+          console.error('Error parsing local storage ERP state - loading high fidelity presets', e);
+          loadInitialPresets();
+        }
+      } else {
+        loadInitialPresets();
+      }
+    }
+  }, [loadStateFromServer]);
 
   // Sync automatic tab redirection once user context is loaded
   useEffect(() => {
     if (sessionUser) {
+      loadStateFromServer();
       if (sessionUser.role === 'CLIENT') {
         setActiveTab('client_portal');
       } else if (sessionUser.role === 'COMPTABLE') {
@@ -451,7 +579,7 @@ function AppContent() {
         setActiveTab('dashboard');
       }
     }
-  }, [sessionUser]);
+  }, [sessionUser, loadStateFromServer]);
 
   // Helper method to reload initials with high-fidelity AKPBF simulated databases
   const loadInitialPresets = () => {
@@ -460,6 +588,7 @@ function AppContent() {
     const initTemplates = INITIAL_TEMPLATES;
     const initReceipts = generateInitialReceipts();
     const initEmplacements = INITIAL_EMPLACEMENTS;
+    const initCollectionProofs = generateInitialCollectionProofs();
 
     setPlans(demo.plans);
     setSubscribers(demo.subscribers);
@@ -471,6 +600,7 @@ function AppContent() {
     setTemplates(initTemplates);
     setReceipts(initReceipts);
     setEmplacements(initEmplacements);
+    setCollectionProofs(initCollectionProofs);
 
     saveStateToLocalStorage(
       demo.plans, 
@@ -482,7 +612,8 @@ function AppContent() {
       initContracts,
       initTemplates,
       initReceipts,
-      initEmplacements
+      initEmplacements,
+      initCollectionProofs
     );
   };
 
@@ -497,7 +628,8 @@ function AppContent() {
     cnts?: Contract[],
     tpls?: ContractTemplate[],
     rcpts?: PaymentReceipt[],
-    empls?: Emplacement[]
+    empls?: Emplacement[],
+    collPrfs?: CollectionProof[]
   ) => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
       plans: currentPlans,
@@ -509,7 +641,8 @@ function AppContent() {
       contracts: cnts || contracts,
       templates: tpls || templates,
       receipts: rcpts || receipts,
-      emplacements: empls || emplacements
+      emplacements: empls || emplacements,
+      collectionProofs: collPrfs || collectionProofs
     }));
   };
 
@@ -552,84 +685,124 @@ function AppContent() {
   };
 
   // State modification wrappers
-  const handleAddSubscriber = (newSub: Subscriber) => {
-    const updated = [newSub, ...subscribers];
-    setSubscribers(updated);
-    saveStateToLocalStorage(plans, updated, invoices, agents, routes, notifLogs);
-
-    // Auto-spawn enrollment notification log
-    const enrollmentSmsLog: NotificationLog = {
-      id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
-      recipientName: newSub.name,
-      recipientContact: newSub.phone,
-      type: 'sms',
-      templateName: 'Enrôlement Service',
-      content: `AKPBF : Bienvenue ! Votre dossier de salubrité a été validé sous le contrat ${newSub.id}. Un bac de type ${newSub.binType} sera livré d'ici 24h.`,
-      sentAt: 'A l\'instant',
-      status: 'sent'
-    };
-    const updatedNotifs = [enrollmentSmsLog, ...notifLogs];
-    setNotifLogs(updatedNotifs);
-    saveStateToLocalStorage(plans, updated, invoices, agents, routes, updatedNotifs);
+  const handleAddSubscriber = async (newSub: Subscriber) => {
+    try {
+      const response = await fetch('/api/erp/subscribers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newSub)
+      });
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erreur de création.");
+      }
+      
+      // Auto-spawn enrollment notification log and sync ledger
+      const enrollmentSmsLog: NotificationLog = {
+        id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
+        recipientName: newSub.name,
+        recipientContact: newSub.phone,
+        type: 'sms',
+        templateName: 'Enrôlement Service',
+        content: `AKPBF : Bienvenue ! Votre dossier de salubrité a été validé sous le contrat ${newSub.id}. Un bac de type ${newSub.binType} sera livré d'ici 24h.`,
+        sentAt: 'A l\'instant',
+        status: 'sent'
+      };
+      
+      const updatedNotifs = [enrollmentSmsLog, ...notifLogs];
+      setNotifLogs(updatedNotifs);
+      
+      await syncLedgerToServer(contracts, receipts, emplacements, updatedNotifs, auditLogs);
+      await loadStateFromServer();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const handleUpdateSubscriber = (updatedSub: Subscriber) => {
-    const prevSub = subscribers.find(s => s.id === updatedSub.id);
-    const updated = subscribers.map(s => s.id === updatedSub.id ? updatedSub : s);
-    setSubscribers(updated);
+  const handleUpdateSubscriber = async (updatedSub: Subscriber) => {
+    try {
+      const response = await fetch(`/api/erp/subscribers/${updatedSub.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token')}`
+        },
+        body: JSON.stringify(updatedSub)
+      });
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erreur d'édition.");
+      }
 
-    let nextInvs = invoices;
-
-    // Detect state changes for Odoo audit historization
-    if (prevSub && prevSub.status !== updatedSub.status) {
-      logAuditAction(
-        updatedSub.id, 
-        updatedSub.name, 
-        'state_change', 
-        `Passage du statut de "${prevSub.status}" à "${updatedSub.status}".`,
-        prevSub.status,
-        updatedSub.status
-      );
-
-      // Automatic Invoicing when subscription becomes Active!
-      if (updatedSub.status === 'active' && (prevSub.status === 'draft' || prevSub.status === 'pending_validation')) {
-        const plan = plans.find(p => p.id === updatedSub.planId) || plans[0];
-        const amount = plan ? plan.price : 2500;
-        const newInvoice: Invoice = {
-          id: `FAC-${updatedSub.id.replace('AKPBF-', '')}-${Math.floor(100 + Math.random() * 900)}`,
-          subscriberId: updatedSub.id,
-          subscriberName: updatedSub.name,
-          amount,
-          issueDate: new Date().toISOString().substring(0, 10),
-          dueDate: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().substring(0, 10), // 10 days due
-          status: 'pending',
-          period: 'Mise en Service - Juin 2026'
-        };
-        nextInvs = [newInvoice, ...invoices];
-        setInvoices(nextInvs);
-
-        // Also log the invoice creation action audit log!
+      const prevSub = subscribers.find(s => s.id === updatedSub.id);
+      
+      if (prevSub && prevSub.status !== updatedSub.status) {
         logAuditAction(
           updatedSub.id, 
           updatedSub.name, 
-          'creation', 
-          `Mise en service du contrat. Facture ${newInvoice.id} de ${amount} FCFA émise automatiquement.`,
-          undefined,
-          'active'
+          'state_change', 
+          `Passage du statut de "${prevSub.status}" à "${updatedSub.status}".`,
+          prevSub.status,
+          updatedSub.status
         );
-      }
-    }
 
-    saveStateToLocalStorage(plans, updated, nextInvs, agents, routes, notifLogs);
+        // Automatic Invoicing when subscription becomes Active!
+        if (updatedSub.status === 'active' && (prevSub.status === 'draft' || prevSub.status === 'pending_validation')) {
+          const plan = plans.find(p => p.id === updatedSub.planId) || plans[0];
+          const amount = plan ? plan.price : 2000;
+          
+          await fetch('/api/erp/invoices', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token')}`
+            },
+            body: JSON.stringify({
+              subscriberId: updatedSub.id,
+              amount,
+              dueDate: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().substring(0, 10),
+              period: 'Mise en Service - Juin 2026',
+              status: 'pending'
+            })
+          });
+
+          // Also log the invoice creation action audit log!
+          logAuditAction(
+            updatedSub.id, 
+            updatedSub.name, 
+            'creation', 
+            `Mise en service du contrat. Facture de ${amount} FCFA émise automatiquement.`,
+            undefined,
+            'active'
+          );
+        }
+      }
+
+      await syncLedgerToServer(contracts, receipts, emplacements, notifLogs, auditLogs);
+      await loadStateFromServer();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const handleDeleteSubscriber = (id: string) => {
-    const updated = subscribers.filter(s => s.id !== id);
-    setSubscribers(updated);
-    // Filter out his related pending bills as well for consistent ledger metrics
-    const updatedInvs = invoices.filter(i => i.subscriberId !== id);
-    setInvoices(updatedInvs);
-    saveStateToLocalStorage(plans, updated, updatedInvs, agents, routes, notifLogs);
+  const handleDeleteSubscriber = async (id: string) => {
+    try {
+      const response = await fetch(`/api/erp/subscribers/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token')}`
+        }
+      });
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erreur de suppression.");
+      }
+      await loadStateFromServer();
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   const handleGenerateMonthlyInvoices = (period: string) => {
@@ -797,6 +970,75 @@ function AppContent() {
     saveStateToLocalStorage(plans, subscribers, invoices, updatedAgents, updated, notifLogs);
   };
 
+  const handleAddCollectionProof = (proof: CollectionProof) => {
+    const now = new Date();
+    const formattedDate = now.toISOString().split('T')[0];
+    const formattedTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const ipAddress = "197.228.32.48"; // Standard Ivorian Orange IP
+
+    // 1. New collection proof
+    const updatedProofs = [proof, ...collectionProofs];
+    setCollectionProofs(updatedProofs);
+
+    // 2. New Audit log listing: utilisateur, date, heure, action, adresse IP
+    const auditMsg = `Validation de collecte RFID #${proof.qrCodeVal} de l'abonné ${proof.clientName}. Agent: ${proof.agentName}. IP: ${ipAddress}.`;
+    const newAuditLog: SubscriptionHistoryLog = {
+      id: `LOG-${Math.floor(1000 + Math.random() * 9050)}`,
+      subscriberId: proof.clientId,
+      subscriberName: proof.clientName,
+      action: 'modification',
+      description: auditMsg,
+      timestamp: `${formattedDate} ${formattedTime}`,
+      operator: sessionUser ? `${sessionUser.name} [IP: ${ipAddress}]` : `Système Automatique [IP: ${ipAddress}]`
+    };
+    const updatedAudits = [newAuditLog, ...auditLogs];
+    setAuditLogs(updatedAudits);
+    localStorage.setItem('akpbf_erp_audit_logs', JSON.stringify(updatedAudits));
+
+    // 3. New email notification
+    const emailBody = `Cher(e) éco-citoyen(ne) ${proof.clientName},\n\nNous confirmons que la collecte de vos déchets a été effectuée avec succès par les services municipaux AKPBF.\n\n` +
+      `- Date de collecte : ${proof.collectionDate}\n` +
+      `- Heure de collecte : ${proof.collectionTime}\n` +
+      `- Référence contrat : ${proof.contractRef}\n` +
+      `- Type d'abonnement : ${proof.planName}\n` +
+      `- Véhicule de voirie : ${proof.vehiclePlate}\n` +
+      `- Code d'identification RFID : ${proof.qrCodeVal}\n\n` +
+      `Votre preuve numérique de passage de service a été consignée sous la référence ${proof.id} et est disponible en temps réel dans votre Portail Client AKPBF.\n\n` +
+      `Merci pour votre engagement civique.\n\n` +
+      `Cordialement,\n` +
+      `AKPBF - Salubrité Urbaine & Logistique Verte Abidjan.`;
+
+    const newNotifLog: NotificationLog = {
+      id: `NTF-${Math.floor(1000 + Math.random() * 9000)}`,
+      recipientName: proof.clientName,
+      recipientContact: proof.clientId,
+      type: 'email',
+      templateName: 'Preuve de service de Collecte',
+      content: emailBody,
+      sentAt: `${formattedDate} à ${formattedTime}`,
+      status: 'sent'
+    };
+    const updatedNotifs = [newNotifLog, ...notifLogs];
+    setNotifLogs(updatedNotifs);
+
+    // 4. Save and sync
+    saveStateToLocalStorage(
+      plans,
+      subscribers,
+      invoices,
+      agents,
+      routes,
+      updatedNotifs,
+      contracts,
+      templates,
+      receipts,
+      emplacements,
+      updatedProofs
+    );
+
+    syncLedgerToServer(contracts, receipts, emplacements, updatedNotifs, updatedAudits, updatedProofs);
+  };
+
   const handleUpdateSubscriberBin = (id: string, level: number) => {
     const updated = subscribers.map(s => {
       if (s.id === id) {
@@ -847,7 +1089,11 @@ function AppContent() {
     if (r === 'ADMINISTRATEUR') return true;
     
     if (r === 'COMPTABLE') {
-      return ['dashboard', 'billing', 'payments', 'unpaid_debts', 'reports', 'accounting', 'expenses', 'contracts', 'emails'].includes(tab);
+      return ['dashboard', 'billing', 'payments', 'unpaid_debts', 'reports', 'accounting', 'expenses', 'contracts', 'emails', 'quick_payment'].includes(tab);
+    }
+    
+    if (r === 'CAISSIER') {
+      return ['quick_payment', 'billing', 'payments'].includes(tab);
     }
     
     if (r === 'SUPERVISEUR') {
@@ -877,7 +1123,28 @@ function AppContent() {
     );
   }
 
-  const clientSub = sessionUser ? subscribers.find(s => s.phone === sessionUser.phone || s.email === sessionUser.email || s.id === sessionUser.subscriberId) || subscribers[0] : null;
+  const clientSub = sessionUser ? (
+    subscribers.find(s => s.phone === sessionUser.phone || s.email === sessionUser.email || s.id === sessionUser.subscriberId) || {
+      id: sessionUser.subscriberId || sessionUser.id,
+      name: sessionUser.name,
+      email: sessionUser.email || "",
+      phone: sessionUser.phone || "",
+      address: "Mairie d'Abidjan, Côte d'Ivoire",
+      neighborhood: "Cocody",
+      lat: 5.3489,
+      lng: -3.9995,
+      planId: "plan_eco",
+      status: 'active' as const,
+      binType: 'Standard 240L' as const,
+      lastCollectionDate: 'Aujourd\'hui',
+      currentBinLevel: 10,
+      paymentStatus: 'paid' as const,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 365*24*3600*1000).toISOString().split('T')[0],
+      collectionsRealized: 4,
+      unpaidDays: 0
+    }
+  ) : null;
 
   return (
     <Routes>
@@ -905,6 +1172,7 @@ function AppContent() {
             contracts={contracts}
             receipts={receipts}
             emplacements={emplacements}
+            collectionProofs={collectionProofs}
             onAddEmplacement={handleAddEmplacement}
             onUpdateEmplacement={handleUpdateEmplacement}
             onDeleteEmplacement={handleDeleteEmplacement}
@@ -1133,6 +1401,21 @@ function AppContent() {
               >
                 <Layers className="h-4 w-4 shrink-0" />
                 Abonnements (Forfaits)
+              </button>
+            )}
+
+            {canAccessTab('quick_payment') && (
+              <button 
+                type="button"
+                onClick={() => { setActiveTab('quick_payment'); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
+                  activeTab === 'quick_payment' 
+                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
+                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
+                }`}
+              >
+                <Coins className="h-4 w-4 shrink-0 text-emerald-400 animate-pulse" />
+                Encaissement Rapide
               </button>
             )}
 
@@ -1427,6 +1710,7 @@ function AppContent() {
             activeTab === 'bins' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR', 'AGENT'] :
             activeTab === 'ai' ? ['ADMINISTRATEUR'] :
             activeTab === 'plans' ? ['ADMINISTRATEUR'] :
+            activeTab === 'quick_payment' ? ['ADMINISTRATEUR', 'COMPTABLE', 'CAISSIER'] :
             activeTab === 'billing' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
             activeTab === 'payments' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
             activeTab === 'unpaid_debts' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
@@ -1461,6 +1745,7 @@ function AppContent() {
             <SubscribersView 
               subscribers={subscribers} 
               plans={plans}
+              collectionProofs={collectionProofs}
               onAddSubscriber={handleAddSubscriber}
               onUpdateSubscriber={handleUpdateSubscriber}
               onDeleteSubscriber={handleDeleteSubscriber}
@@ -1471,6 +1756,7 @@ function AppContent() {
             <BinsManagementView 
               subscribers={subscribers}
               onUpdateSubscriber={handleUpdateSubscriber}
+              onAddCollectionProof={handleAddCollectionProof}
             />
           )}
 
@@ -1510,6 +1796,15 @@ function AppContent() {
               invoices={invoices}
               subscribers={subscribers}
               onPayInvoice={handlePayInvoice}
+            />
+          )}
+
+          {activeTab === 'quick_payment' && (
+            <QuickPaymentView 
+              subscribers={subscribers}
+              invoices={invoices}
+              receipts={receipts}
+              onPaymentSuccess={loadStateFromServer}
             />
           )}
 

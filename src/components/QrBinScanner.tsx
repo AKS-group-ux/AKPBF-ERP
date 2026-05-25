@@ -26,7 +26,7 @@ import {
   Cpu
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Subscriber } from '../types';
+import { Subscriber, CollectionProof } from '../types';
 
 // Matching Bins shape
 interface Bin {
@@ -58,13 +58,15 @@ interface QrBinScannerProps {
   subscribers: Subscriber[];
   onUpdateBin?: (updatedBin: Bin) => void;
   onUpdateSubscriber?: (sub: Subscriber) => void;
+  onAddCollectionProof?: (proof: CollectionProof) => void;
 }
 
 export default function QrBinScanner({ 
   bins, 
   subscribers, 
   onUpdateBin,
-  onUpdateSubscriber 
+  onUpdateSubscriber,
+  onAddCollectionProof
 }: QrBinScannerProps) {
   const [selectedScannedBin, setSelectedScannedBin] = useState<Bin | null>(bins[0] || null);
   const [activeSubDetails, setActiveSubDetails] = useState<Subscriber | null>(null);
@@ -227,7 +229,33 @@ export default function QrBinScanner({
       onUpdateSubscriber(refreshed);
     }
 
-    setCollectionFeedback(`✅ Collecte Enregistrée ! Bac ${selectedScannedBin.id} vidangé (SLA OK - Niveau à 0%).`);
+    if (onAddCollectionProof && activeSubDetails) {
+      const now = new Date();
+      const planLabel = activeSubDetails.planId === 'plan_premium' ? 'Contrat Premium (3 passages)' : 'Contrat Économique (1 passage)';
+      const proof: CollectionProof = {
+        id: `PRF-${Math.floor(1000 + Math.random() * 9000)}`,
+        collectionDate: now.toISOString().split('T')[0],
+        collectionTime: now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        clientId: activeSubDetails.id,
+        clientName: activeSubDetails.name,
+        contractRef: `CNT-2026-${activeSubDetails.id.replace('AKPBF-', '').replace('SUB-', '')}`,
+        planName: planLabel,
+        agentName: inspectorName,
+        vehiclePlate: 'CI-225-B42',
+        status: 'À l\'instant (Confirmé QR)',
+        comments: `Collecte régulière validée par RFID / Scanner QR. Conteneur: ${selectedScannedBin.capacity}. Poids estimé: 14.5 kg.`,
+        // Future passages extensibility
+        photoBeforeUrl: 'https://images.unsplash.com/photo-1591193686104-fddba4d0e4d8?w=500&auto=format&fit=crop&q=60',
+        photoAfterUrl: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=500&auto=format&fit=crop&q=60',
+        gpsLatitude: 5.3489 + (Math.random() - 0.5) * 0.02,
+        gpsLongitude: -3.9995 + (Math.random() - 0.5) * 0.02,
+        clientSignature: `E-SIG-STAMP-${Math.floor(100000 + Math.random() * 900000)}`,
+        qrCodeVal: selectedScannedBin.qrCode
+      };
+      onAddCollectionProof(proof);
+    }
+
+    setCollectionFeedback(`✅ Collecte Enregistrée et Preuve de Service Générée ! Bac ${selectedScannedBin.id} vidangé.`);
     setTimeout(() => setCollectionFeedback(''), 5000);
   };
 

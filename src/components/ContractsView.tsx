@@ -22,6 +22,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { Contract, ContractTemplate, Subscriber, SubscriptionPlan, SubscriptionHistoryLog } from '../types';
+import { generateAndDownloadPdf } from '../utils/pdfGenerator';
 
 interface ContractsViewProps {
   contracts: Contract[];
@@ -798,7 +799,7 @@ export default function ContractsView({
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    alert('Lancement de l\'impression du document PDF via le module de voiries d\'Abidjan...');
+                    generateAndDownloadPdf(pdfPreviewDoc.type, pdfPreviewDoc.data);
                   }}
                   className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-[10.5px] transition flex items-center gap-1.5 shadow-xs"
                 >
@@ -808,7 +809,7 @@ export default function ContractsView({
                 
                 <button
                   onClick={() => {
-                    alert('Téléchargement du document PDF en cours sur votre périphérique locale...');
+                    generateAndDownloadPdf(pdfPreviewDoc.type, pdfPreviewDoc.data);
                   }}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[10.5px] transition flex items-center gap-1.5 shadow-md"
                 >

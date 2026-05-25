@@ -155,7 +155,7 @@ export interface Emplacement {
   collectionFrequency: string; // "2 fois par semaine", "Quotidien", etc.
 }
 
-export type UserRole = 'ADMINISTRATEUR' | 'COMPTABLE' | 'SUPERVISEUR' | 'CHAUFFEUR' | 'AGENT' | 'CLIENT';
+export type UserRole = 'ADMINISTRATEUR' | 'COMPTABLE' | 'SUPERVISEUR' | 'CHAUFFEUR' | 'AGENT' | 'CLIENT' | 'CAISSIER';
 
 export interface User {
   id: string;
@@ -171,6 +171,28 @@ export interface AuthSession {
   user: User;
   token: string;
 }
+
+export interface CollectionProof {
+  id: string; // PRF-XXXX
+  collectionDate: string; // YYYY-MM-DD
+  collectionTime: string; // HH:MM
+  clientId: string;
+  clientName: string;
+  contractRef: string;
+  planName: string;
+  agentName: string;
+  vehiclePlate: string;
+  status: 'Complétée' | 'Sautée' | 'Non ramassée' | 'À l\'instant (Confirmé QR)';
+  comments?: string;
+  // Extensible fields for future passage proofs
+  photoBeforeUrl?: string; // photo avant
+  photoAfterUrl?: string; // photo apres
+  gpsLatitude?: number;
+  gpsLongitude?: number;
+  clientSignature?: string; // signature du client (base64 ou hash)
+  qrCodeVal?: string; // code qr / RFID tag scanné
+}
+
 
 
 

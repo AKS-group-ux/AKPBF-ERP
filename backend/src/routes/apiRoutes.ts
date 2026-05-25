@@ -5,9 +5,21 @@ import { GpsController } from '../controllers/gpsController';
 import { NotificationController } from '../controllers/notificationController';
 import { DocumentController } from '../controllers/documentController';
 import { EmailController } from '../controllers/emailController';
+import { ErpController } from '../controllers/erpController';
 import { authenticateToken } from '../middleware/authMiddleware';
 
 const router = Router();
+
+// ==========================================
+// REAL POSTGRESQL ERP STATE & CRUD MODULE
+// ==========================================
+router.get('/erp/state', authenticateToken as any, ErpController.getState);
+router.post('/erp/ledger', authenticateToken as any, ErpController.saveLedger);
+router.post('/erp/subscribers', ErpController.addSubscriber); // Guest signup on LandingPage
+router.put('/erp/subscribers/:id', authenticateToken as any, ErpController.updateSubscriber);
+router.delete('/erp/subscribers/:id', authenticateToken as any, ErpController.softDeleteRecord); // Soft Delete / logical archiving
+router.post('/erp/invoices', authenticateToken as any, ErpController.addInvoice);
+router.post('/erp/payments/quick', authenticateToken as any, ErpController.quickPayment);
 
 // ==========================================
 // BILLING ENDPOINTS (PHASE 6)

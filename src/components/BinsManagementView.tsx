@@ -61,6 +61,7 @@ interface Bin {
 interface BinsManagementViewProps {
   subscribers: Subscriber[];
   onUpdateSubscriber?: (updatedSub: Subscriber) => void;
+  onAddCollectionProof?: (proof: any) => void;
 }
 
 // Bins Damage presets for simulated camera capture
@@ -112,7 +113,7 @@ const BIN_DAMAGE_PRESETS = [
   }
 ];
 
-export default function BinsManagementView({ subscribers, onUpdateSubscriber }: BinsManagementViewProps) {
+export default function BinsManagementView({ subscribers, onUpdateSubscriber, onAddCollectionProof }: BinsManagementViewProps) {
   // Generate initial bins list matched with active subscribers
   const [bins, setBins] = useState<Bin[]>(() => {
     return subscribers.map((sub, idx) => {
@@ -987,6 +988,7 @@ export default function BinsManagementView({ subscribers, onUpdateSubscriber }: 
           subscribers={subscribers}
           onUpdateBin={handleUpdateBin}
           onUpdateSubscriber={onUpdateSubscriber}
+          onAddCollectionProof={onAddCollectionProof}
         />
       )}
 

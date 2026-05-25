@@ -20,11 +20,12 @@ import {
   CreditCard,
   Edit2
 } from 'lucide-react';
-import { Subscriber, SubscriptionPlan } from '../types';
+import { Subscriber, SubscriptionPlan, CollectionProof } from '../types';
 
 interface SubscribersViewProps {
   subscribers: Subscriber[];
   plans: SubscriptionPlan[];
+  collectionProofs?: CollectionProof[];
   onAddSubscriber: (newSub: Subscriber) => void;
   onUpdateSubscriber: (updatedSub: Subscriber) => void;
   onDeleteSubscriber: (id: string) => void;
@@ -33,6 +34,7 @@ interface SubscribersViewProps {
 export default function SubscribersView({ 
   subscribers, 
   plans, 
+  collectionProofs = [],
   onAddSubscriber, 
   onUpdateSubscriber, 
   onDeleteSubscriber 
@@ -56,6 +58,7 @@ export default function SubscribersView({
   // State for viewing subscriber details
   const [selectedSub, setSelectedSub] = useState<Subscriber | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [subTab, setSubTab] = useState<'info' | 'collectes'>('info');
 
   // Form error notification
   const [formError, setFormError] = useState('');
@@ -526,97 +529,191 @@ export default function SubscribersView({
                 </div>
               </div>
 
-              {/* IoT Simulator section */}
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/60 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Sliders className="h-4 w-4 text-indigo-500" />
-                    <h5 className="font-bold text-xs text-slate-700 uppercase tracking-wider">Simulateur Capteur Bacs IoT (SIG)</h5>
-                  </div>
-                  <span className="text-[10px] text-zinc-550 italic font-mono">Modif. instantanée pour démo</span>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-semibold text-slate-600">
-                    <span>Niveau de remplissage estimé :</span>
-                    <span className="font-mono text-indigo-600">{selectedSub.currentBinLevel}%</span>
-                  </div>
-                  <input 
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={selectedSub.currentBinLevel ?? 0}
-                    onChange={(e) => handleBinLevelSlider(parseInt(e.target.value))}
-                    className="w-full accent-indigo-600 cursor-ew-resize h-1.5 bg-slate-200 rounded-lg duration-100"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                    <span>Vide (0%)</span>
-                    <span>Modéré (50%)</span>
-                    <span>Critique (&gt; 80%)</span>
-                  </div>
-                </div>
+              {/* TABS SELECTOR */}
+              <div className="flex border-b border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSubTab('info')}
+                  className={`flex-1 pb-3 text-xs font-extrabold uppercase tracking-wider text-center border-b-2 transition duration-200 ${
+                    subTab === 'info' ? 'border-zinc-800 text-zinc-900' : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  Dossier & Services
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubTab('collectes')}
+                  className={`flex-1 pb-3 text-xs font-extrabold uppercase tracking-wider text-center border-b-2 transition duration-200 ${
+                    subTab === 'collectes' ? 'border-zinc-800 text-zinc-900' : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  Historique des collectes
+                </button>
               </div>
 
-              {/* Financial Status section */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="border border-slate-100 rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Solde Comptable</span>
-                      <h5 className="font-bold text-slate-800 text-sm mt-1">{plans.find(p=>p.id===selectedSub.planId)?.price.toLocaleString()} FCFA / Mois</h5>
+              {subTab === 'info' ? (
+                <>
+                  {/* IoT Simulator section */}
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200/60 space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Sliders className="h-4 w-4 text-indigo-500" />
+                        <h5 className="font-bold text-xs text-slate-700 uppercase tracking-wider">Simulateur Capteur Bacs IoT (SIG)</h5>
+                      </div>
+                      <span className="text-[10px] text-zinc-550 italic font-mono font-medium">Modif. instantanée pour démo</span>
                     </div>
-                    <CreditCard className="h-4 w-4 text-slate-400" />
-                  </div>
-                  <div className="mt-4 flex items-center gap-1.5 text-xs">
-                    <span className="text-slate-500">Paiement :</span>
-                    <select 
-                      value={selectedSub.paymentStatus ?? 'unpaid'}
-                      onChange={(e) => handleTogglePayment(e.target.value as any)}
-                      className={`font-bold focus:outline-none cursor-pointer text-xs rounded-md p-1 ${
-                        (selectedSub.paymentStatus ?? 'unpaid') === 'paid' ? 'bg-emerald-50 text-emerald-700' : 
-                        (selectedSub.paymentStatus ?? 'unpaid') === 'overdue' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'
-                      }`}
-                    >
-                      <option value="paid">À Jour</option>
-                      <option value="unpaid">Non Payé (Relancé)</option>
-                      <option value="overdue">Impayé Exigible</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="border border-slate-100 rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Détails Logistiques</span>
-                      <h5 className="font-bold text-slate-800 text-xs mt-1">{selectedSub.binType}</h5>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-semibold text-slate-600">
+                        <span>Niveau de remplissage estimé :</span>
+                        <span className="font-mono text-indigo-600">{selectedSub.currentBinLevel}%</span>
+                      </div>
+                      <input 
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={selectedSub.currentBinLevel ?? 0}
+                        onChange={(e) => handleBinLevelSlider(parseInt(e.target.value))}
+                        className="w-full accent-indigo-600 cursor-ew-resize h-1.5 bg-slate-200 rounded-lg duration-100"
+                      />
+                      <div className="flex justify-between text-[10px] text-slate-400 font-medium">
+                        <span>Vide (0%)</span>
+                        <span>Modéré (50%)</span>
+                        <span>Critique (&gt; 80%)</span>
+                      </div>
                     </div>
-                    <Sliders className="h-4 w-4 text-slate-400" />
                   </div>
-                  <div className="mt-4 text-xs text-slate-500">
-                    Dernière collecte : <strong className="text-slate-700">{selectedSub.lastCollectionDate}</strong>
-                  </div>
-                </div>
-              </div>
 
-              {/* Simulated Customer Service details */}
-              <div className="space-y-2">
-                <h5 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Contact & Téléconsultation</h5>
-                <div className="flex flex-col sm:flex-row gap-3 text-xs">
-                  <a href={`tel:${selectedSub.phone}`} className="flex-1 bg-indigo-50 text-indigo-750 hover:bg-indigo-100 p-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition duration-150">
-                    <Phone className="h-4 w-4" />
-                    Appeler ({selectedSub.phone})
-                  </a>
-                  <a href={`mailto:${selectedSub.email}`} className="flex-1 bg-sky-50 text-sky-750 hover:bg-sky-100 p-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition duration-150">
-                    <Mail className="h-4 w-4" />
-                    Envoyer Email ({selectedSub.email})
-                  </a>
+                  {/* Financial Status section */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-200">
+                    <div className="border border-slate-100 rounded-xl p-4 flex flex-col justify-between">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Solde Comptable</span>
+                          <h5 className="font-bold text-slate-800 text-sm mt-1">{plans.find(p=>p.id===selectedSub.planId)?.price.toLocaleString()} FCFA / Mois</h5>
+                        </div>
+                        <CreditCard className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <div className="mt-4 flex items-center gap-1.5 text-xs">
+                        <span className="text-slate-500">Paiement :</span>
+                        <select 
+                          value={selectedSub.paymentStatus ?? 'unpaid'}
+                          onChange={(e) => handleTogglePayment(e.target.value as any)}
+                          className={`font-bold focus:outline-none cursor-pointer text-xs rounded-md p-1 ${
+                            (selectedSub.paymentStatus ?? 'unpaid') === 'paid' ? 'bg-emerald-50 text-emerald-700' : 
+                            (selectedSub.paymentStatus ?? 'unpaid') === 'overdue' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'
+                          }`}
+                        >
+                          <option value="paid">À Jour</option>
+                          <option value="unpaid">Non Payé (Relancé)</option>
+                          <option value="overdue">Impayé Exigible</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="border border-slate-100 rounded-xl p-4 flex flex-col justify-between">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Détails Logistiques</span>
+                          <h5 className="font-bold text-slate-800 text-xs mt-1">{selectedSub.binType}</h5>
+                        </div>
+                        <Sliders className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <div className="mt-4 text-xs text-slate-500">
+                        Dernière collecte : <strong className="text-slate-700">{selectedSub.lastCollectionDate}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Simulated Customer Service details */}
+                  <div className="space-y-2 animate-in fade-in duration-200">
+                    <h5 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Contact & Téléconsultation</h5>
+                    <div className="flex flex-col sm:flex-row gap-3 text-xs">
+                      <a href={`tel:${selectedSub.phone}`} className="flex-1 bg-slate-50 text-slate-800 hover:bg-slate-100 p-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition duration-150 border border-slate-200">
+                        <Phone className="h-4 w-4 text-indigo-500" />
+                        Appeler ({selectedSub.phone})
+                      </a>
+                      <a href={`mailto:${selectedSub.email}`} className="flex-1 bg-slate-50 text-slate-800 hover:bg-slate-100 p-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition duration-150 border border-slate-200">
+                        <Mail className="h-4 w-4 text-indigo-500" />
+                        Envoyer Email ({selectedSub.email})
+                      </a>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* LES COLLECTES HISTORIQUE */
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Historique Réel Traçabilité</h5>
+                    <span className="text-[10px] font-mono text-zinc-550 font-bold">Sécurité renforcée par hachage RFID</span>
+                  </div>
+
+                  {(() => {
+                    const filtered = collectionProofs.filter(p => 
+                      p.clientId === selectedSub.id || 
+                      p.clientId === (selectedSub as any).subscriberId ||
+                      p.clientName.toLowerCase() === selectedSub.name.toLowerCase()
+                    );
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="text-center py-6 bg-slate-50 border border-slate-150 rounded-xl space-y-2">
+                          <p className="text-xs text-slate-500 font-medium">Aucune collecte enregistrée à cette date.</p>
+                          <p className="text-[10px] text-slate-400">Passez par le Scanner RFID de l'agent pour valider un ramassage.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                        {filtered.map((proof) => (
+                          <div key={proof.id} className="p-4 bg-white border border-slate-200/80 rounded-xl hover:border-slate-300 transition shadow-xs text-xs space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md font-bold">{proof.id}</span>
+                                <span className="font-semibold text-slate-700">{proof.collectionDate} à {proof.collectionTime}</span>
+                              </div>
+                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-full uppercase">
+                                <Check className="h-3 w-3" /> {proof.status}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 text-xs text-slate-600">
+                              <div>
+                                <span className="text-[10px] text-slate-400 block">Opérateur responsable</span>
+                                <span className="font-medium text-slate-800">{proof.agentName}</span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-slate-400 block">Camion de voirie</span>
+                                <span className="font-mono font-medium text-slate-800">{proof.vehiclePlate}</span>
+                              </div>
+                            </div>
+
+                            {proof.comments && (
+                              <div className="bg-slate-50 p-2.5 rounded-lg text-slate-600 italic">
+                                "{proof.comments}"
+                              </div>
+                            )}
+
+                            <div className="flex flex-wrap items-center justify-between text-[10px] text-slate-400 font-mono border-t border-slate-50 pt-2">
+                              <span>RFID: {proof.qrCodeVal}</span>
+                              <span>SIGNATURE: <span className="text-indigo-550 font-bold">{proof.clientSignature || 'CERT-STAMP-OK'}</span></span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
-              </div>
+              )}
 
               <div className="pt-4 flex items-center justify-end border-t border-slate-100">
                 <button 
                   type="button" 
-                  onClick={() => setIsDetailsOpen(false)}
+                  onClick={() => {
+                    setIsDetailsOpen(false);
+                    setSubTab('info'); // default reset
+                  }}
                   className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition"
                 >
                   Fermer le dossier

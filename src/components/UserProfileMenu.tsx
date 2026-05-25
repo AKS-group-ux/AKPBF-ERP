@@ -13,13 +13,14 @@ import {
   BellRing, 
   Globe 
 } from 'lucide-react';
+import { UserRole } from '../types';
 
 interface UserProfileMenuProps {
   user: {
     id: string;
     name: string;
     email: string;
-    role: 'ADMINISTRATEUR' | 'COMPTABLE' | 'SUPERVISEUR' | 'CHAUFFEUR' | 'AGENT' | 'CLIENT';
+    role: UserRole;
     phone?: string;
     subscriberId?: string;
   };

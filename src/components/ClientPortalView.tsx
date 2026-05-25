@@ -24,10 +24,11 @@ import {
   Send,
   Menu
 } from 'lucide-react';
-import { Subscriber, Invoice, SubscriptionPlan, Route, Contract, PaymentReceipt, SubscriptionHistoryLog, Emplacement } from '../types';
+import { Subscriber, Invoice, SubscriptionPlan, Route, Contract, PaymentReceipt, SubscriptionHistoryLog, Emplacement, CollectionProof } from '../types';
 import UserProfileMenu from './UserProfileMenu';
 import EmplacementsView from './EmplacementsView';
 import ThemeToggle from './ThemeToggle';
+import { generateAndDownloadPdf } from '../utils/pdfGenerator';
 
 interface ClientPortalViewProps {
   subscribers: Subscriber[];
@@ -37,6 +38,7 @@ interface ClientPortalViewProps {
   contracts: Contract[];
   receipts: PaymentReceipt[];
   emplacements: Emplacement[];
+  collectionProofs?: CollectionProof[];
   onAddEmplacement: (emp: Emplacement) => void;
   onUpdateEmplacement: (emp: Emplacement) => void;
   onDeleteEmplacement: (id: string) => void;
@@ -61,6 +63,7 @@ export default function ClientPortalView({
   contracts,
   receipts,
   emplacements,
+  collectionProofs = [],
   onAddEmplacement,
   onUpdateEmplacement,
   onDeleteEmplacement,
@@ -886,11 +889,11 @@ export default function ClientPortalView({
           {activeTab === 'collections' && (
             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
               <div>
-                <h3 className="text-md font-black text-slate-800 tracking-tight">Rapports d'enlèvement et levées de bacs</h3>
-                <p className="text-xs text-slate-500 font-medium">Tracking RFID municipal en temps réel</p>
+                <h3 className="text-md font-black text-slate-800 tracking-tight text-left">Rapports d'enlèvement et levées de bacs</h3>
+                <p className="text-xs text-slate-500 font-medium text-left">Tracking RFID municipal en temps réel</p>
               </div>
 
-              <div className="p-4 bg-emerald-50/20 rounded-2xl border border-emerald-100 text-emerald-800 flex items-start gap-3">
+              <div className="p-4 bg-emerald-50/20 rounded-2xl border border-emerald-100 text-emerald-800 flex items-start gap-3 text-left">
                 <MapPin className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed">
                   <span className="font-bold">Informations logistiques du secteur : </span>
@@ -899,30 +902,66 @@ export default function ClientPortalView({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="relative border-l border-slate-200 pl-6 space-y-6 text-xs font-medium">
-                  <div className="relative">
-                    <span className="absolute -left-[30px] top-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
-                    <div className="font-bold text-slate-800">Camion municipal AKPBF - Levée n° 1042</div>
-                    <div className="text-slate-500 text-[11px] mt-0.5">Poids résiduel collecté : 12 Kg • Statut : Traitée</div>
-                    <div className="text-[10px] text-indigo-650 font-bold font-mono mt-1">20 Mai 2026 à 07:29</div>
-                  </div>
+              {(() => {
+                const clientCollectionProofs = collectionProofs.filter(p => 
+                  p.clientId === loggedClient.id || 
+                  p.clientId === (loggedClient as any).subscriberId ||
+                  p.clientName.toLowerCase() === loggedClient.name.toLowerCase()
+                );
 
-                  <div className="relative">
-                    <span className="absolute -left-[30px] top-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
-                    <div className="font-bold text-slate-700">Camion municipal AKPBF - Levée n° 884</div>
-                    <div className="text-slate-500 text-[11px] mt-0.5">Poids résiduel collecté : 9 Kg • Statut : Traitée</div>
-                    <div className="text-[10px] text-indigo-650 font-bold font-mono mt-1">16 Mai 2026 à 08:05</div>
-                  </div>
+                if (clientCollectionProofs.length === 0) {
+                  return (
+                    <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                      <p className="text-xs text-slate-500 font-bold">Aucune preuve de collecte enregistrée pour le moment.</p>
+                      <p className="text-[10px] text-slate-400">Le camion municipal passera d'ici peu selon votre planning d'abonnement.</p>
+                    </div>
+                  );
+                }
 
-                  <div className="relative">
-                    <span className="absolute -left-[30px] top-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
-                    <div className="font-bold text-slate-750">Prise en charge initiale</div>
-                    <div className="text-slate-500 text-[11px] mt-0.5">Livraison à domicile et consignation informatique du bac standard.</div>
-                    <div className="text-[10px] text-slate-400 font-bold font-mono mt-1">10 Novembre 2025</div>
+                return (
+                  <div className="space-y-4 text-left">
+                    <div className="relative border-l border-slate-200 pl-6 space-y-6 text-xs font-medium">
+                      {clientCollectionProofs.map((proof) => (
+                        <div key={proof.id} className="relative">
+                          <span className="absolute -left-[30px] top-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center font-bold text-white text-[8px]">
+                            ✓
+                          </span>
+                          <div className="font-bold text-slate-800 text-sm">
+                            Rapport de service n° {proof.id}
+                          </div>
+                          <div className="text-slate-500 text-[11px] mt-1 space-y-1">
+                            <p>{proof.comments || 'Collecte accomplie.'}</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1 bg-slate-50 p-2 rounded-xl text-[10px]">
+                              <div>
+                                <span className="text-slate-400 block font-normal">Véhicule de passage :</span>
+                                <strong className="text-slate-700">{proof.vehiclePlate}</strong> ({proof.agentName})
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block font-normal">Validation :</span>
+                                <strong>RFID Conforme ({proof.qrCodeVal})</strong>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-[11px] text-indigo-650 font-bold font-mono mt-1 w-full flex flex-wrap justify-between items-center bg-indigo-50/50 p-1.5 px-3 rounded-lg gap-2">
+                            <span>Le {proof.collectionDate} à {proof.collectionTime}</span>
+                            <span className="text-[10px] text-zinc-550 font-sans tracking-wide">Signature : <strong>{proof.clientSignature || 'STAMP-OK'}</strong></span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Standard background setup history line */}
+                      <div className="relative">
+                        <span className="absolute -left-[30px] top-0.5 w-4 h-4 bg-slate-400 rounded-full border-2 border-white flex items-center justify-center font-bold text-white text-[8px]">
+                          ✓
+                        </span>
+                        <div className="font-bold text-slate-700">Prise en charge initiale</div>
+                        <div className="text-slate-550 text-[11px] mt-0.5">Livraison à domicile et consignation informatique du bac standard.</div>
+                        <div className="text-[10px] text-slate-400 font-bold font-mono mt-1">10 Novembre 2025</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           )}
 
@@ -1306,7 +1345,7 @@ export default function ClientPortalView({
               
               <div className="flex gap-2">
                 <button
-                  onClick={() => alert('Impression lancée vers votre imprimante locale...')}
+                  onClick={() => generateAndDownloadPdf(activePdfDoc.type, activePdfDoc.data)}
                   className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-[10.5px] transition flex items-center gap-1.5 shadow-xs"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -1314,7 +1353,7 @@ export default function ClientPortalView({
                 </button>
                 
                 <button
-                  onClick={() => alert('Document téléversé avec succès dans vos téléchargement locaux.')}
+                  onClick={() => generateAndDownloadPdf(activePdfDoc.type, activePdfDoc.data)}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[10.5px] transition flex items-center gap-1.5 shadow-md"
                 >
                   <Download className="h-3.5 w-3.5" />

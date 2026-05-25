@@ -11,10 +11,19 @@
 }
 
 /* Custom polished styling rules */
+html {
+  background-color: #f8fafc;
+  color: #080c14;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+html.dark {
+  background-color: #030712;
+  color: #f9fafb;
+}
+
 body {
   font-family: var(--font-sans);
-  background-color: #f8fafc;
-  color: #0f172a;
 }
 
 /* Custom scrollbars */

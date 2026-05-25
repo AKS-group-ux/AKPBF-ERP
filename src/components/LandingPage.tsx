@@ -58,6 +58,7 @@ export default function LandingPage({
   const [regBinType, setRegBinType] = useState<'Standard 240L' | 'Bac Grand 360L' | 'Conteneur 1100L'>('Standard 240L');
   const [regLoading, setRegLoading] = useState(false);
   const [regSuccess, setRegSuccess] = useState<string | null>(null);
+  const [regError, setRegError] = useState<string | null>(null);
 
   // Complaint Form states
   const [compName, setCompName] = useState('');
@@ -73,10 +74,21 @@ export default function LandingPage({
   const scrollToSection = (id: string, tabName: any) => {
     setActiveTab(tabName);
     setMobileMenuOpen(false);
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    
+    // Slight delay of 150ms to let mobile menu collapse and layout stabilize
+    setTimeout(() => {
+      const element = document.getElementById(id);
+      if (element) {
+        const offset = 88; // Height of the sticky header
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - offset;
+        
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
+    }, 150);
   };
 
   // Prepopulate form if plan selected
@@ -86,26 +98,41 @@ export default function LandingPage({
   };
 
   // Submit subscriber registration
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRegError(null);
+
     if (!regName || !regEmail || !regPhone || !regAddress) {
-      alert("S'il vous plaît complétez tous les champs requis.");
+      setRegError("S'il vous plaît complétez tous les champs requis.");
+      return;
+    }
+
+    // Email format checks
+    const mailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!mailRegex.test(regEmail.trim())) {
+      setRegError("L'adresse e-mail n'est pas au format valide (ex: citoyen@Abidjan.ci).");
+      return;
+    }
+
+    // Phone format checks (Côte d'Ivoire phone length is usually 10 digits post-2021)
+    const cleanPh = regPhone.replace(/[\s\-\+]/g, '');
+    if (cleanPh.length < 8) {
+      setRegError("Le numéro de téléphone est trop court ou invalide.");
       return;
     }
 
     setRegLoading(true);
 
-    // Simulate server side registration with delay
-    setTimeout(() => {
+    try {
       const generatedId = `SUB-${Math.floor(1000 + Math.random() * 9000)}`;
       const selectedPlan = plans.find(p => p.id === regPlanId) || plans[0];
       
       const newSub: Subscriber = {
         id: generatedId,
-        name: regName,
-        email: regEmail,
-        phone: regPhone,
-        address: regAddress,
+        name: regName.trim(),
+        email: regEmail.trim(),
+        phone: regPhone.trim(),
+        address: regAddress.trim(),
         neighborhood: regNeighborhood,
         lat: 5.3489 + (Math.random() - 0.5) * 0.04,
         lng: -3.9995 + (Math.random() - 0.5) * 0.04,
@@ -121,6 +148,20 @@ export default function LandingPage({
         unpaidDays: 0
       };
 
+      const response = await fetch('/api/erp/subscribers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newSub)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Une erreur est survenue lors de l'enregistrement.");
+      }
+
+      // Success
       onAddSubscriber(newSub);
 
       // Log notification
@@ -145,7 +186,10 @@ export default function LandingPage({
       setRegEmail('');
       setRegPhone('+225 ');
       setRegAddress('');
-    }, 1500);
+    } catch (err: any) {
+      setRegError(err.message);
+      setRegLoading(false);
+    }
   };
 
   // Submit complaint
@@ -770,6 +814,13 @@ export default function LandingPage({
               </div>
             ) : (
               <form onSubmit={handleRegisterSubmit} className="space-y-6">
+                
+                {regError && (
+                  <div className="bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-950 p-4 rounded-xl text-xs font-semibold select-none flex items-center gap-2 animate-pulse">
+                    <span>⚠️</span>
+                    <p>{regError}</p>
+                  </div>
+                )}
                 
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Name */}
