@@ -543,7 +543,7 @@ export default function DashboardView({
             </div>
           </div>
 
-          <div className="flex-1 text-xs">
+          <div className="flex-1 min-h-0 text-xs">
             {chartMode === 'evolution' && (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={billingHistory}>

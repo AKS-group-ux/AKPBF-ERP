@@ -175,14 +175,28 @@ export class ErpEngine {
       });
 
       // C. Setup real modular Subscription
-      const defaultPlan = await tx.subscriptionPlan.findFirst({
-        where: { id: client.planId }
-      }) || await tx.subscriptionPlan.findFirst();
+      // planId from frontend can be "plan_eco", "plan_pro", etc. (not a UUID) — validate before querying
+      const isUuid = (s?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s || '');
+      let subscriptionPlan = (isUuid(client.planId)
+        ? await tx.subscriptionPlan.findFirst({ where: { id: client.planId } })
+        : null) || await tx.subscriptionPlan.findFirst();
+
+      // If no plan exists yet in the DB, create a minimal default one
+      if (!subscriptionPlan) {
+        subscriptionPlan = await tx.subscriptionPlan.create({
+          data: {
+            name: 'Forfait Essentiel',
+            price: 3500,
+            frequency: 'Mensuel',
+            description: 'Collecte standard des ordures ménagères à Abidjan'
+          }
+        });
+      }
 
       const subscription = await tx.subscription.create({
         data: {
           customerId: customer.id,
-          planId: client.planId || defaultPlan?.id || "",
+          planId: subscriptionPlan.id,
           status: 'ACTIVE'
         }
       });
@@ -200,9 +214,11 @@ export class ErpEngine {
       });
 
       // E. Write ERP general audit log entry
+      // userId must reference a real user row — use null when operatorId is the default zero UUID
+      const isRealUser = meta.operatorId && meta.operatorId !== '00000000-0000-0000-0000-000000000000';
       const auditLog = await tx.auditLog.create({
         data: {
-          userId: meta.operatorId,
+          userId: isRealUser ? meta.operatorId : null,
           action: 'CREATE_CLIENT',
           ipAddress: meta.ipAddress,
           details: `Validation du client ${client.name} (ID: ${subscriberId}). Contrat cadre ${contractId} signé numériquement et stocké.`
