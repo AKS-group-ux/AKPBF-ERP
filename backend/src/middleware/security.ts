@@ -101,11 +101,12 @@ export const customHelmet = helmet({
     useDefaults: true,
     directives: {
       "default-src": ["'self'"],
-      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://apis.google.com"],
-      "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://apis.google.com", "https://unpkg.com"],
+      "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://unpkg.com"],
       "img-src": ["'self'", "data:", "https://*"],
-      "font-src": ["'self'", "https://fonts.gstatic.com"],
-      "frame-ancestors": ["'self'", "https://*.google.com", "https://*.run.app"],
+      "font-src": ["'self'", "https://fonts.gstatic.com", "https://unpkg.com"],
+      "connect-src": ["'self'", "wss:", "ws:", "https://*"],
+      "frame-ancestors": ["'self'", "https://*.google.com", "https://*.run.app", "https://*.replit.dev", "https://*.replit.app", "https://*.repl.co"],
       "upgrade-insecure-requests": [],
     }
   },
