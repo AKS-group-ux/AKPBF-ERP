@@ -169,8 +169,17 @@ export default function LandingPage({
         throw new Error(errData.error || "Une erreur est survenue lors de l'enregistrement.");
       }
 
+      const result = await response.json();
+
+      // erpclaw logic: Use real IDs from backend
+      const finalizedSub = {
+        ...newSub,
+        id: result.subscriberId || result.customerId,
+        contractId: result.contractId
+      };
+
       // Success
-      onAddSubscriber(newSub);
+      onAddSubscriber(finalizedSub);
 
       // Log notification
       if (onAddNotificationLogs) {
@@ -180,13 +189,13 @@ export default function LandingPage({
           recipientContact: regPhone,
           type: 'sms',
           templateName: 'Bienvenue',
-          content: `Bonjour ${regName}, bienvenue chez AKPBF ! Votre inscription à la formule ${selectedPlan.name} est enregistrée. Identifiant : ${generatedId}.`,
+          content: `Bonjour ${regName}, bienvenue chez AKPBF ! Votre inscription à la formule ${selectedPlan.name} est enregistrée. Identifiant : ${finalizedSub.id}.`,
           sentAt: new Date().toISOString(),
           status: 'sent'
         });
       }
 
-      setRegSuccess(generatedId);
+      setRegSuccess(finalizedSub.id);
       setRegLoading(false);
 
       // Clear fields

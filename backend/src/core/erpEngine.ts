@@ -324,6 +324,39 @@ export class ErpEngine {
   }
 
   /**
+   * erpclaw Logic: Post GL Entry for double-entry bookkeeping
+   */
+  private static async postGLEntry(tx: any, params: {
+    accountId: string;
+    debit?: number;
+    credit?: number;
+    referenceType: string;
+    referenceId: string;
+    description: string;
+  }) {
+    await tx.gLEntry.create({
+      data: {
+        accountId: params.accountId,
+        debit: params.debit || 0,
+        credit: params.credit || 0,
+        referenceType: params.referenceType,
+        referenceId: params.referenceId,
+        description: params.description
+      }
+    });
+
+    // Update account balance
+    await tx.account.update({
+      where: { id: params.accountId },
+      data: {
+        balance: {
+          increment: (params.debit || 0) - (params.credit || 0)
+        }
+      }
+    });
+  }
+
+  /**
    * Workflow C: Payment ledger entry with auto in cascade apurement, double bookkeeping, receipt generation, and notifications
    * Enforces rules: valid positive amount and actual client matching in PostgreSQL.
    */
