@@ -1,0 +1,2 @@
+- [SQL Shield apostrophe bug](sql-shield-french-apostrophe.md) — sqlAndXssShield bloquait toute apostrophe française ; corrigé avec patterns d'injection réels uniquement
+- [Prisma P2021 fallback](prisma-p2021-resilience.md) — le proxy de résilience ne gérait pas P2021 (table manquante) ; corrigé + migrations exécutées via `npx prisma db push`

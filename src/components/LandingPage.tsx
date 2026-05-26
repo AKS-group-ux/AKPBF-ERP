@@ -154,7 +154,14 @@ export default function LandingPage({
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newSub)
+        body: JSON.stringify({
+          name: newSub.name,
+          email: newSub.email,
+          phone: newSub.phone,
+          address: newSub.address,
+          planId: newSub.planId,
+          binType: newSub.binType
+        })
       });
 
       if (!response.ok) {

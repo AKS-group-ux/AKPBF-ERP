@@ -17,20 +17,39 @@ export function securityLogger(req: Request, res: Response, next: NextFunction) 
 }
 
 // 2. SQL Injection and Common XSS Shield (Sanitization checks)
+// NOTE: The shield targets actual injection patterns ONLY.
+// French apostrophes (l'adresse, N'Goran, etc.) are explicitly allowed.
 export function sqlAndXssShield(req: Request, res: Response, next: NextFunction) {
   // Only inspect API payload requests
   if (!req.path.startsWith('/api')) {
     return next();
   }
-  const sqlPattern = /('|--|#|\/\*|\*\/|union|select|insert|delete|update|drop|alter|where|and|or|like)/i;
-  const xssPattern = /(<script|<iframe|<object|<embed|javascript:|onclick|onerror|onmouseover)/i;
+
+  const xssPattern = /(<script[\s>]|<iframe[\s>]|<object[\s>]|<embed[\s>]|javascript\s*:|on(?:click|error|mouseover|load|focus)\s*=)/i;
+
+  // Genuine SQL injection patterns — NOT triggered by a lone French apostrophe
+  const sqlInjectionPatterns: RegExp[] = [
+    /'\s*(or|and)\s+['"\d]/i,            // ' OR '1 / ' AND "1
+    /'\s*--/,                              // ' -- (comment terminator after injection)
+    /'\s*;/,                               // '; (statement separator)
+    /\bunion\s+(all\s+)?select\b/i,        // UNION SELECT
+    /\bselect\b.{0,100}\bfrom\b/i,        // SELECT ... FROM
+    /\binsert\s+into\b/i,                  // INSERT INTO
+    /\bdelete\s+from\b/i,                  // DELETE FROM
+    /\bupdate\b.{0,60}\bset\b/i,          // UPDATE table SET
+    /\b(drop|truncate)\s+table\b/i,        // DROP TABLE / TRUNCATE TABLE
+    /\/\*[\s\S]*?\*\//,                    // /* block comment */
+  ];
+
+  const sqlResultCheck = (str: string): boolean => {
+    if (xssPattern.test(str)) return true;
+    return sqlInjectionPatterns.some(p => p.test(str));
+  };
 
   const inspectValue = (val: any): boolean => {
     if (typeof val === 'string') {
-      if (sqlResultCheck(val)) {
-        return true;
-      }
-    } else if (val && typeof val === 'object') {
+      return sqlResultCheck(val);
+    } else if (val && typeof val === 'object' && !(val instanceof Date)) {
       for (const key of Object.keys(val)) {
         if (inspectValue(val[key])) return true;
       }
@@ -38,22 +57,8 @@ export function sqlAndXssShield(req: Request, res: Response, next: NextFunction)
     return false;
   };
 
-  const sqlResultCheck = (str: string): boolean => {
-    // Detect typical SQL injection constructs & raw scripts
-    if (sqlPattern.test(str)) {
-      // Allow standard parameters, but intercept dangerous commands combinations
-      if (str.includes("'") || str.includes("--") || str.includes(";") || (str.toLowerCase().includes("select") && str.toLowerCase().includes("from"))) {
-        return true;
-      }
-    }
-    if (xssPattern.test(str)) {
-      return true;
-    }
-    return false;
-  };
-
   if (inspectValue(req.body) || inspectValue(req.query) || inspectValue(req.params)) {
-    console.warn(`[SECURITY EXCEPTION INTERCEPTED] SQL/XSS pattern matched on IP: ${req.ip}`);
+    console.warn(`[SECURITY SHIELD] Injection pattern detected — IP: ${req.ip} — URL: ${req.originalUrl}`);
     res.status(400).json({ 
       error: 'Requête suspecte ou malveillante rejetée pour préserver l\'intégrité des données d\'Abidjan.',
       code: 'SECURITY_SHIELD_TRIGGERED'

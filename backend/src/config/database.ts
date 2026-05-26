@@ -55,11 +55,13 @@ export function getPrismaClient(): PrismaClient {
                 errMsg.includes('InitializationError') ||
                 errMsg.includes('connection') ||
                 errMsg.includes('unreachable') ||
+                errMsg.includes('does not exist') ||
                 error.code?.startsWith('P1') ||
+                error.code?.startsWith('P2') ||
                 error.code?.startsWith('P5') ||
                 error.name === 'PrismaClientInitializationError'
               ) {
-                console.error('[RESILIENCE] Transaction failed due to PostgreSQL offline. Diverting to in-memory.', error);
+                console.error('[RESILIENCE] Transaction failed due to PostgreSQL offline or missing schema. Diverting to in-memory.', error);
                 isDbOffline = true;
                 if (typeof arg === 'function') {
                   return await arg(proxiedPrisma);
@@ -139,11 +141,13 @@ function createModelProxyForProp(realModel: any, modelName: string, markOffline:
             errMsg.includes('InitializationError') ||
             errMsg.includes('connection') ||
             errMsg.includes('unreachable') ||
+            errMsg.includes('does not exist') ||
             error.code?.startsWith('P1') ||
+            error.code?.startsWith('P2') ||
             error.code?.startsWith('P5') ||
             error.name === 'PrismaClientInitializationError'
           ) {
-            console.warn(`[RESILIENCE] PostgreSQL Offline detected during ${modelName}.${method}. Diverting query to InMemoryDb.`);
+            console.warn(`[RESILIENCE] PostgreSQL schema error during ${modelName}.${method} (${error.code}). Diverting query to InMemoryDb.`);
             markOffline();
             const inMemMethod = inMemoryDb[method as keyof InMemoryDb];
             if (typeof inMemMethod === 'function') {
