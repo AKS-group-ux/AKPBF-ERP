@@ -114,7 +114,7 @@ export default function ReportsView({
           <select 
             value={reportPeriod}
             onChange={(e) => setReportPeriod(e.target.value)}
-            className="bg-white border border-slate-200 p-2.5 text-xs font-bold rounded-xl cursor-pointer"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 p-2.5 text-xs font-bold rounded-xl cursor-pointer"
           >
             <option value="Mai 2026">Période : Mai 2026</option>
             <option value="T1 2026">Période : Premier Trimestre 2026</option>
@@ -125,7 +125,7 @@ export default function ReportsView({
 
       {/* KPI row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-2">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-bold uppercase tracking-wider">Taux de Recouvrement Municipal</span>
             <Award className="h-5 w-5 text-emerald-600" />
@@ -134,7 +134,7 @@ export default function ReportsView({
           <p className="text-emerald-650 text-xs font-semibold">Cible communale atteinte (+2.1% vs Q1)</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-2">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-bold uppercase tracking-wider">Tonnage Mensuel Estimé</span>
             <Scale className="h-5 w-5 text-indigo-600" />
@@ -143,7 +143,7 @@ export default function ReportsView({
           <p className="text-indigo-650 text-xs font-semibold">+10.7% de déchets collectés vs Avril</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-2">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-bold uppercase tracking-wider">Taux de Valorisation (Recyclage)</span>
             <Zap className="h-5 w-5 text-amber-500" />
@@ -152,7 +152,7 @@ export default function ReportsView({
           <p className="text-slate-400 text-xs font-semibold">Compostage municipal et plastique</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-2">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-bold uppercase tracking-wider">Plaintes Citoyennes Traitées</span>
             <Sparkles className="h-5 w-5 text-violet-500" />
@@ -165,7 +165,7 @@ export default function ReportsView({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Metric chart 1: tonnage evolution - 2 columns span */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs lg:col-span-2 flex flex-col h-[340px] hover:shadow-md transition">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs lg:col-span-2 flex flex-col h-[340px] hover:shadow-md transition">
           <div className="mb-4">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5 block">Logistique de Salubrité</span>
             <h4 className="font-extrabold text-slate-800 text-xs mt-0.5">Évolution du tonnage collecté vs Quantité valorisée (tonnes métriques)</h4>
@@ -192,7 +192,7 @@ export default function ReportsView({
         </div>
 
         {/* Metric chart 2: Pie distribution per plan - 1 column span */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex flex-col h-[340px] hover:shadow-md transition">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col h-[340px] hover:shadow-md transition">
           <div className="mb-4">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5 block">Financement Citoyen</span>
             <h4 className="font-extrabold text-slate-800 text-xs mt-0.5">Répartition des abonnés par typologie tarifaire</h4>
@@ -238,7 +238,7 @@ export default function ReportsView({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Metric table 3: collection rate per neighborhood */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition">
           <div className="mb-4">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5 block">Audit de Recouvrement</span>
             <h4 className="font-extrabold text-slate-800 text-xs mt-0.5">Suivi comptable de la fiscalité par secteur (FCFA)</h4>

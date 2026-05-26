@@ -28,7 +28,7 @@ import { Subscriber, Invoice, SubscriptionPlan, Route, Contract, PaymentReceipt,
 import UserProfileMenu from './UserProfileMenu';
 import EmplacementsView from './EmplacementsView';
 import ThemeToggle from './ThemeToggle';
-import { generateAndDownloadPdf } from '../utils/pdfGenerator';
+import { documentService } from '../services/documentService';
 
 interface ClientPortalViewProps {
   subscribers: Subscriber[];
@@ -290,7 +290,7 @@ export default function ClientPortalView({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row antialiased font-sans selection:bg-emerald-500 selection:text-white" id="client-portal-view-container">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col md:flex-row antialiased font-sans selection:bg-emerald-500 selection:text-white transition-colors duration-200" id="client-portal-view-container">
       
       {/* CLIENT MOBILE HEADER */}
       <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between shadow-md shrink-0">
@@ -1345,7 +1345,13 @@ export default function ClientPortalView({
               
               <div className="flex gap-2">
                 <button
-                  onClick={() => generateAndDownloadPdf(activePdfDoc.type, activePdfDoc.data)}
+                  onClick={async () => {
+                    try {
+                      await documentService.printPdf(activePdfDoc.type, activePdfDoc.data.id || activePdfDoc.data.contractNumber);
+                    } catch (e) {
+                      alert("Erreur lors du traitement de l'impression.");
+                    }
+                  }}
                   className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-[10.5px] transition flex items-center gap-1.5 shadow-xs"
                 >
                   <Printer className="h-3.5 w-3.5" />
@@ -1353,7 +1359,13 @@ export default function ClientPortalView({
                 </button>
                 
                 <button
-                  onClick={() => generateAndDownloadPdf(activePdfDoc.type, activePdfDoc.data)}
+                  onClick={async () => {
+                    try {
+                      await documentService.downloadPdf(activePdfDoc.type, activePdfDoc.data.id || activePdfDoc.data.contractNumber);
+                    } catch (e) {
+                      alert("Erreur lors du téléchargement du document.");
+                    }
+                  }}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[10.5px] transition flex items-center gap-1.5 shadow-md"
                 >
                   <Download className="h-3.5 w-3.5" />

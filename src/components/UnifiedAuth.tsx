@@ -16,8 +16,10 @@ import {
   CheckCircle2, 
   Sparkles,
   ChevronRight,
-  Info
+  Info,
+  ArrowLeft
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Subscriber } from '../types';
 import { useAuth } from '../context/AuthContext';
 
@@ -34,6 +36,7 @@ interface UnifiedAuthProps {
 }
 
 export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) {
+  const navigate = useNavigate();
   const [authMethod, setAuthMethod] = useState<'email' | 'id' | 'phone'>('email');
   const [email, setEmail] = useState('admin@akpbf.com');
   const [password, setPassword] = useState('Admin@2026');
@@ -53,6 +56,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
   const [resetNewPass, setResetNewPass] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [failedAttempts, setFailedAttempts] = useState(0);
 
   // Static list of official enterprise accounts for quick testing & validation
   const ENTERPRISE_USERS = [
@@ -63,31 +67,73 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
     { email: 'agent@akpbf.com', password: 'Agent@2026', name: 'Coulibaly Issa', role: 'AGENT' as const },
   ];
 
-  const { login: authLogin, error: authError } = useAuth();
+  const { login: authLogin } = useAuth();
 
   const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoginError('');
 
-    const credentials: any = { authMethod };
+    // Security Gate: Locked account check
+    if (failedAttempts >= 5) {
+      setLoginError("Ce compte est temporairement verrouillé à la suite de trop nombreuses tentatives infructueuses. Veuillez contacter l'administrateur AKPBF.");
+      return;
+    }
 
+    // Email validation
     if (authMethod === 'email') {
-      credentials.email = email;
-      credentials.password = password;
+      if (!email || !email.trim()) {
+        setLoginError('Champ requis manquant : Adresse e-mail obligatoire.');
+        return;
+      }
+      if (!password) {
+        setLoginError('Champ requis manquant : Mot de passe obligatoire.');
+        return;
+      }
+      if (password.length < 5) {
+        setLoginError('Le mot de passe doit comporter au moins 5 caractères.');
+        return;
+      }
+      if (email.trim().toLowerCase() === 'locked@akpbf.com') {
+        setLoginError('Ce compte est verrouillé par la sécurité administrative d\'Abidjan.');
+        return;
+      }
     } else if (authMethod === 'id') {
-      credentials.subscriberId = subscriberIdInput;
+      if (!subscriberIdInput || !subscriberIdInput.trim()) {
+        setLoginError('Champ requis manquant : Identifiant unique d’abonné obligatoire.');
+        return;
+      }
     } else if (authMethod === 'phone') {
+      if (!phoneNumber || !phoneNumber.trim()) {
+        setLoginError('Champ requis manquant : Numéro de téléphone obligatoire.');
+        return;
+      }
       if (!otpSent) {
+        // First step: trigger simulation of SMS OTP delivery
         setOtpSent(true);
         return;
       }
-      credentials.phone = phoneNumber;
+      if (!phoneOtp) {
+        setLoginError('Champ requis manquant : Le code de vérification OTP est obligatoire.');
+        return;
+      }
+    }
+
+    const credentials: any = { authMethod };
+
+    if (authMethod === 'email') {
+      credentials.email = email.trim();
+      credentials.password = password;
+    } else if (authMethod === 'id') {
+      credentials.subscriberId = subscriberIdInput.trim();
+    } else if (authMethod === 'phone') {
+      credentials.phone = phoneNumber.trim();
       credentials.otp = phoneOtp;
     }
 
     try {
-      const success = await authLogin(credentials, subscribers);
-      if (success) {
+      const res = await authLogin(credentials, subscribers);
+      if (res.success) {
+        setFailedAttempts(0);
         // Retrieve newly active session token to notify outer controllers through onLogin callback
         const persistedToken = localStorage.getItem('akpbf_erp_token');
         if (persistedToken) {
@@ -106,9 +152,15 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
           }
         }
       } else {
-        // Highlight active issue returned by server on screen
-        // If authError contains more details, use them, otherwise default
-        setLoginError(authError || "Erreur d'authentification ou mot de passe incorrect.");
+        setFailedAttempts(prev => {
+          const nextVal = prev + 1;
+          if (nextVal >= 5) {
+            setLoginError("Ce compte est temporairement verrouillé à la suite de trop nombreuses tentatives infructueuses. Veuillez contacter l'administrateur AKPBF.");
+          } else {
+            setLoginError(res.error || "Identifiant ou mot de passe incorrect.");
+          }
+          return nextVal;
+        });
       }
     } catch (err: any) {
       setLoginError(err.message || "Problème de communication avec le serveur d'authentification.");
@@ -152,6 +204,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
     setPassword(passVal);
     setAuthMethod('email');
     setLoginError('');
+    setFailedAttempts(0);
   };
 
   return (
@@ -159,6 +212,17 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
       {/* Absolute Decorative Circles */}
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-emerald-950/20 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2" />
       <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-indigo-950/20 rounded-full blur-3xl pointer-events-none translate-x-1/2 translate-y-1/2" />
+
+      {/* Back to Home Button Link */}
+      <div className="w-full max-w-md flex justify-start mb-4 relative z-10 animate-in slide-in-from-top-3 duration-350">
+        <button
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-all duration-200 cursor-pointer bg-slate-900/40 hover:bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-full"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 text-emerald-450" />
+          <span>Retour au site public</span>
+        </button>
+      </div>
 
       {/* Main Single Card Panel */}
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 shadow-2xl rounded-3xl overflow-hidden p-6 md:p-8 space-y-6 relative z-10 animate-in fade-in duration-300">
@@ -205,13 +269,6 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
               </button>
             </div>
 
-            {loginError && (
-              <div className="bg-red-950/40 border border-red-900 text-red-400 text-xs p-3.5 rounded-xl flex items-center gap-2.5">
-                <AlertCircle className="h-4.5 w-4.5 shrink-0 text-red-500" />
-                <span className="font-medium leading-relaxed">{loginError}</span>
-              </div>
-            )}
-
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               {authMethod === 'email' && (
                 <div className="space-y-3.5">
@@ -223,7 +280,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                         type="email"
                         required
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => { setEmail(e.target.value); setLoginError(''); }}
                         placeholder="nom@service-assainissement.ci"
                         className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-3.5 py-3 text-xs font-semibold outline-none transition"
                       />
@@ -247,29 +304,61 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                         type="password"
                         required
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => { setPassword(e.target.value); setLoginError(''); }}
                         className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-3.5 py-3 text-xs font-semibold outline-none transition"
                       />
                     </div>
+                  </div>
+
+                  {/* Status & Error Message Section for Email Login */}
+                  <div className="h-14 flex items-center justify-center relative">
+                    {loginError ? (
+                      <div id="auth-error-block-email" className="w-[100%] bg-red-950/40 border border-red-900 text-red-400 text-xs p-3 rounded-xl flex items-center gap-2.5 animate-in fade-in duration-200">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                        <span className="font-semibold leading-tight text-left">{loginError}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-500 font-medium text-center flex items-center gap-1.5 py-3 select-none">
+                        <Info className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                        <span>Renseignez votre e-mail et mot de passe ci-dessus</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {authMethod === 'id' && (
-                <div className="space-y-1.5 text-left">
-                  <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Identifiant Unique d'Abonné (Ménages & Entreprises)</label>
-                  <div className="relative">
-                    <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
-                    <input 
-                      type="text"
-                      required
-                      value={subscriberIdInput}
-                      onChange={(e) => setSubscriberIdInput(e.target.value)}
-                      placeholder="Ex: SUB-4029 ou SUB-1933"
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-3.5 py-3 text-xs font-bold font-mono tracking-wider uppercase outline-none transition"
-                    />
+                <div className="space-y-3.5">
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Identifiant Unique d'Abonné (Ménages & Entreprises)</label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <input 
+                        type="text"
+                        required
+                        value={subscriberIdInput}
+                        onChange={(e) => { setSubscriberIdInput(e.target.value); setLoginError(''); }}
+                        placeholder="Ex: SUB-4029 ou SUB-1933"
+                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-3.5 py-3 text-xs font-bold font-mono tracking-wider uppercase outline-none transition"
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-500 block leading-tight">Authentifiez-vous d'un coup grâce à votre référence de contrat de salubrité</span>
                   </div>
-                  <span className="text-[10px] text-slate-500 block leading-tight">Authentifiez-vous d'un coup grâce à votre référence de contrat de salubrité</span>
+
+                  {/* Status & Error Message Section for Subscriber ID Login */}
+                  <div className="h-14 flex items-center justify-center relative">
+                    {loginError ? (
+                      <div id="auth-error-block-id" className="w-[100%] bg-red-950/40 border border-red-900 text-red-400 text-xs p-3 rounded-xl flex items-center gap-2.5 animate-in fade-in duration-200">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                        <span className="font-semibold leading-tight text-left">{loginError}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-500 font-medium text-center flex items-center gap-1.5 py-3 select-none">
+                        <Info className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                        <span>Renseignez votre identifiant unique ci-dessus</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -283,7 +372,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                         type="text"
                         required
                         value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        onChange={(e) => { setPhoneNumber(e.target.value); setLoginError(''); }}
                         placeholder="+225 07 48 29 10 22"
                         className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-3.5 py-3 text-xs font-semibold outline-none transition"
                       />
@@ -300,7 +389,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                         type="text"
                         required
                         value={phoneOtp}
-                        onChange={(e) => setPhoneOtp(e.target.value)}
+                        onChange={(e) => { setPhoneOtp(e.target.value); setLoginError(''); }}
                         placeholder="Indiquez le code reçu (Ex: 2026)"
                         className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl py-3 text-xs text-center font-bold font-mono tracking-widest outline-none transition"
                       />
@@ -314,6 +403,21 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                       S'envoyer un code OTP SMS de test d'évaluation
                     </button>
                   )}
+
+                  {/* Status & Error Message Section for OTP Phone Login */}
+                  <div className="h-14 flex items-center justify-center relative">
+                    {loginError ? (
+                      <div id="auth-error-block-phone" className="w-[100%] bg-red-950/40 border border-red-900 text-red-400 text-xs p-3 rounded-xl flex items-center gap-2.5 animate-in fade-in duration-200">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                        <span className="font-semibold leading-tight text-left">{loginError}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-500 font-medium text-center flex items-center gap-1.5 py-3 select-none">
+                        <Info className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                        <span>Renseignez vos coordonnées téléphoniques ci-dessus</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

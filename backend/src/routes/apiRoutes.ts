@@ -60,6 +60,10 @@ router.post('/email/send-test', authenticateToken as any, EmailController.sendTe
 // DOCUMENT & CONTRACTS SIGN (PHASE 10)
 // ==========================================
 router.get('/documents/generate', authenticateToken as any, DocumentController.generatePdf);
+router.get('/documents/invoice/:id/pdf', DocumentController.getInvoicePdf);
+router.get('/documents/contract/:id/pdf', DocumentController.getContractPdf);
+router.get('/documents/receipt/:id/pdf', DocumentController.getReceiptPdf);
+router.get('/documents/report/:id/pdf', DocumentController.getReportPdf);
 router.get('/documents/download/:docId', DocumentController.downloadDocument);
 
 export default router;

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { loginSchema } from '../validators/authValidator';
 import { SecurityUtils } from '../utils/security';
 import { AuthMiddleware } from '../middleware/auth';
+import { getPrismaClient } from '../config/database';
+import { InMemoryDb } from '../config/inMemoryDb';
 
 const ENTERPRISE_USERS = [
   { email: 'admin@akpbf.com', passwordText: 'Admin@2026', passwordHash: '', name: 'Alkaïda Benjamin', role: 'ADMINISTRATEUR' },
@@ -72,6 +74,43 @@ export const AuthController = {
               res.status(401).json({ error: 'Mot de passe du Portail Citoyen incorrect (utilisez "Test@2026").' });
               return;
             }
+          } else {
+            // Check if customer email exists in the PostgreSQL database via Prisma
+            try {
+              const prisma = getPrismaClient();
+              let dbCustomer = await prisma.customer.findFirst({
+                where: {
+                  email: { equals: canonicalEmail, mode: 'insensitive' }
+                }
+              });
+
+              // Fallback to InMemoryDb if Postgres is empty/unseeded
+              if (!dbCustomer) {
+                const inMemoryDb = InMemoryDb.getInstance();
+                dbCustomer = inMemoryDb.collections.customer?.find(
+                  (c: any) => c.email?.trim().toLowerCase() === canonicalEmail
+                );
+              }
+
+              if (dbCustomer) {
+                const idStr = dbCustomer.subscriberId || dbCustomer.id;
+                if (password === 'Test@2026' || password === idStr) {
+                  tokenUser = {
+                    id: idStr,
+                    name: dbCustomer.name,
+                    email: dbCustomer.email,
+                    role: 'CLIENT',
+                    phone: dbCustomer.phone,
+                    subscriberId: idStr
+                  };
+                } else {
+                  res.status(401).json({ error: 'Mot de passe du Portail Citoyen incorrect (utilisez "Test@2026").' });
+                  return;
+                }
+              }
+            } catch (dbErr) {
+              console.error('Prisma customer lookup by email failed:', dbErr);
+            }
           }
         }
       }
@@ -89,6 +128,38 @@ export const AuthController = {
             phone: clientSub.phone,
             subscriberId: clientSub.id
           };
+        } else {
+          // Check database via Prisma
+          try {
+            const prisma = getPrismaClient();
+            let dbCustomer = await prisma.customer.findFirst({
+              where: {
+                subscriberId: { equals: subscriberId.trim(), mode: 'insensitive' }
+              }
+            });
+
+            // Fallback to InMemoryDb if Postgres is empty/unseeded
+            if (!dbCustomer) {
+              const inMemoryDb = InMemoryDb.getInstance();
+              dbCustomer = inMemoryDb.collections.customer?.find(
+                (c: any) => c.subscriberId?.trim().toUpperCase() === canonId || c.id?.toUpperCase() === canonId
+              );
+            }
+
+            if (dbCustomer) {
+              const idStr = dbCustomer.subscriberId || dbCustomer.id;
+              tokenUser = {
+                id: idStr,
+                name: dbCustomer.name,
+                email: dbCustomer.email,
+                role: 'CLIENT',
+                phone: dbCustomer.phone,
+                subscriberId: idStr
+              };
+            }
+          } catch (dbErr) {
+            console.error('Prisma lookup by subscriberId failed:', dbErr);
+          }
         }
       }
 
@@ -105,6 +176,35 @@ export const AuthController = {
             phone: clientSub.phone,
             subscriberId: clientSub.id
           };
+        } else {
+          // Check database via Prisma
+          try {
+            const prisma = getPrismaClient();
+            const dbCustomers = await prisma.customer.findMany();
+            let foundDb = dbCustomers.find(c => c.phone.replace(/\s+/g, '').includes(cleanPhone));
+
+            // Fallback to InMemoryDb if Postgres is empty/unseeded
+            if (!foundDb) {
+              const inMemoryDb = InMemoryDb.getInstance();
+              foundDb = inMemoryDb.collections.customer?.find(
+                (c: any) => c.phone?.replace(/\s+/g, '').includes(cleanPhone)
+              );
+            }
+
+            if (foundDb) {
+              const idStr = foundDb.subscriberId || foundDb.id;
+              tokenUser = {
+                id: idStr,
+                name: foundDb.name,
+                email: foundDb.email,
+                role: 'CLIENT',
+                phone: foundDb.phone,
+                subscriberId: idStr
+              };
+            }
+          } catch (dbErr) {
+            console.error('Prisma lookup by phone failed:', dbErr);
+          }
         }
       }
 

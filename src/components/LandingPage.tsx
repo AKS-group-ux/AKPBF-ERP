@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Trash2, 
   MapPin, 
@@ -27,7 +28,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SubscriptionPlan, Subscriber } from '../types';
-import UnifiedAuth from './UnifiedAuth';
 
 interface LandingPageProps {
   plans: SubscriptionPlan[];
@@ -44,6 +44,7 @@ export default function LandingPage({
   onLogin,
   onAddNotificationLogs
 }: LandingPageProps) {
+  const navigate = useNavigate();
   // Navigation states
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'services' | 'pricing' | 'zones' | 'register' | 'complaint' | 'login'>('home');
@@ -306,7 +307,7 @@ export default function LandingPage({
           {/* Action Login button */}
           <div className="hidden md:flex items-center gap-4">
             <button 
-              onClick={() => scrollToSection('login-section', 'login')}
+              onClick={() => navigate('/login')}
               className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-650 dark:hover:bg-emerald-600 transition text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-500/5 hover:-translate-y-0.5"
             >
               <Lock className="h-4 w-4" />
@@ -369,7 +370,7 @@ export default function LandingPage({
                 Réclamation
               </button>
               <button 
-                onClick={() => scrollToSection('login-section', 'login')}
+                onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}
                 className="w-full py-3 px-4 bg-emerald-600 text-white rounded-lg text-xs font-bold tracking-wider text-center flex justify-center items-center gap-2 shadow-xs"
               >
                 <Lock className="h-4 w-4" />
@@ -1229,39 +1230,6 @@ export default function LandingPage({
         </div>
       </section>
 
-      {/* 10. AUTHENTICATE PAGE GATE (LOGIN SECTION / PORTAL INTRO) */}
-      <section id="login-section" className="py-20 bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          
-          <div className="text-center space-y-3">
-            <span className="text-xs font-bold text-emerald-500 tracking-wider uppercase font-mono">ESPACES DE CONSTITUANTS</span>
-            <h2 className="text-3xl font-black text-slate-950 dark:text-white tracking-tight">Accédez à votre espace sécurisé AKPBF</h2>
-            <p className="text-slate-550 dark:text-slate-400 text-xs sm:text-sm leading-relaxed max-w-xl mx-auto font-medium">
-              Authentifiez-vous dans votre canal de service dédié. Les rôles d'attribution déterminent l'interface d'action.
-            </p>
-          </div>
-
-          <div className="max-w-md mx-auto relative">
-            <div className="bg-slate-900 border border-slate-850 rounded-[2.5rem] overflow-hidden shadow-2xl relative">
-              {/* Embed our fully responsive modular UnifiedAuth here directly */}
-              <UnifiedAuth 
-                subscribers={subscribers}
-                onLogin={(user) => {
-                  onLogin(user);
-                }}
-              />
-            </div>
-
-            {/* Micro login helper alert info */}
-            <div className="mt-4 text-center text-xs text-slate-500">
-              <span>Besoin d'aide pour vos identifiants de collecte ? Contactez la hotline municipale AKPBF au </span>
-              <a href="tel:+22527224561" className="text-emerald-500 font-bold hover:underline">+225 27 22 45 61</a>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
       {/* 11. FOOTER INTUITIONS */}
       <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 text-left transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-4 gap-8">
@@ -1292,7 +1260,7 @@ export default function LandingPage({
               <li><button onClick={() => scrollToSection('registration-section', 'register')} className="hover:text-white transition">S'inscrire en ligne</button></li>
               <li><button onClick={() => scrollToSection('pricing-section', 'pricing')} className="hover:text-white transition">Formules de redevance</button></li>
               <li><button onClick={() => scrollToSection('complaint-section', 'complaint')} className="hover:text-white transition">Soumettre une réclamation</button></li>
-              <li><button onClick={() => scrollToSection('login-section', 'login')} className="hover:text-white transition">Portail Facturation & Contrats</button></li>
+              <li><button onClick={() => navigate('/login')} className="hover:text-white transition">Portail Facturation & Contrats</button></li>
             </ul>
           </div>
 

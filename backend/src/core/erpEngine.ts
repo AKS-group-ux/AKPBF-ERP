@@ -84,6 +84,47 @@ export class ErpEngine {
   public static async onboardClient(client: ClientDomainModel, meta: { operatorId: string; operatorName: string; ipAddress: string }) {
     const prisma = getPrismaClient();
 
+    // Check if customer email or phone already exists in the system to avoid duplicate crashes
+    const canonEmail = client.email.trim().toLowerCase();
+    const cleanPhone = client.phone.trim();
+
+    const existingCustomer = await prisma.customer.findFirst({
+      where: {
+        OR: [
+          { email: { equals: canonEmail, mode: 'insensitive' } },
+          { phone: cleanPhone }
+        ]
+      },
+      include: {
+        subscriptions: true
+      }
+    });
+
+    if (existingCustomer) {
+      // Gracefully recover and return the existing record instead of throwing and failing
+      let subId = "";
+      if (existingCustomer.subscriptions && existingCustomer.subscriptions.length > 0) {
+        subId = existingCustomer.subscriptions[0].id;
+      } else {
+        const sub = await prisma.subscription.create({
+          data: {
+            customerId: existingCustomer.id,
+            planId: client.planId || "",
+            status: 'ACTIVE'
+          }
+        });
+        subId = sub.id;
+      }
+      return {
+        success: true,
+        customerId: existingCustomer.id,
+        subscriberId: existingCustomer.subscriberId || `ABJ-${Math.floor(100000 + Math.random() * 900000)}`,
+        contractId: `CNT-2026-${(existingCustomer.subscriberId || "").replace('ABJ-', '') || "AUTO"}`,
+        subscriptionId: subId,
+        isExisting: true
+      };
+    }
+
     // 1. Run validation policies
     await this.validateCustomerRules(client.email, client.phone);
 
@@ -457,7 +498,7 @@ export class ErpEngine {
         userId: meta.operatorId,
         userName: payment.operatorName,
         action: 'Paiement enregistré',
-        details: `Redevance de ${payment!.name || 'Abonné'} de ${payment.amountPaid.toLocaleString()} FCFA réglée par ${payment.paymentMethod}. Reçu: ${nextReceiptNo}`,
+        details: `Redevance de ${customer!.name || 'Abonné'} de ${payment.amountPaid.toLocaleString()} FCFA réglée par ${payment.paymentMethod}. Reçu: ${nextReceiptNo}`,
         timestamp: `${payment.paymentDate} ${journalEntry.time}`,
         ipAddress: meta.ipAddress
       });

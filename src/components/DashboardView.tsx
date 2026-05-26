@@ -253,7 +253,7 @@ export default function DashboardView({
       <div className="grid grid-cols-1 md:grid-cols-10 gap-4">
         
         {/* Main Alerte Widget (30% width on large screens) */}
-        <div className="md:col-span-3 bg-white border border-slate-200 rounded-xl p-4.5 flex flex-col justify-between hover:border-slate-300 transition shadow-[0_1px_3px_rgba(0,0,0,0.01)] relative overflow-hidden">
+        <div className="md:col-span-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4.5 flex flex-col justify-between hover:border-slate-300 dark:hover:border-slate-700 transition shadow-[0_1px_3px_rgba(0,0,0,0.01)] relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-[#635BFF]/5 rounded-bl-full pointer-events-none" />
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-[#635BFF] tracking-wider">
@@ -289,7 +289,7 @@ export default function DashboardView({
         </div>
 
         {/* Dynamic Alerts Center Panel (70% width) */}
-        <div className="md:col-span-7 bg-white border border-slate-200 rounded-xl p-4.5 space-y-3.5 hover:border-slate-300 transition shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+        <div className="md:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4.5 space-y-3.5 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-4.5 w-4.5 text-amber-500" />
@@ -340,7 +340,7 @@ export default function DashboardView({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* KPI 1 : Clients count */}
-        <div className="bg-white rounded-xl border border-slate-200 hover:border-slate-350 transition p-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 transition p-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Abonnés Contrat AKPBF</h5>
@@ -368,7 +368,7 @@ export default function DashboardView({
         </div>
 
         {/* KPI 2 : Facturé this month  */}
-        <div className="bg-white rounded-xl border border-slate-200 hover:border-slate-350 transition p-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 transition p-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
@@ -393,7 +393,7 @@ export default function DashboardView({
         </div>
 
         {/* KPI 3 : Collected amount  */}
-        <div className="bg-white rounded-xl border border-slate-200 hover:border-slate-350 transition p-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 transition p-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <h5 className="text-[10px] font-bold text-[#635BFF] uppercase tracking-widest block font-black">
@@ -421,7 +421,7 @@ export default function DashboardView({
         </div>
 
         {/* KPI 4 : Unpaid debt  */}
-        <div className="bg-white rounded-xl border border-slate-200 hover:border-slate-350 transition p-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 transition p-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <h5 className="text-[10px] font-bold text-rose-500 uppercase tracking-widest block">
@@ -455,7 +455,7 @@ export default function DashboardView({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         
         {/* LOGISTIC METRIC 1: COMPLETED COLLECTIONS */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4.5 flex items-center justify-between hover:border-emerald-300 transition shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4.5 flex items-center justify-between hover:border-emerald-300 dark:hover:border-emerald-700 transition shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
           <div className="space-y-2">
             <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 block">Collectes Réalisées ce mois</span>
             <div className="space-y-0.5">
@@ -474,7 +474,7 @@ export default function DashboardView({
         </div>
 
         {/* LOGISTIC METRIC 2: MISSED COLLECTIONS */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4.5 flex items-center justify-between hover:border-amber-300 transition shadow-[0_1px_3px_rgba(0,0,0,0.01)] animate-pulse-slow">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4.5 flex items-center justify-between hover:border-amber-300 dark:hover:border-amber-700 transition shadow-[0_1px_3px_rgba(0,0,0,0.01)] animate-pulse-slow">
           <div className="space-y-2">
             <span className="text-[9px] font-black uppercase tracking-widest text-[#635BFF] block">Collectes Manquées / Alarmes Bacs</span>
             <div className="space-y-0.5">
@@ -497,7 +497,7 @@ export default function DashboardView({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* 1. Large Dynamic Main Graph (Span 2) */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5 flex flex-col h-[400px] hover:shadow-[0_2px_12px_rgba(0,0,0,0.01)] transition">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 flex flex-col h-[400px] hover:shadow-[0_2px_12px_rgba(0,0,0,0.01)] transition">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
             <div className="space-y-0.5">
               <span className="text-[9px] font-black text-[#635BFF] uppercase tracking-widest block">Indicateurs de Performance Budgétaire</span>
@@ -672,7 +672,7 @@ export default function DashboardView({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* 1. Crew and Agent Performance rating list */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.01)] transition flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.01)] transition flex flex-col justify-between">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <span className="text-[9px] font-black text-[#635BFF] uppercase tracking-widest block">Logistique de terrain</span>
@@ -729,7 +729,7 @@ export default function DashboardView({
         </div>
 
         {/* 2. Statistical Map Sector card list */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.01)] transition flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.01)] transition flex flex-col justify-between">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <span className="text-[9px] font-black text-[#635BFF] uppercase tracking-widest block">Intelligence Municipale (SIG)</span>

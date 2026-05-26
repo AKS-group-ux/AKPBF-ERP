@@ -21,6 +21,7 @@ import {
   Lock
 } from 'lucide-react';
 import { Invoice, Subscriber } from '../types';
+import { documentService } from '../services/documentService';
 
 interface AccountingViewProps {
   invoices: Invoice[];
@@ -237,7 +238,13 @@ export default function AccountingView({ invoices, subscribers }: AccountingView
         {/* Action button triggers for export */}
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => window.print()}
+            onClick={async () => {
+              try {
+                await documentService.downloadPdf('report', 'syscohada_bilan');
+              } catch (e) {
+                alert("Erreur lors de la génération du bilan comptable.");
+              }
+            }}
             className="flex items-center gap-1.5 bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 active:scale-95 transition cursor-pointer"
           >
             <Printer className="h-4 w-4" />

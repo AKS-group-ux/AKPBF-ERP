@@ -20,6 +20,7 @@ import {
   Clock
 } from 'lucide-react';
 import { Invoice, Subscriber, SubscriptionPlan, NotificationLog } from '../types';
+import { documentService } from '../services/documentService';
 
 interface BillingViewProps {
   invoices: Invoice[];
@@ -433,7 +434,13 @@ export default function BillingView({
             {/* Document trigger actions */}
             <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-2 text-xs">
               <button 
-                onClick={() => window.print()}
+                onClick={async () => {
+                  try {
+                    await documentService.printPdf('invoice', viewingInvoice.id);
+                  } catch (e) {
+                    alert("Erreur lors de l'impression de la facture.");
+                  }
+                }}
                 className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
               >
                 <Printer className="h-4 w-4" />

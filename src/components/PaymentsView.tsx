@@ -20,6 +20,7 @@ import {
   QrCode
 } from 'lucide-react';
 import { Invoice, Subscriber } from '../types';
+import { documentService } from '../services/documentService';
 
 interface PaymentsViewProps {
   invoices: Invoice[];
@@ -385,7 +386,13 @@ export default function PaymentsView({
 
               <div className="flex items-center gap-2 pt-2">
                 <button 
-                  onClick={() => alert('Impression du reçu en cours (Simulation)...')}
+                  onClick={async () => {
+                    try {
+                      await documentService.printPdf('receipt', activePayment.id);
+                    } catch (e) {
+                      alert("Erreur lors de l'impression du reçu.");
+                    }
+                  }}
                   className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg transition text-center flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Printer className="h-4 w-4" />

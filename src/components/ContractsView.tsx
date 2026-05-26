@@ -22,7 +22,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { Contract, ContractTemplate, Subscriber, SubscriptionPlan, SubscriptionHistoryLog } from '../types';
-import { generateAndDownloadPdf } from '../utils/pdfGenerator';
+import { documentService } from '../services/documentService';
 
 interface ContractsViewProps {
   contracts: Contract[];
@@ -798,8 +798,12 @@ export default function ContractsView({
               
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    generateAndDownloadPdf(pdfPreviewDoc.type, pdfPreviewDoc.data);
+                  onClick={async () => {
+                    try {
+                      await documentService.printPdf(pdfPreviewDoc.type, pdfPreviewDoc.data.id || pdfPreviewDoc.data.contractNumber);
+                    } catch (e) {
+                      alert("Erreur lors de l'impression du contrat.");
+                    }
                   }}
                   className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-[10.5px] transition flex items-center gap-1.5 shadow-xs"
                 >
@@ -808,8 +812,12 @@ export default function ContractsView({
                 </button>
                 
                 <button
-                  onClick={() => {
-                    generateAndDownloadPdf(pdfPreviewDoc.type, pdfPreviewDoc.data);
+                  onClick={async () => {
+                    try {
+                      await documentService.downloadPdf(pdfPreviewDoc.type, pdfPreviewDoc.data.id || pdfPreviewDoc.data.contractNumber);
+                    } catch (e) {
+                      alert("Erreur lors du téléchargement du contrat.");
+                    }
                   }}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[10.5px] transition flex items-center gap-1.5 shadow-md"
                 >

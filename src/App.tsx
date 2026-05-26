@@ -426,9 +426,10 @@ function AppContent() {
     return 'light';
   });
 
-  // Track theme changes and set body/html class
+  // Track theme changes and set body/html class and data-theme
   useEffect(() => {
     const root = window.document.documentElement;
+    root.setAttribute('data-theme', theme);
     if (theme === 'dark') {
       root.classList.add('dark');
     } else {
@@ -1162,6 +1163,21 @@ function AppContent() {
         />
       } />
 
+      <RouterRoute path="/login" element={
+        sessionUser ? (
+          sessionUser.role === 'CLIENT' ? <Navigate to="/client" replace /> :
+          sessionUser.role === 'COMPTABLE' ? <Navigate to="/cashier" replace /> :
+          sessionUser.role === 'SUPERVISEUR' ? <Navigate to="/supervisor" replace /> :
+          sessionUser.role === 'CHAUFFEUR' || sessionUser.role === 'AGENT' ? <Navigate to="/agent" replace /> :
+          <Navigate to="/admin" replace />
+        ) : (
+          <UnifiedAuth 
+            subscribers={subscribers}
+            onLogin={handleLogin}
+          />
+        )
+      } />
+
       <RouterRoute path="/client" element={
         sessionUser && sessionUser.role === 'CLIENT' && clientSub ? (
           <ClientPortalView 
@@ -1248,7 +1264,7 @@ function AppContent() {
 
   function adminWorkspace() {
     return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row antialiased">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col md:flex-row antialiased transition-colors duration-200">
       
       {/* MOBILE HEADER RESPONSIVE TOGGLE */}
       <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between shadow-md">
