@@ -19,7 +19,14 @@ export default defineConfig(() => {
         clientPort: 443,
         protocol: 'wss',
       },
-      watch: {},
+      watch: {
+        ignored: [
+          '**/.local/**',
+          '**/.git/**',
+          '**/node_modules/**',
+          '**/dist/**',
+        ],
+      },
     },
   };
 });

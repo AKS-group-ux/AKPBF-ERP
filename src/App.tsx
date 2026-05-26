@@ -497,8 +497,10 @@ function AppContent() {
         if (data.auditLogs && data.auditLogs.length > 0) setAuditLogs(data.auditLogs);
         if (data.collectionProofs && data.collectionProofs.length > 0) setCollectionProofs(data.collectionProofs);
       }
-    } catch (err) {
-      console.error("Failed to load ERP state from postgres server:", err);
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error("Failed to load ERP state from postgres server:", err?.message || String(err));
+      }
     }
   }, []);
 

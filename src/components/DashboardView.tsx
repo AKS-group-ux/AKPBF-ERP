@@ -545,7 +545,7 @@ export default function DashboardView({
 
           <div className="flex-1 min-h-0 text-xs">
             {chartMode === 'evolution' && (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={290}>
                 <AreaChart data={billingHistory}>
                   <defs>
                     <linearGradient id="colorFactureVal" x1="0" y1="0" x2="0" y2="1">
@@ -572,7 +572,7 @@ export default function DashboardView({
             )}
 
             {chartMode === 'recovery' && (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={290}>
                 <BarChart data={sectorPerformanceData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" stroke="#94a3b8" />
@@ -592,7 +592,7 @@ export default function DashboardView({
             )}
 
             {chartMode === 'forecast' && (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={290}>
                 <AreaChart data={financeForecasts}>
                   <defs>
                     <linearGradient id="colorTreasury" x1="0" y1="0" x2="0" y2="1">

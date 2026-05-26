@@ -388,7 +388,24 @@ Respond in French in a highly dramatic yet corporate crisis manager tone. List r
   // Serve Vite / Frontend Assets
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true, host: '0.0.0.0', allowedHosts: true },
+      server: {
+        middlewareMode: true,
+        host: '0.0.0.0',
+        allowedHosts: true,
+        hmr: {
+          clientPort: 443,
+          protocol: 'wss',
+        },
+        watch: {
+          ignored: [
+            '**/.local/**',
+            '**/.agents/**',
+            '**/.git/**',
+            '**/node_modules/**',
+            '**/dist/**',
+          ],
+        },
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);

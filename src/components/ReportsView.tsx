@@ -170,8 +170,8 @@ export default function ReportsView({
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5 block">Logistique de Salubrité</span>
             <h4 className="font-extrabold text-slate-800 text-xs mt-0.5">Évolution du tonnage collecté vs Quantité valorisée (tonnes métriques)</h4>
           </div>
-          <div className="flex-1 text-xs">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="flex-1 min-h-0 text-xs">
+            <ResponsiveContainer width="100%" height={230}>
               <AreaChart data={monthlyTonnageData}>
                 <defs>
                   <linearGradient id="tonColor" x1="0" y1="0" x2="0" y2="1">
