@@ -1,0 +1,234 @@
+Analyse l'ensemble du design de l'application ERP AKPBF et applique une refonte UI/UX professionnelle inspirée de :
+
+- Odoo Enterprise
+- Linear
+- Notion
+- Stripe Dashboard
+- Microsoft Fluent Design
+
+==================================================
+ANALYSE COMPLÈTE DE L'INTERFACE
+==================================================
+
+Inspecter toutes les pages :
+
+- Login
+- Dashboard Admin
+- Dashboard Client
+- Contrats
+- Abonnements
+- Factures
+- Paiements
+- Collectes
+- Comptabilité
+- Paramètres
+
+Identifier :
+
+- problèmes d'alignement
+- problèmes responsive
+- tailles de police incohérentes
+- composants mal dimensionnés
+- mauvaises marges
+- mauvais espacements
+- icônes mal positionnées
+- contrastes insuffisants
+- incohérences visuelles
+
+Corriger tous les problèmes détectés.
+
+==================================================
+PAGE DE CONNEXION
+==================================================
+
+Refondre entièrement la page Login.
+
+Objectifs :
+
+- design premium
+- responsive mobile/tablette/desktop
+- lisibilité parfaite
+- cohérence visuelle
+
+==================================================
+ALIGNEMENT DES CHAMPS
+==================================================
+
+Corriger tous les problèmes d'alignement.
+
+Les icônes doivent être parfaitement centrées verticalement.
+
+Le texte saisi doit être parfaitement aligné avec les icônes.
+
+Les placeholders doivent être centrés correctement.
+
+Aucun texte ne doit apparaître plus bas ou plus haut que les icônes.
+
+Utiliser flexbox correctement :
+
+align-items: center
+
+Vérifier tous les champs du projet.
+
+==================================================
+TYPOGRAPHIE
+==================================================
+
+Augmenter la taille des polices.
+
+Titre principal :
+
+32px à 36px
+
+Sous-titres :
+
+18px à 20px
+
+Labels :
+
+16px à 18px
+
+Texte des champs :
+
+16px minimum
+
+Texte boutons :
+
+16px minimum
+
+Messages :
+
+15px minimum
+
+Le texte doit être facilement lisible sur mobile.
+
+==================================================
+ESPACEMENTS
+==================================================
+
+Uniformiser les espacements.
+
+Utiliser un système cohérent :
+
+8px
+16px
+24px
+32px
+
+Aucun élément ne doit sembler collé.
+
+==================================================
+BOUTONS
+==================================================
+
+Moderniser tous les boutons.
+
+Ajouter :
+
+- hover
+- focus
+- active
+- disabled
+
+Coins arrondis modernes.
+
+Hauteur minimum :
+
+48px
+
+Sur mobile :
+
+boutons pleine largeur.
+
+==================================================
+ONGLETS DE CONNEXION
+==================================================
+
+Les onglets :
+
+- E-mail
+- ID Unique
+- OTP Mobile
+
+Doivent être :
+
+- plus modernes
+- mieux espacés
+- plus lisibles
+
+Animation fluide lors du changement.
+
+==================================================
+RESPONSIVE
+==================================================
+
+Tester les largeurs :
+
+320px
+375px
+390px
+414px
+768px
+1024px
+1440px
+
+Aucun débordement horizontal.
+
+Aucun composant écrasé.
+
+==================================================
+THÈME GLOBAL
+==================================================
+
+Créer un Design System unique.
+
+Variables globales :
+
+- couleurs
+- polices
+- espacements
+- bordures
+- ombres
+
+Tous les composants doivent suivre le même style.
+
+==================================================
+MODE CLAIR ET SOMBRE
+==================================================
+
+Améliorer :
+
+- Dark Mode
+- Light Mode
+
+Assurer une excellente lisibilité.
+
+==================================================
+ACCESSIBILITÉ
+==================================================
+
+Respecter :
+
+- contraste WCAG
+- navigation clavier
+- focus visible
+- taille tactile suffisante
+
+==================================================
+LIVRABLES
+==================================================
+
+Avant modification :
+
+1. analyser les problèmes
+2. produire un rapport UI_UX_AUDIT.md
+
+Après correction :
+
+1. lister les fichiers modifiés
+2. expliquer les améliorations
+3. montrer les problèmes résolus
+
+Objectif :
+
+Obtenir une interface moderne, professionnelle, cohérente et parfaitement responsive comparable à Odoo Enterprise.

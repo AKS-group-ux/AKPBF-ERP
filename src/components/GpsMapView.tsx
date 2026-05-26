@@ -793,7 +793,7 @@ export default function GpsMapView({
               <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
                 <form onSubmit={handleNominatimSearch} className="flex gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-450" />
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-450 pointer-events-none" />
                     <input 
                       type="text" 
                       placeholder="Rechercher une adresse à Abidjan (ex: Cocody, Marcory Alios, Boulevard Lagunaire)..."

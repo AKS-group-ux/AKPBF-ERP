@@ -294,7 +294,7 @@ export default function ContractsView({
         <div className="space-y-4">
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs flex flex-col md:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
               <input 
                 type="text"
                 placeholder="Rechercher par numéro de contrat, client ou abonnement..."
