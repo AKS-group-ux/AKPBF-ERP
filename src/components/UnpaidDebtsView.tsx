@@ -490,7 +490,7 @@ export default function UnpaidDebtsView({
             {/* Table Filters upper banner */}
             <div className="p-4 bg-slate-50/70 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="relative max-w-sm w-full">
-                <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="h-4 w-4 text-slate-400 absolute left-3 top-3" />
                 <input 
                   type="text" 
                   placeholder="Rechercher un dossier débiteur (Nom, ID)..." 

@@ -154,14 +154,7 @@ export default function LandingPage({
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: newSub.name,
-          email: newSub.email,
-          phone: newSub.phone,
-          address: newSub.address,
-          planId: newSub.planId,
-          binType: newSub.binType
-        })
+        body: JSON.stringify(newSub)
       });
 
       if (!response.ok) {
@@ -169,17 +162,8 @@ export default function LandingPage({
         throw new Error(errData.error || "Une erreur est survenue lors de l'enregistrement.");
       }
 
-      const result = await response.json();
-
-      // erpclaw logic: Use real IDs from backend
-      const finalizedSub = {
-        ...newSub,
-        id: result.subscriberId || result.customerId,
-        contractId: result.contractId
-      };
-
       // Success
-      onAddSubscriber(finalizedSub);
+      onAddSubscriber(newSub);
 
       // Log notification
       if (onAddNotificationLogs) {
@@ -189,13 +173,13 @@ export default function LandingPage({
           recipientContact: regPhone,
           type: 'sms',
           templateName: 'Bienvenue',
-          content: `Bonjour ${regName}, bienvenue chez AKPBF ! Votre inscription à la formule ${selectedPlan.name} est enregistrée. Identifiant : ${finalizedSub.id}.`,
+          content: `Bonjour ${regName}, bienvenue chez AKPBF ! Votre inscription à la formule ${selectedPlan.name} est enregistrée. Identifiant : ${generatedId}.`,
           sentAt: new Date().toISOString(),
           status: 'sent'
         });
       }
 
-      setRegSuccess(finalizedSub.id);
+      setRegSuccess(generatedId);
       setRegLoading(false);
 
       // Clear fields

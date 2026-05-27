@@ -1,4 +1,0 @@
-- [SQL Shield apostrophe bug](sql-shield-french-apostrophe.md) — sqlAndXssShield bloquait toute apostrophe française ; corrigé avec patterns d'injection réels uniquement
-- [Prisma P2021 fallback](prisma-p2021-resilience.md) — le proxy de résilience ne gérait pas P2021 (table manquante) ; corrigé + migrations exécutées via `npx prisma db push`
-- [Vite watcher floods from .local/](vite-watcher-local-dir.md) — Vite surveille .local/ par défaut → rechargements HMR en boucle ; watch.ignored doit être dans createViteServer() dans server.ts, pas seulement dans vite.config.ts
-- [Recharts -1 height in flex containers](recharts-flex-minheight.md) — ResponsiveContainer height="100%" donne -1 si le parent flex n'a pas de minHeight explicite au premier render

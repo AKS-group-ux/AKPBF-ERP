@@ -210,18 +210,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(errData.error || 'Identifiant ou mot de passe incorrect.');
       }
     } catch (err: any) {
-      // Extract real message — Error objects serialize as {} in JSON, so always use .message
-      const rawMessage: string = (err instanceof Error ? err.message : String(err)) || '';
-      console.error('Authentication attempt failed:', rawMessage, err);
-
-      let displayError = rawMessage;
-      if (
-        err instanceof TypeError &&
-        (rawMessage.includes('fetch') || rawMessage.includes('Failed to fetch') || rawMessage.includes('NetworkError'))
-      ) {
-        displayError = 'Erreur de connexion au serveur d\'Abidjan. Veuillez vérifier votre connexion réseau.';
+      console.error('Authentication attempt failed:', err);
+      // Custom wording for typical fetch exceptions or network failures
+      let displayError = err.message;
+      if (err instanceof TypeError && (err.message.includes('fetch') || err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+        displayError = 'Erreur de connexion au serveur d\'Abidjan. Veuillez vérifier votre connexion ou réinstaller l\'application.';
       } else if (!displayError) {
-        displayError = 'Identifiant ou mot de passe incorrect.';
+        displayError = 'Erreur lors de la tentative de connexion.';
       }
       setError(displayError);
       setLoading(false);

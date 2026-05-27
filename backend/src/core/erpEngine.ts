@@ -84,9 +84,6 @@ export class ErpEngine {
   public static async onboardClient(client: ClientDomainModel, meta: { operatorId: string; operatorName: string; ipAddress: string }) {
     const prisma = getPrismaClient();
 
-    // erpclaw logic: Ensure audit trail starts from the very first check
-    console.log(`[erpclaw-audit] Initializing onboarding for ${client.name} (Operator: ${meta.operatorName})`);
-
     // Check if customer email or phone already exists in the system to avoid duplicate crashes
     const canonEmail = client.email.trim().toLowerCase();
     const cleanPhone = client.phone.trim();
@@ -178,28 +175,14 @@ export class ErpEngine {
       });
 
       // C. Setup real modular Subscription
-      // planId from frontend can be "plan_eco", "plan_pro", etc. (not a UUID) — validate before querying
-      const isUuid = (s?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s || '');
-      let subscriptionPlan = (isUuid(client.planId)
-        ? await tx.subscriptionPlan.findFirst({ where: { id: client.planId } })
-        : null) || await tx.subscriptionPlan.findFirst();
-
-      // If no plan exists yet in the DB, create a minimal default one
-      if (!subscriptionPlan) {
-        subscriptionPlan = await tx.subscriptionPlan.create({
-          data: {
-            name: 'Forfait Essentiel',
-            price: 3500,
-            frequency: 'Mensuel',
-            description: 'Collecte standard des ordures ménagères à Abidjan'
-          }
-        });
-      }
+      const defaultPlan = await tx.subscriptionPlan.findFirst({
+        where: { id: client.planId }
+      }) || await tx.subscriptionPlan.findFirst();
 
       const subscription = await tx.subscription.create({
         data: {
           customerId: customer.id,
-          planId: subscriptionPlan.id,
+          planId: client.planId || defaultPlan?.id || "",
           status: 'ACTIVE'
         }
       });
@@ -216,14 +199,13 @@ export class ErpEngine {
         }
       });
 
-      // E. Write ERP general audit log entry (erpclaw immutable audit trail logic)
-      const isRealUser = meta.operatorId && meta.operatorId !== '00000000-0000-0000-0000-000000000000';
+      // E. Write ERP general audit log entry
       const auditLog = await tx.auditLog.create({
         data: {
-          userId: isRealUser ? meta.operatorId : null,
+          userId: meta.operatorId,
           action: 'CREATE_CLIENT',
           ipAddress: meta.ipAddress,
-          details: `[erpclaw-audit] Validation immuable du client ${client.name} (ID: ${subscriberId}). Contrat cadre ${contractId} signé numériquement. Empreinte: ${crypto.createHash('sha256').update(JSON.stringify(contractRecord)).digest('hex')}`
+          details: `Validation du client ${client.name} (ID: ${subscriberId}). Contrat cadre ${contractId} signé numériquement et stocké.`
         }
       });
 
@@ -324,39 +306,6 @@ export class ErpEngine {
   }
 
   /**
-   * erpclaw Logic: Post GL Entry for double-entry bookkeeping
-   */
-  private static async postGLEntry(tx: any, params: {
-    accountId: string;
-    debit?: number;
-    credit?: number;
-    referenceType: string;
-    referenceId: string;
-    description: string;
-  }) {
-    await tx.gLEntry.create({
-      data: {
-        accountId: params.accountId,
-        debit: params.debit || 0,
-        credit: params.credit || 0,
-        referenceType: params.referenceType,
-        referenceId: params.referenceId,
-        description: params.description
-      }
-    });
-
-    // Update account balance
-    await tx.account.update({
-      where: { id: params.accountId },
-      data: {
-        balance: {
-          increment: (params.debit || 0) - (params.credit || 0)
-        }
-      }
-    });
-  }
-
-  /**
    * Workflow C: Payment ledger entry with auto in cascade apurement, double bookkeeping, receipt generation, and notifications
    * Enforces rules: valid positive amount and actual client matching in PostgreSQL.
    */
@@ -423,31 +372,18 @@ export class ErpEngine {
           unappliedAmount -= currentAmount;
           allocatedInvoices.push(invoice.id);
           
-          // erpclaw logic: Immutable GL update
           await tx.invoice.update({
             where: { id: invoice.id },
             data: { status: 'PAID' }
           });
 
-          const paymentRecord = await tx.payment.create({
+          await tx.payment.create({
             data: {
               invoiceId: invoice.id,
               amount: currentAmount,
               method: payment.paymentMethod.toUpperCase() === 'ESPÈCES' ? 'CASH' : 'MOBILE_MONEY',
               status: 'SUCCESS',
               transactionId: payment.transactionRef || `REF-TXN-${Math.floor(100000 + Math.random() * 900000)}`
-            }
-          });
-
-          // erpclaw logic: Create Double-Entry Transaction record (mapped to Prisma Transaction model)
-          await tx.transaction.create({
-            data: {
-              amount: currentAmount,
-              provider: payment.operatorName || 'CORIS', // Using erpclaw's provider logic
-              status: 'SUCCESS',
-              reference: payment.transactionRef || `REF-TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-              phoneNumber: customer!.phone,
-              paymentId: paymentRecord.id
             }
           });
         } else {

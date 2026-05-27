@@ -497,10 +497,8 @@ function AppContent() {
         if (data.auditLogs && data.auditLogs.length > 0) setAuditLogs(data.auditLogs);
         if (data.collectionProofs && data.collectionProofs.length > 0) setCollectionProofs(data.collectionProofs);
       }
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
-        console.error("Failed to load ERP state from postgres server:", err?.message || String(err));
-      }
+    } catch (err) {
+      console.error("Failed to load ERP state from postgres server:", err);
     }
   }, []);
 
@@ -695,14 +693,7 @@ function AppContent() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: newSub.name,
-          email: newSub.email,
-          phone: newSub.phone,
-          address: newSub.address,
-          planId: newSub.planId,
-          binType: newSub.binType
-        })
+        body: JSON.stringify(newSub)
       });
       if (!response.ok) {
         const errData = await response.json();

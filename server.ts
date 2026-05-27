@@ -51,7 +51,7 @@ if (GEMINI_API_KEY && GEMINI_API_KEY !== "MY_GEMINI_API_KEY" && GEMINI_API_KEY !
 async function startServer() {
   const app = express();
   app.set('trust proxy', 1);
-  const PORT = parseInt(process.env.PORT || '5000', 10);
+  const PORT = 3000;
 
   // Integration of secure, modular Phase 1 Production Backend Architecture
   app.use(backendApp);
@@ -388,24 +388,7 @@ Respond in French in a highly dramatic yet corporate crisis manager tone. List r
   // Serve Vite / Frontend Assets
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        host: '0.0.0.0',
-        allowedHosts: true,
-        hmr: {
-          clientPort: 443,
-          protocol: 'wss',
-        },
-        watch: {
-          ignored: [
-            '**/.local/**',
-            '**/.agents/**',
-            '**/.git/**',
-            '**/node_modules/**',
-            '**/dist/**',
-          ],
-        },
-      },
+      server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);

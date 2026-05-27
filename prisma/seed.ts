@@ -286,30 +286,6 @@ async function main() {
   });
   console.log('✅ Default settings loaded.');
 
-  // erpclaw logic: Initialize Chart of Accounts
-  console.log('🌱 Initializing erpclaw Chart of Accounts...');
-  const accounts = [
-    { code: '1000', name: 'Trésorerie', type: 'Asset' },
-    { code: '1100', name: 'Comptes Clients', type: 'Asset' },
-    { code: '2000', name: 'Comptes Fournisseurs', type: 'Liability' },
-    { code: '3000', name: 'Capitaux Propres', type: 'Equity' },
-    { code: '4000', name: 'Revenus de Salubrité', type: 'Income' },
-    { code: '5000', name: 'Charges Opérationnelles', type: 'Expense' }
-  ];
-
-  for (const acc of accounts) {
-    await prisma.account.upsert({
-      where: { code: acc.code },
-      update: {},
-      create: {
-        code: acc.code,
-        name: acc.name,
-        type: acc.type
-      }
-    });
-  }
-  console.log('✅ Chart of Accounts initialized.');
-
   console.log('🎉 Database seeding compiled successfully!');
 }
 

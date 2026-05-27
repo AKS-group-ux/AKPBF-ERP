@@ -275,7 +275,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                   <div className="space-y-1.5 text-left">
                     <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Adresse E-mail Enregistrée</label>
                     <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                      <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
                       <input 
                         type="email"
                         required
@@ -299,7 +299,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                       </button>
                     </div>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                      <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
                       <input 
                         type="password"
                         required
@@ -332,7 +332,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                   <div className="space-y-1.5 text-left">
                     <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Identifiant Unique d'Abonné (Ménages & Entreprises)</label>
                     <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                      <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
                       <input 
                         type="text"
                         required
@@ -367,7 +367,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                   <div className="space-y-1.5 text-left">
                     <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Numéro de Téléphone Enregistré</label>
                     <div className="relative">
-                      <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                      <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
                       <input 
                         type="text"
                         required
