@@ -400,9 +400,94 @@ Respond in French in a highly dramatic yet corporate crisis manager tone. List r
     });
   }
 
+  // Active the background automated periodic financial statements digest scheduler
+  startFinancialDigestScheduler().catch(err => {
+    console.error('[SERVER SENSE SCHEDULER INITIATION ERROR]:', err);
+  });
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`AKPBF Full-Stack ERP Server listening on port ${PORT}`);
   });
+}
+
+/**
+ * Background Scheduler to automatically process the periodic SYSCOHADA financial digest
+ */
+async function startFinancialDigestScheduler() {
+  console.log('🤖 [DIGEST SCHEDULER] Periodic financial statements auto-dispatch worker activated.');
+  
+  // Verify schedule every 10 minutes
+  setInterval(async () => {
+    try {
+      const { getPrismaClient } = await import('./backend/src/config/database');
+      const prisma = getPrismaClient();
+      
+      const digestSetting = await prisma.setting.findUnique({ where: { key: 'AKPBF_DIGEST_CONFIG' } });
+      if (!digestSetting) return;
+      
+      const config = JSON.parse(digestSetting.value);
+      if (!config || !config.enabled || !config.recipients) return;
+      
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentDayOfWeekStr = String(now.getDay()); // "0" (Sunday) to "6" (Saturday)
+      const currentDayOfMonth = now.getDate();
+      
+      if (!config.timeOfDay) return;
+      const [targetHour] = config.timeOfDay.split(':').map(Number);
+      
+      let isDue = false;
+      const period = config.period || 'HEBDOMADAIRE';
+      
+      if (period === 'JOURNALIER') {
+        isDue = (currentHour === targetHour);
+      } else if (period === 'HEBDOMADAIRE') {
+        const targetDay = config.dayOfWeek || '1'; // Default Monday
+        isDue = (currentDayOfWeekStr === targetDay && currentHour === targetHour);
+      } else if (period === 'MENSUEL') {
+        isDue = (currentDayOfMonth === 1 && currentHour === targetHour);
+      } else if (period === 'HOURLY') {
+        // Hourly schedule for quick test purposes
+        isDue = true;
+      }
+      
+      if (isDue) {
+        // Debounce checking to prevent multiple emails per hourly block
+        const lastSendSetting = await prisma.setting.findUnique({ where: { key: 'AKPBF_DIGEST_LAST_SEND' } });
+        const lastSendStr = lastSendSetting ? lastSendSetting.value : '';
+        
+        let shouldSend = true;
+        if (lastSendStr) {
+          const lastSendDate = new Date(lastSendStr);
+          const diffMs = now.getTime() - lastSendDate.getTime();
+          // Allow enqueuing once every 23 hours (or once every 50 mins if testing hourly)
+          const minHoursThreshold = (period === 'HOURLY') ? 0.8 : 23;
+          if (diffMs < minHoursThreshold * 3605 * 1000) {
+            shouldSend = false;
+          }
+        }
+        
+        if (shouldSend) {
+          console.log(`⚡ [DIGEST WORKER] Financial statements digest is due! Frequency: ${period}. Targets: ${config.recipients}`);
+          const { EmailService } = await import('./backend/src/services/emailService');
+          
+          await EmailService.sendFinancialDigest(config.recipients, period);
+          
+          await prisma.setting.upsert({
+            where: { key: 'AKPBF_DIGEST_LAST_SEND' },
+            update: { value: now.toISOString() },
+            create: {
+              key: 'AKPBF_DIGEST_LAST_SEND',
+              value: now.toISOString(),
+              desc: 'Timestamp for the last financial statements periodic digest delivery'
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('❌ [DIGEST SCHEDULER BACKGROUND ERROR]:', err);
+    }
+  }, 10 * 60 * 1000); // 10 minutes interval check
 }
 
 startServer();

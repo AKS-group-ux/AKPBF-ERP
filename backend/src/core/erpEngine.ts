@@ -4,6 +4,7 @@
  */
 
 import { getPrismaClient } from '../config/database';
+import { TwilioService, getTwilioConfig } from '../services/twilioService';
 import crypto from 'crypto';
 
 /**
@@ -101,27 +102,38 @@ export class ErpEngine {
     });
 
     if (existingCustomer) {
-      // Gracefully recover and return the existing record instead of throwing and failing
-      let subId = "";
-      if (existingCustomer.subscriptions && existingCustomer.subscriptions.length > 0) {
-        subId = existingCustomer.subscriptions[0].id;
-      } else {
-        const sub = await prisma.subscription.create({
-          data: {
-            customerId: existingCustomer.id,
-            planId: client.planId || "",
-            status: 'ACTIVE'
-          }
-        });
-        subId = sub.id;
+      console.log(`[RESILIENCE] Onboarding subscriber with existing phone/email: ${cleanPhone} / ${canonEmail}. Reusing and updating existing customer: ${existingCustomer.id}`);
+      
+      const subscriberId = existingCustomer.subscriberId || `ABJ-${Math.floor(100000 + Math.random() * 900000)}`;
+      
+      // Gracefully update search index info
+      const updatedCustomer = await prisma.customer.update({
+        where: { id: existingCustomer.id },
+        data: {
+          name: client.name,
+          email: canonEmail,
+          phone: cleanPhone,
+          address: client.address || existingCustomer.address,
+          status: 'ACTIVE'
+        }
+      });
+
+      // Dispatch welcome email asynchronously and gracefully (non-blocking)
+      try {
+        const { EmailService } = await import('../services/emailService');
+        await EmailService.sendWelcomeEmail(canonEmail, client.name, 'CLIENT', updatedCustomer.id);
+        console.log(`[ERP-ONBOARDING] Welcome email queued for existing subscriber.`);
+      } catch (welcomeErr) {
+        console.error('[ERP-ONBOARDING-EMAIL-ERROR] Non-blocking failure to send onboarding welcome email:', welcomeErr);
       }
+
       return {
-        success: true,
-        customerId: existingCustomer.id,
-        subscriberId: existingCustomer.subscriberId || `ABJ-${Math.floor(100000 + Math.random() * 900000)}`,
-        contractId: `CNT-2026-${(existingCustomer.subscriberId || "").replace('ABJ-', '') || "AUTO"}`,
-        subscriptionId: subId,
-        isExisting: true
+        id: updatedCustomer.id,
+        name: updatedCustomer.name,
+        email: updatedCustomer.email,
+        phone: updatedCustomer.phone,
+        subscriberId: subscriberId,
+        status: 'ACTIVE'
       };
     }
 
@@ -220,6 +232,37 @@ export class ErpEngine {
           status: 'SENT'
         }
       });
+
+      // Retrieve configured Twilio Welcome message and dispatch via TwilioService
+      let welcomeSms = "Bienvenue chez AKPBF. Votre compte a été créé avec succès.";
+      try {
+        const twilioConfig = await getTwilioConfig();
+        if (twilioConfig.templateWelcome) {
+          welcomeSms = twilioConfig.templateWelcome
+            .replace('{name}', client.name)
+            .replace('{contractId}', contractId)
+            .replace('{address}', client.address || '')
+            .replace('{binType}', client.binType || '');
+        }
+      } catch (confErr) {
+        console.warn('Failed parsing Twilio settings for Welcome message, using default:', confErr);
+      }
+
+      try {
+        await TwilioService.enqueueSms(client.phone, welcomeSms, 'BIENVENUE', customer.id);
+        console.log(`[ERP-ONBOARDING] Welcome SMS enqueued for ${client.phone}`);
+      } catch (smsErr: any) {
+        console.error('[ERP-ONBOARDING] Welcome SMS enqueue failed:', smsErr.message);
+      }
+
+      // Dispatch professional HTML email asynchronously (non-blocking)
+      try {
+        const { EmailService } = await import('../services/emailService');
+        await EmailService.sendWelcomeEmail(client.email.trim().toLowerCase(), client.name, 'CLIENT', customer.id);
+        console.log(`[ONBOARDING] Welcome email dispatched successfully to new citizen: ${client.email}`);
+      } catch (welcomeErr) {
+        console.error('[ONBOARDING-EMAIL-ERROR] Non-blocking failure to send onboarding welcome email:', welcomeErr);
+      }
 
       // Push custom logs unifier
       const notifSetting = await tx.setting.findUnique({ where: { key: 'AKPBF_ERP_NOTIF_LOGS' } });
@@ -520,6 +563,26 @@ export class ErpEngine {
         }
       });
 
+      // Retrieve configured Twilio subscription reactivated/payment message pattern and dispatch
+      let reactivationSms = `AKPBF : Versement de ${payment.amountPaid.toLocaleString()} FCFA bien reçu (Reçu: ${nextReceiptNo}). Votre abonnement est réactivé.`;
+      try {
+        const twilioConfig = await getTwilioConfig();
+        if (twilioConfig.templateAbonnement) {
+          reactivationSms = twilioConfig.templateAbonnement
+            .replace('{planName}', 'Salubrité Municipale')
+            .replace('{statusEvent}', `RÉACTIVÉ (Paiement de ${payment.amountPaid.toLocaleString()} FCFA reçu, n° ${nextReceiptNo})`);
+        }
+      } catch (confErr) {
+        console.warn('Failed parsing templateAbonnement for reactivation, using default:', confErr);
+      }
+
+      try {
+        await TwilioService.enqueueSms(customer!.phone, reactivationSms, 'RÉACTIVATION_ABONNEMENT', customer!.id);
+        console.log(`[PAYMENT] Reactivation/payment receipt SMS enqueued for ${customer!.phone}`);
+      } catch (smsErr: any) {
+        console.error('[PAYMENT] Reactivation SMS enqueue failed:', smsErr.message);
+      }
+
       return {
         success: true,
         receiptId: nextReceiptNo,
@@ -666,6 +729,26 @@ export class ErpEngine {
         }
       });
 
+      // Get the configured Twilio subscription suspended message pattern and dispatch
+      let suspensionSms = `AKPBF Salubrité : Votre abonnement est suspendu pour non-paiement de redevance.`;
+      try {
+        const twilioConfig = await getTwilioConfig();
+        if (twilioConfig.templateAbonnement) {
+          suspensionSms = twilioConfig.templateAbonnement
+            .replace('{planName}', 'Salubrité Municipale')
+            .replace('{statusEvent}', 'SUSPENDU (Impayé)');
+        }
+      } catch (confErr) {
+        console.warn('Failed parsing templateAbonnement for suspension, using default:', confErr);
+      }
+
+      try {
+        await TwilioService.enqueueSms(customer.phone, suspensionSms, 'SUSPENSION_ABONNEMENT', customer.id);
+        console.log(`[SUSPEND] Suspension SMS enqueued for ${customer.phone}`);
+      } catch (smsErr: any) {
+        console.error('[SUSPEND] Suspension SMS enqueue failed:', smsErr.message);
+      }
+
       return { success: true, customerId: customer.id, status: 'SUSPENDED' };
     });
   }
@@ -697,6 +780,30 @@ export class ErpEngine {
           status: col.status
         }
       });
+
+      // Send real-time collection SMS to bin.customer via TwilioService
+      if (bin.customer && bin.customer.phone) {
+        let collectionSms = `AKPBF : Votre bac ${bin.qrCode} a été collecté (${col.weight || 0}kg). Merci !`;
+        try {
+          const twilioConfig = await getTwilioConfig();
+          if (twilioConfig.templateCollecte) {
+            collectionSms = twilioConfig.templateCollecte
+              .replace('{binCode}', bin.qrCode)
+              .replace('{weight}', String(col.weight || 0))
+              .replace('{statusEvent}', col.status === 'COLLECTED' ? 'RELEVÉ ET VIDÉ' : col.status);
+          }
+        } catch (confErr) {
+          console.warn('Failed parsing templateCollecte, using default:', confErr);
+        }
+
+        try {
+          // Fire as enqueued background task so it runs safely
+          await TwilioService.enqueueSms(bin.customer.phone, collectionSms, 'COLLECTE_BAC', bin.customer.id);
+          console.log(`[COLLECTION] Collection confirmation SMS enqueued for ${bin.customer.phone}`);
+        } catch (smsErr: any) {
+          console.error('[COLLECTION] Collection SMS enqueue failed:', smsErr.message);
+        }
+      }
 
       // Trigger bin fillLevel reset on successful emptying
       const previousLevel = bin.fillLevel;

@@ -31,8 +31,8 @@ function getTransporter(): nodemailer.Transporter {
     // Configure production SMTP using Zoho Mail specifications
     transporterInstance = nodemailer.createTransport({
       host: ENV.ZOHO_SMTP_HOST,
-      port: ENV.ZOHO_SMTP_PORT,
-      secure: ENV.ZOHO_SMTP_SECURE, // true for port 465, false for 587
+      port: Number(ENV.ZOHO_SMTP_PORT) || 465,
+      secure: ENV.ZOHO_SMTP_SECURE === true || Number(ENV.ZOHO_SMTP_PORT) === 465, // true for port 465, false for 587
       auth: {
         user: ENV.ZOHO_SMTP_USER,
         pass: ENV.ZOHO_SMTP_PASS || 'faked_app_password_for_sandbox',
@@ -43,6 +43,49 @@ function getTransporter(): nodemailer.Transporter {
     });
   }
   return transporterInstance;
+}
+
+/**
+ * Checks for custom SMTP configuration in the Setting database table.
+ * If active and credentials exist, instantiates a custom transporter to support sending real emails.
+ */
+async function getDynamicTransporter(): Promise<{ transporter: nodemailer.Transporter; senderUser: string; senderFromName: string }> {
+  try {
+    const prisma = getPrismaClient();
+    const smtpSetting = await prisma.setting.findUnique({
+      where: { key: 'AKPBF_SMTP_CONFIG' }
+    });
+    if (smtpSetting) {
+      const config = JSON.parse(smtpSetting.value);
+      if (config && config.enabled && config.pass && config.user) {
+        const customTransporter = nodemailer.createTransport({
+          host: config.host || 'smtp.zoho.com',
+          port: Number(config.port) || 465,
+          secure: config.secure === true || config.secure === 'true' || Number(config.port) === 465,
+          auth: {
+            user: config.user,
+            pass: config.pass
+          },
+          tls: {
+            rejectUnauthorized: false
+          }
+        });
+        return {
+          transporter: customTransporter,
+          senderUser: config.user,
+          senderFromName: config.fromName || ENV.ZOHO_FROM_NAME
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('[SMTP OVERRIDE DB LOOKUP WARNING] Custom SMTP settings failed to load, using environment defaults.', e);
+  }
+
+  return {
+    transporter: getTransporter(),
+    senderUser: ENV.ZOHO_SMTP_USER,
+    senderFromName: ENV.ZOHO_FROM_NAME
+  };
 }
 
 export const EmailService = {
@@ -134,10 +177,10 @@ export const EmailService = {
     console.log(`[EMAIL DISPATCH] Attempt ${item.attempts}/${item.maxAttempts} for [${item.id}] targeting ${item.to}`);
 
     try {
-      const transporter = getTransporter();
+      const { transporter, senderUser, senderFromName } = await getDynamicTransporter();
       
-      // If we are in dev/preview sandbox and SMTP password is dummy, log email to console & simulate delay
-      const isMockMode = !ENV.ZOHO_SMTP_PASS;
+      // If we are in dev/preview sandbox and SMTP password is dummy and no custom SMTP, mock send
+      const isMockMode = !ENV.ZOHO_SMTP_PASS && senderUser === ENV.ZOHO_SMTP_USER;
       if (isMockMode) {
         await new Promise(resolve => setTimeout(resolve, 600));
         console.log('--------------------------------------------------');
@@ -148,7 +191,7 @@ export const EmailService = {
       } else {
         // Real SMTP Relay delivery
         await transporter.sendMail({
-          from: `"${ENV.ZOHO_FROM_NAME}" <${ENV.ZOHO_SMTP_USER}>`,
+          from: `"${senderFromName}" <${senderUser}>`,
           to: item.to,
           subject: item.subject,
           html: item.htmlContent,
@@ -332,38 +375,97 @@ export const EmailService = {
    */
 
   // 1. Email de bienvenue (Welcome Email)
-  async sendWelcomeEmail(to: string, name: string, customerId?: string): Promise<string> {
-    const subject = 'Bienvenue chez AKPBF - Portail Citoyen d\'Assainissement';
+  async sendWelcomeEmail(to: string, name: string, role: string = 'CLIENT', customerId?: string): Promise<string> {
+    const subject = 'Bienvenue chez AKPBF - Votre compte ERP est validé';
+    const portalUrl = ENV.DATABASE_URL ? 'https://akpbf.com/portal' : '#';
     const body = `
-      <div class="badge">BIENVENUE</div>
+      <div style="text-align: center; margin-bottom: 25px;">
+        <div style="display: inline-block; width: 60px; height: 60px; line-height: 60px; border-radius: 16px; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; font-family: monospace; font-size: 24px; font-weight: 900; text-align: center; box-shadow: 0 4px 10px rgba(5, 150, 105, 0.2);">
+          AK
+        </div>
+      </div>
+      <div class="badge">COMPTE ACTIF / BIENVENUE</div>
       <h2>Bonjour ${name},</h2>
-      <p>Nous sommes ravis de vous compter parmi les citoyens abonnés d'AKPBF d'Abidjan. Notre engagement principal consiste à garder notre capitale propre et salubre.</p>
+      <p>Nous sommes particulièrement ravis de vous souhaiter la bienvenue sur la plateforme ERP AKPBF d'Abidjan. Notre alliance d'action vise à préserver la salubrité et l'écosystème environnemental de notre capitale.</p>
       
-      <p>Grâce à votre inscription, vous disposez d'un accès sécurisé complet au <strong>Portail Citoyen</strong> où vous pourrez :</p>
+      <p>Votre compte sécurisé a été mis en service avec le rôle système suivant : <strong style="color: #059669; background-color: #f0fdf4; padding: 2px 8px; border-radius: 4px;">${role}</strong>.</p>
+
+      <p>Grâce à votre inscription, vous disposez d'un accès complet au <strong>Portail AKPBF</strong> où vous pourrez exécuter toutes vos opérations :</p>
       <ul>
-        <li>Régler vos cotisations d'assainissement en ligne par Mobile Money (Orange, Moov, Wave, Telecel)</li>
-        <li>Télécharger vos factures périodiques d'assainissement au format PDF</li>
-        <li>Déclarer des incidents ou soumettre des réclamations vis-à-vis de l'état de levée des ordures</li>
-        <li>Visualiser en temps réel le passage géolocalisé des camions de collecte</li>
+        <li>Règlement sécurisé des cotisations d'assainissement par Mobile Money (Orange, Moov, Wave, Telecel)</li>
+        <li>Suivi en temps réel de la géolocalisation des camions collecteurs d'Abidjan</li>
+        <li>Téléchargement immédiat de factures, contrats officiels et quittances de paiement en PDF</li>
+        <li>Déclaration interactive d'incidents et de non-levées de bacs connectés</li>
       </ul>
 
       <div class="info-block">
-        <strong>Identifiant Unique d'Abonné (Subscriber ID) :</strong><br>
-        Utilisez votre numéro d'abonné citoyen ou votre adresse e-mail pour vous connecter directement au portail d'Abidjan.
+        <strong>Identifiants de Connexion :</strong><br>
+        • Nom d'utilisateur : <strong>${to}</strong><br>
+        • Rôle : <strong>${role}</strong><br>
+        <em>Veuillez vous authentifier en utilisant votre adresse e-mail ainsi que votre mot de passe pour accéder en toute sécurité à vos outils AKPBF.</em>
       </div>
 
-      <a href="${ENV.DATABASE_URL ? 'https://akpbf.com/portal' : '#'}" class="button">Se connecter au Portail</a>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${portalUrl}" class="button" style="color: #ffffff !important; text-decoration: none;">Accéder au Portail AKPBF</a>
+      </div>
 
-      <p>Merci pour votre civisme environnemental pour la Côte d'Ivoire.</p>
+      <p>Une question ou besoin d'une assistance technique ? Notre équipe de support citoyen d'Abidjan est disponible 24h/7j pour vous accompagner :</p>
+      <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; line-height: 1.8;">
+        📧 Email : <strong>support@akpbf.com</strong><br>
+        📞 Téléphone d'Assistance : <strong>+225 05 00 00 00 01</strong>
+      </div>
+
+      <p>Merci pour votre implication et votre civisme.</p>
       
       <div class="signature">
         Cordialement,<br>
         <strong>Moustapha Sylla</strong><br>
-        Directeur des Services Citoyens, AKPBF
+        Directeur des Services Clients & DSI, AKPBF
       </div>
     `;
     const html = this.buildMasterTemplate(subject, body);
     return this.enqueueEmail(to, subject, html, 'WELCOME', customerId);
+  },
+
+  // Email de récupération (Forgot Password Email)
+  async sendForgotPasswordEmail(to: string, name: string, token: string): Promise<string> {
+    const subject = '[AKPBF] Demande de réinitialisation de mot de passe';
+    const appUrl = ENV.DATABASE_URL ? 'https://ais-dev-5fggc2ufvae435qusd4yba-575036587204.europe-west2.run.app' : 'https://ais-dev-5fggc2ufvae435qusd4yba-575036587204.europe-west2.run.app';
+    const resetUrl = `${appUrl}/login?mode=reset&token=${token}&email=${encodeURIComponent(to)}`;
+    const body = `
+      <div style="text-align: center; margin-bottom: 25px;">
+        <div style="display: inline-block; width: 60px; height: 60px; line-height: 60px; border-radius: 16px; background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: white; font-family: monospace; font-size: 24px; font-weight: 900; text-align: center; box-shadow: 0 4px 10px rgba(234, 88, 12, 0.2);">
+          AK
+        </div>
+      </div>
+      <div class="badge" style="background-color: #ffedd5; color: #ea580c;">SÉCURITÉ DU PORTAIL</div>
+      <h2>Bonjour ${name},</h2>
+      <p>Une demande de réinitialisation de votre mot de passe pour votre compte AKPBF a été initiée aujourd'hui.</p>
+      
+      <p>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email en toute sécurité. Vos accès d'origine restent protégés et immuables.</p>
+
+      <div class="info-block" style="border-left-color: #ea580c;">
+        <strong>Votre Jeton de Récupération Secret :</strong><br>
+        <code style="font-size: 18px; font-weight: bold; letter-spacing: 2px; color: #ea580c; background-color: #ffedd5; padding: 6px 12px; border-radius: 6px; display: inline-block; margin: 10px 0;">${token}</code><br>
+        <em>Ce jeton de réinitialisation à usage unique est strictement confidentiel. Il expirera dans un délai d'une (1) heure.</em>
+      </div>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${resetUrl}" class="button" style="color: #ffffff !important; text-decoration: none;">Réinitialiser mon mot de passe</a>
+      </div>
+
+      <p>Par mesure de sécurité, ne communiquez jamais ce jeton ou cet email de réinitialisation à un tiers. Nos agents ou collaborateurs techniques d'AKPBF ne vous le demanderont jamais.</p>
+      
+      <p>📧 Support Technique : <strong>support@akpbf.com</strong></p>
+
+      <div class="signature">
+        Cordialement,<br>
+        <strong>L'Équipe Sécurité AKPBF</strong><br>
+        Direction des Systèmes d'Information, AKPBF
+      </div>
+    `;
+    const html = this.buildMasterTemplate(subject, body);
+    return this.enqueueEmail(to, subject, html, 'PASSWORD_RESET');
   },
 
   // 2. Confirmation d'abonnement (Subscription Confirmation)
@@ -579,7 +681,7 @@ export const EmailService = {
 
   // 9. Notifications administratives (Admin Email Alerts)
   async sendAdminNotification(subject: string, htmlMessage: string): Promise<string> {
-    const adminEmail = 'admin@akpbf.com';
+    const adminEmail = 'groupaksservices@zohomail.com';
     const body = `
       <div class="badge" style="background-color: #3b82f6; color: #ffffff;">ALERTE SYSTÈME ADMIN</div>
       <h2>Notification Administrative d'Exploitation</h2>
@@ -593,5 +695,196 @@ export const EmailService = {
     `;
     const html = this.buildMasterTemplate(subject, body);
     return this.enqueueEmail(adminEmail, `[ADMIN SYSTEM] ${subject}`, html, 'ADMIN_NOTIF');
+  },
+
+  // 10. Digest financier d'exploitation périodique (Periodic Financial Statements Digest)
+  async sendFinancialDigest(
+    toEmail: string,
+    period: 'JOURNALIER' | 'HEBDOMADAIRE' | 'MENSUEL' | 'MANUEL' = 'MANUAL' as any
+  ): Promise<string> {
+    const subject = `[AKPBF ERP] Digest Financier Périodique : États Synthétiques SYSCOHADA (${period})`;
+    
+    // Dynamic import to bypass circular dependencies
+    const { AccountingService } = await import('../modules/accounting/services/accountingService');
+    const state = await AccountingService.getInstance().getAccountingState();
+    const { statements } = state;
+    const { trialBalance, incomeStatement, balanceSheet } = statements;
+    
+    // Key highlights
+    const totalSales = incomeStatement.totalProducts || 0;
+    const totalCharges = incomeStatement.totalCharges || 0;
+    const netResult = incomeStatement.netResult || 0;
+    const totalAssets = balanceSheet.totalAssets || 0;
+    const totalLiabilities = balanceSheet.totalEquitiesAndLiabilities || 0;
+    
+    // Build P&L table rows
+    let pnlTableRows = '';
+    incomeStatement.products.forEach((p: any) => {
+      pnlTableRows += `
+        <tr>
+          <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;"><strong>[${p.code}]</strong> ${p.name}</td>
+          <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; color: #047857; font-weight: bold;">+${Number(p.amount).toLocaleString()} FCFA</td>
+        </tr>
+      `;
+    });
+    
+    incomeStatement.charges.forEach((c: any) => {
+      pnlTableRows += `
+        <tr>
+          <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;"><strong>[${c.code}]</strong> ${c.name}</td>
+          <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; color: #be123c; font-weight: bold;">-${Number(c.amount).toLocaleString()} FCFA</td>
+        </tr>
+      `;
+    });
+
+    // Build Balance Sheet rows
+    let balanceSheetRows = '';
+    balanceSheet.assets.forEach((ast: any) => {
+      balanceSheetRows += `
+        <tr style="background-color: #fafdfb;">
+          <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;"><span style="color: #2563eb; font-weight: bold;">ACTIF:</span> [${ast.code}] ${ast.name}</td>
+          <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold;">${Number(ast.amount).toLocaleString()} FCFA</td>
+        </tr>
+      `;
+    });
+    balanceSheet.liabilities.forEach((l: any) => {
+      balanceSheetRows += `
+        <tr style="background-color: #fbfbfb;">
+          <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;"><span style="color: #4b5563; font-weight: bold;">PASSIF:</span> [${l.code}] ${l.name}</td>
+          <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold;">${Number(l.amount).toLocaleString()} FCFA</td>
+        </tr>
+      `;
+    });
+
+    // Build top 5 balances in trial balance to prevent gigantic emails
+    let trialBalanceRows = '';
+    const topAccounts = trialBalance.slice(0, 8);
+    topAccounts.forEach((acc: any) => {
+      trialBalanceRows += `
+        <tr>
+          <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: left;">[${acc.code}] ${acc.name}</td>
+          <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; color: #2563eb;">${Number(acc.debit).toLocaleString()}</td>
+          <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; color: #10b981;">${Number(acc.credit).toLocaleString()}</td>
+        </tr>
+      `;
+    });
+
+    const body = `
+      <div class="badge" style="background-color: #0d9488; color: #ffffff; display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: bold; margin-bottom: 20px;">
+        RAPPORT FINANCIER SYSCOHADA • ${period}
+      </div>
+      <h2>Synthèse des États Financiers de l'Exploitation</h2>
+      <p>Bonjour,</p>
+      <p>L'ERP AKPBF vous présente ci-dessous le relevé synthétique de l'exploitation réseau d'assainissement et salubrité publique d'Abidjan, Côte d'Ivoire. Ce rapport comptable est compilé en direct depuis les écritures imputées en base de données PostgreSQL.</p>
+      
+      <!-- KPI CARDS GRID -->
+      <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 25px; border-collapse: collapse; border: 0;">
+        <tr>
+          <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
+            <span style="font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Chiffre d'Affaires</span>
+            <div style="font-size: 20px; font-weight: 900; color: #047857; margin-top: 5px;">${totalSales.toLocaleString()} <span style="font-size: 11px; font-weight: normal; color: #10b981;">FCFA</span></div>
+          </td>
+          <td width="4%">&nbsp;</td>
+          <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
+            <span style="font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Charges d'Exercice</span>
+            <div style="font-size: 20px; font-weight: 900; color: #be123c; margin-top: 5px;">${totalCharges.toLocaleString()} <span style="font-size: 11px; font-weight: normal; color: #f43f5e;">FCFA</span></div>
+          </td>
+        </tr>
+        <tr><td colspan="3" style="height: 12px; font-size: 0; line-height: 0;">&nbsp;</td></tr>
+        <tr>
+          <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
+            <span style="font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Résultat Net</span>
+            <div style="font-size: 20px; font-weight: 900; color: ${netResult >= 0 ? '#0d9488' : '#e11d48'}; margin-top: 5px;">
+              ${netResult >= 0 ? '+' : ''}${netResult.toLocaleString()} <span style="font-size: 11px; font-weight: normal;">FCFA</span>
+            </div>
+          </td>
+          <td width="4%">&nbsp;</td>
+          <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px;">
+            <span style="font-size: 10px; color: #64748b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Équilibre Actif/Passif</span>
+            <div style="font-size: 14px; font-weight: bold; color: #334155; margin-top: 5px;">
+              Actif: <span style="color: #2563eb;">${totalAssets.toLocaleString()}</span><br>Passif: <span style="color: #4b5563;">${totalLiabilities.toLocaleString()}</span>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- P&L SECTION -->
+      <h3 style="border-bottom: 2px solid #0d9488; padding-bottom: 5px; color: #0f172a; margin-top: 25px; font-size: 15px;">📊 Compte de Résultat (P&L SYSCOHADA)</h3>
+      <table width="100%" cellspacing="0" cellpadding="8" style="border-collapse: collapse; font-size: 12px; margin-bottom: 25px; border: 1px solid #e2e8f0;">
+        <thead>
+          <tr style="background-color: #f8fafc;">
+            <th align="left" style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Compte d'Imputation & Libellé</th>
+            <th align="right" style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Solde Période (FCFA)</th>
+          </tr>
+        </thead>
+        <tbody style="color: #334155;">
+          ${pnlTableRows || '<tr><td colspan="2" align="center" style="padding: 12px; color: #94a3b8; border: 1px solid #e2e8f0;">Aucune écriture d\'échanges enregistrée</td></tr>'}
+        </tbody>
+        <tfoot>
+          <tr style="background-color: #f0fdf4; font-weight: bold; font-size: 13px;">
+            <td style="padding: 8px; border: 1px solid #e2e8f0;">Résultat d'Exploitation Général</td>
+            <td align="right" style="padding: 8px; border: 1px solid #e2e8f0; color: ${netResult >= 0 ? '#047857' : '#be123c'};">${netResult.toLocaleString()} FCFA</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- BALANCE SHEET SECTION -->
+      <h3 style="border-bottom: 2px solid #0284c7; padding-bottom: 5px; color: #0f172a; margin-top: 25px; font-size: 15px;">🏛️ Bilan Général Synthétique Actif / Passif</h3>
+      <table width="100%" cellspacing="0" cellpadding="8" style="border-collapse: collapse; font-size: 12px; margin-bottom: 25px; border: 1px solid #e2e8f0;">
+        <thead>
+          <tr style="background-color: #f8fafc;">
+            <th align="left" style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Comptes de Structure & Immeubles</th>
+            <th align="right" style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Solde Comptable</th>
+          </tr>
+        </thead>
+        <tbody style="color: #334155;">
+          ${balanceSheetRows || '<tr><td colspan="2" align="center" style="padding: 12px; color: #94a3b8; border: 1px solid #e2e8f0;">Aucun mouvement de structure ou capital social</td></tr>'}
+        </tbody>
+        <tfoot>
+          <tr style="font-weight: bold; font-size: 13px;">
+            <td style="padding: 8px; border: 1px solid #e2e8f0; background-color: #eff6ff; color: #1e40af;">MOUVEMENTS DE L'ACTIF PRINCIPAL</td>
+            <td align="right" style="padding: 8px; border: 1px solid #e2e8f0; background-color: #eff6ff; color: #1e40af;">${totalAssets.toLocaleString()} FCFA</td>
+          </tr>
+          <tr style="font-weight: bold; font-size: 13px;">
+            <td style="padding: 8px; border: 1px solid #e2e8f0; background-color: #f8fafc; color: #374151;">MOUVEMENTS DES CAPITAUX PROPRES & DETTES</td>
+            <td align="right" style="padding: 8px; border: 1px solid #e2e8f0; background-color: #f8fafc; color: #374151;">${totalLiabilities.toLocaleString()} FCFA</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- BALANCE REPORT -->
+      <h3 style="border-bottom: 2px solid #64748b; padding-bottom: 5px; color: #0f172a; margin-top: 25px; font-size: 15px;">⚖️ Aperçu de la Balance Générale des Comptes</h3>
+      <table width="100%" cellspacing="0" cellpadding="6" style="border-collapse: collapse; font-size: 11px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+        <thead>
+          <tr style="background-color: #f8fafc;">
+            <th align="left" style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold;">Compte & Intitulé</th>
+            <th align="right" style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold;">Mvt Débit (FCFA)</th>
+            <th align="right" style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold;">Mvt Crédit (FCFA)</th>
+          </tr>
+        </thead>
+        <tbody style="color: #475569;">
+          ${trialBalanceRows || '<tr><td colspan="3" align="center" style="padding: 10px; color: #94a3b8; border: 1px solid #e2e8f0;">Aucun compte dans la balance générale</td></tr>'}
+        </tbody>
+      </table>
+
+      <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 8px; font-size: 11px; color: #78350f; margin-bottom: 25px; line-height: 1.5;">
+        <strong>Conformité Réglementaire SYSCOHADA :</strong> Ce relevé d'exploitation et de synthèse est édité sous le référentiel comptable SYSCOHADA de l'UEMOA pour l'exploitation d'assainissement d'eau, de vidanges de fosses saines, de logistiques rattachées et de traitement de boues organiques.
+      </div>
+
+      <div class="signature">
+        Direction Générale des Services de Trésorerie,<br>
+        <strong>AKPBF Services Abidjan, District d'Abidjan CI</strong>
+      </div>
+    `;
+
+    const html = this.buildMasterTemplate(subject, body);
+    
+    // Support sending to multiple recipients (comma-separated list)
+    const emailsList = toEmail.split(',').map((e: string) => e.trim()).filter(Boolean);
+    let lastId = '';
+    for (const email of emailsList) {
+      lastId = await this.enqueueEmail(email, subject, html, `FINANCIAL_DIGEST_${period}`);
+    }
+    return lastId;
   }
 };

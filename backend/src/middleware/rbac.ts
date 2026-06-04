@@ -10,6 +10,7 @@ export enum UserRole {
   CAISSIER = 'CAISSIER',
   COMPTABLE = 'COMPTABLE',
   ADMIN = 'ADMINISTRATEUR',
+  RECOUVREMENT = 'AGENT_RECOUVREMENT',
   SUPER_ADMIN = 'SUPER_ADMIN'
 }
 
@@ -18,6 +19,7 @@ const ROLE_PEER_LEVELS: Record<UserRole, number> = {
   [UserRole.CLIENT]: 1,
   [UserRole.AGENT]: 2,
   [UserRole.CHAUFFEUR]: 2,
+  [UserRole.RECOUVREMENT]: 3,
   [UserRole.CAISSIER]: 3,
   [UserRole.COMPTABLE]: 4,
   [UserRole.SUPERVISEUR]: 5,

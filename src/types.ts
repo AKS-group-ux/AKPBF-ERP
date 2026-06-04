@@ -155,7 +155,7 @@ export interface Emplacement {
   collectionFrequency: string; // "2 fois par semaine", "Quotidien", etc.
 }
 
-export type UserRole = 'ADMINISTRATEUR' | 'COMPTABLE' | 'SUPERVISEUR' | 'CHAUFFEUR' | 'AGENT' | 'CLIENT' | 'CAISSIER';
+export type UserRole = 'ADMINISTRATEUR' | 'COMPTABLE' | 'SUPERVISEUR' | 'CHAUFFEUR' | 'AGENT' | 'CLIENT' | 'CAISSIER' | 'AGENT_RECOUVREMENT';
 
 export interface User {
   id: string;
@@ -165,6 +165,7 @@ export interface User {
   phone?: string;
   subscriberId?: string; // used for clients
   isActive?: boolean;
+  assignedZones?: string[];
 }
 
 export interface AuthSession {

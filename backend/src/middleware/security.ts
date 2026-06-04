@@ -22,7 +22,6 @@ export function sqlAndXssShield(req: Request, res: Response, next: NextFunction)
   if (!req.path.startsWith('/api')) {
     return next();
   }
-  const sqlPattern = /('|--|#|\/\*|\*\/|union|select|insert|delete|update|drop|alter|where|and|or|like)/i;
   const xssPattern = /(<script|<iframe|<object|<embed|javascript:|onclick|onerror|onmouseover)/i;
 
   const inspectValue = (val: any): boolean => {
@@ -39,16 +38,42 @@ export function sqlAndXssShield(req: Request, res: Response, next: NextFunction)
   };
 
   const sqlResultCheck = (str: string): boolean => {
-    // Detect typical SQL injection constructs & raw scripts
-    if (sqlPattern.test(str)) {
-      // Allow standard parameters, but intercept dangerous commands combinations
-      if (str.includes("'") || str.includes("--") || str.includes(";") || (str.toLowerCase().includes("select") && str.toLowerCase().includes("from"))) {
+    // 1. Check for real SQL Injection indicators rather than substring words with semicolons
+    // Detect typical SQL comment symbols: double dash (--) or hashtags (#) with spaces/ends
+    if (str.includes('--') || str.includes('/*')) {
+      const sqlCommentPattern = /(?:\s+--|--\s*|--$|\/\*[\s\S]*?\*\/)/;
+      if (sqlCommentPattern.test(str)) {
         return true;
       }
     }
+
+    // 2. Tautologies e.g. ' OR 1=1 or " OR ""="
+    const tautologyPattern = /['" ]\s*(?:or|and)\s+[\w'."]+\s*=\s*[\w'."]+/i;
+    if (tautologyPattern.test(str)) {
+      return true;
+    }
+
+    // 3. Command chains (semicolon followed by SQL statement keyword, avoiding CSS style semicolons!)
+    // CSS uses semicolons like "color: red; border: none;". This does not match SQL command keywords.
+    const sqlChainingPattern = /;\s*(select|update|insert|delete|drop|alter|grant|create|truncate)\b/i;
+    if (sqlChainingPattern.test(str)) {
+      return true;
+    }
+
+    // 4. Union Select, Drop Table, or raw Select From signatures
+    const unionSelectPattern = /\bunion\s+(all\s+)?select\b/i;
+    const dropTablePattern = /\bdrop\s+(table|database|view|procedure|function|index)\b/i;
+    const deleteFromPattern = /\bdelete\s+from\b/i;
+
+    if (unionSelectPattern.test(str) || dropTablePattern.test(str) || deleteFromPattern.test(str)) {
+      return true;
+    }
+
+    // 5. Check for basic XSS injection
     if (xssPattern.test(str)) {
       return true;
     }
+
     return false;
   };
 

@@ -141,5 +141,134 @@ export const EmailController = {
       console.error('[TEST EMAIL DISPATCH ERROR]:', err);
       res.status(500).json({ error: `Échec d'envoi du test email sécurisé : ${err.message || err}` });
     }
+  },
+
+  /**
+   * Retrieves current custom SMTP overrides and periodic financial digest schedule settings.
+   */
+  async getDigestSettings(req: Request, res: Response): Promise<void> {
+    try {
+      const prisma = getPrismaClient();
+      
+      const smtpSetting = await prisma.setting.findUnique({ where: { key: 'AKPBF_SMTP_CONFIG' } });
+      const digestSetting = await prisma.setting.findUnique({ where: { key: 'AKPBF_DIGEST_CONFIG' } });
+
+      const smtpConfig = smtpSetting ? JSON.parse(smtpSetting.value) : {
+        enabled: false,
+        host: 'smtp.zoho.com',
+        port: '465',
+        secure: true,
+        user: '',
+        pass: '',
+        fromName: 'AKPBF ERP Assainissement'
+      };
+
+      const digestConfig = digestSetting ? JSON.parse(digestSetting.value) : {
+        enabled: false,
+        recipients: 'groupaksservices@gmail.com',
+        period: 'HEBDOMADAIRE',
+        dayOfWeek: '1', // Monday
+        timeOfDay: '08:00'
+      };
+
+      // Strip password from response for frontend security but inform if configured
+      const hasPassword = !!smtpConfig.pass;
+      if (hasPassword) {
+        smtpConfig.pass = '********';
+      }
+
+      res.json({
+        success: true,
+        smtpConfig,
+        digestConfig,
+        hasPassword
+      });
+    } catch (err: any) {
+      console.error('[EMAIL CONTROLLER SETTINGS GET ERROR]:', err);
+      res.status(500).json({ error: 'Impossible de récupérer la configuration des digests.' });
+    }
+  },
+
+  /**
+   * Saves custom SMTP client profiles and scheduler settings to the Setting database tables.
+   */
+  async saveDigestSettings(req: Request, res: Response): Promise<void> {
+    try {
+      const prisma = getPrismaClient();
+      const { smtpConfig, digestConfig } = req.body;
+
+      if (smtpConfig) {
+        // Resolve existing settings to avoid overwriting password placeholder with ********
+        const existingSmtp = await prisma.setting.findUnique({ where: { key: 'AKPBF_SMTP_CONFIG' } });
+        let resolvedPassword = smtpConfig.pass;
+        if (existingSmtp && smtpConfig.pass === '********') {
+          const parsed = JSON.parse(existingSmtp.value);
+          resolvedPassword = parsed.pass;
+        }
+
+        const cleanSmtp = {
+          ...smtpConfig,
+          pass: resolvedPassword
+        };
+
+        await prisma.setting.upsert({
+          where: { key: 'AKPBF_SMTP_CONFIG' },
+          update: { value: JSON.stringify(cleanSmtp) },
+          create: {
+            key: 'AKPBF_SMTP_CONFIG',
+            value: JSON.stringify(cleanSmtp),
+            desc: 'Configuration personnalisée du serveur SMTP d\'expédition (Zoho, Gmail...)'
+          }
+        });
+      }
+
+      if (digestConfig) {
+        await prisma.setting.upsert({
+          where: { key: 'AKPBF_DIGEST_CONFIG' },
+          update: { value: JSON.stringify(digestConfig) },
+          create: {
+            key: 'AKPBF_DIGEST_CONFIG',
+            value: JSON.stringify(digestConfig),
+            desc: 'Abonnement et planification du rapport de digest financier périodique SYSCOHADA'
+          }
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Les préférences d\'expédition de salubrité et SMTP ont été enregistrées sur PostgreSQL.'
+      });
+    } catch (err: any) {
+      console.error('[EMAIL CONTROLLER SETTINGS SAVE ERROR]:', err);
+      res.status(500).json({ error: 'Impossible de sauvegarder vos préférences d\'envoi.' });
+    }
+  },
+
+  /**
+   * Instantly compiles and fires a real physical Syscohada statement report email.
+   */
+  async sendFinancialDigest(req: Request, res: Response): Promise<void> {
+    try {
+      const { recipients, period } = req.body;
+
+      if (!recipients) {
+        res.status(400).json({ error: 'Veuillez renseigner au moins une adresse email de destination.' });
+        return;
+      }
+
+      const cleanRecipients = recipients.trim();
+      const cleanPeriod = period || 'MANUEL';
+
+      const emailId = await EmailService.sendFinancialDigest(cleanRecipients, cleanPeriod);
+
+      res.json({
+        success: true,
+        message: `Synthèse financière d'assainissement envoyée avec succès à [${cleanRecipients}] sous la référence ${emailId}.`,
+        emailId
+      });
+    } catch (err: any) {
+      console.error('[EMAIL DISPATCH DIGEST ERROR]:', err);
+      res.status(500).json({ error: `Échec compta de l'édition du digest : ${err.message || err}` });
+    }
   }
 };

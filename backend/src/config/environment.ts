@@ -17,4 +17,9 @@ export const ENV = {
   ZOHO_SMTP_PASS: process.env.ZOHO_SMTP_PASS || '',
   ZOHO_SMTP_SECURE: process.env.ZOHO_SMTP_SECURE === 'false' ? false : true,
   ZOHO_FROM_NAME: process.env.ZOHO_FROM_NAME || 'AKPBF ERP Assainissement',
+
+  // Twilio Operational Credentials
+  TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || '',
+  TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || '',
+  TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || '',
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Trash2, 
@@ -28,13 +28,16 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SubscriptionPlan, Subscriber } from '../types';
+import ThemeToggle from './ThemeToggle';
 
 interface LandingPageProps {
   plans: SubscriptionPlan[];
   subscribers: Subscriber[];
-  onAddSubscriber: (sub: any) => void;
+  onAddSubscriber: (sub: any) => Promise<void>;
   onLogin: (sessionUser: any) => void;
   onAddNotificationLogs?: (notif: any) => void;
+  theme?: 'light' | 'dark';
+  setTheme?: (theme: 'light' | 'dark') => void;
 }
 
 export default function LandingPage({ 
@@ -42,7 +45,9 @@ export default function LandingPage({
   subscribers, 
   onAddSubscriber, 
   onLogin,
-  onAddNotificationLogs
+  onAddNotificationLogs,
+  theme,
+  setTheme
 }: LandingPageProps) {
   const navigate = useNavigate();
   // Navigation states
@@ -71,10 +76,19 @@ export default function LandingPage({
   const [compLoading, setCompLoading] = useState(false);
   const [compSuccess, setCompSuccess] = useState<string | null>(null);
 
+  // Track programmatic scrolling to prevent Scroll Spy feedback loops
+  const isScrollingProgrammatically = useRef(false);
+  const scrollProgrammaticTimeoutRef = useRef<any>(null);
+
   // Auto scroll to section helper
   const scrollToSection = (id: string, tabName: any) => {
     setActiveTab(tabName);
     setMobileMenuOpen(false);
+    
+    isScrollingProgrammatically.current = true;
+    if (scrollProgrammaticTimeoutRef.current) {
+      clearTimeout(scrollProgrammaticTimeoutRef.current);
+    }
     
     // Slight delay of 150ms to let mobile menu collapse and layout stabilize
     setTimeout(() => {
@@ -88,14 +102,123 @@ export default function LandingPage({
           top: offsetPosition,
           behavior: 'smooth'
         });
+
+        // Release lock after smooth scroll completes
+        scrollProgrammaticTimeoutRef.current = setTimeout(() => {
+          isScrollingProgrammatically.current = false;
+        }, 1000);
+      } else {
+        isScrollingProgrammatically.current = false;
       }
     }, 150);
   };
+
+  // Scroll Spy to track active section based on scroll position
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isScrollingProgrammatically.current) return;
+
+      const sectionIds = [
+        { id: 'hero-section', tab: 'home' },
+        { id: 'services-section', tab: 'services' },
+        { id: 'pricing-section', tab: 'pricing' },
+        { id: 'zones-section', tab: 'zones' },
+        { id: 'registration-section', tab: 'register' },
+        { id: 'complaint-section', tab: 'complaint' }
+      ];
+
+      const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+      const headerHeight = 90;
+      let currentSection = 'home';
+
+      for (const section of sectionIds) {
+        const el = document.getElementById(section.id);
+        if (el) {
+          const top = el.offsetTop - headerHeight - 120;
+          const height = el.offsetHeight;
+          if (scrollPosition >= top && scrollPosition < top + height) {
+            currentSection = section.tab;
+          }
+        }
+      }
+
+      // Special handling for being near the bottom of the page
+      if (window.innerHeight + scrollPosition >= document.documentElement.scrollHeight - 120) {
+        currentSection = 'complaint';
+      }
+
+      setActiveTab(currentSection as any);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Run initially
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollProgrammaticTimeoutRef.current) {
+        clearTimeout(scrollProgrammaticTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Prepopulate form if plan selected
   const handleSelectPlan = (planId: string) => {
     setRegPlanId(planId);
     scrollToSection('registration-section', 'register');
+  };
+
+  const renderDesktopNavLink = (sectionId: string, tabId: 'home' | 'services' | 'pricing' | 'zones' | 'register' | 'complaint', label: string) => {
+    const isActive = activeTab === tabId;
+    return (
+      <button
+        type="button"
+        onClick={() => scrollToSection(sectionId, tabId)}
+        className="px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 relative select-none cursor-pointer flex items-center justify-center min-w-[90px]"
+        style={{ WebkitTapHighlightColor: 'transparent' }}
+      >
+        <span className={`relative z-10 transition-colors duration-300 ${
+          isActive 
+            ? 'text-emerald-700 dark:text-emerald-400 font-extrabold scale-105' 
+            : 'text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold'
+        }`}>
+          {label}
+        </span>
+        {isActive && (
+          <motion.span 
+            layoutId="activePublicTabBackground"
+            className="absolute inset-0 bg-emerald-100/40 dark:bg-emerald-950/60 rounded-xl border border-emerald-500/10 dark:border-emerald-400/15 border-b-2 border-b-emerald-600 dark:border-b-emerald-400 shadow-xs -z-10"
+            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+          />
+        )}
+      </button>
+    );
+  };
+
+  const renderMobileNavLink = (sectionId: string, tabId: 'home' | 'services' | 'pricing' | 'zones' | 'register' | 'complaint', label: string) => {
+    const isActive = activeTab === tabId;
+    return (
+      <button 
+        type="button"
+        onClick={() => scrollToSection(sectionId, tabId)}
+        className="w-full text-left py-2.5 px-4 text-xs font-bold rounded-lg transition-all duration-200 block select-none cursor-pointer relative"
+      >
+        <span className={`relative z-10 transition-colors duration-350 ${
+          isActive 
+            ? 'text-emerald-700 dark:text-emerald-400 font-black' 
+            : 'text-slate-600 dark:text-slate-300 hover:text-emerald-500 font-semibold'
+        }`}>
+          {label}
+        </span>
+        {isActive && (
+          <motion.span 
+            layoutId="activeMobileTabBackground"
+            className="absolute inset-0 bg-emerald-50 dark:bg-emerald-950/45 rounded-xl border-l-4 border-l-emerald-500 dark:border-l-emerald-400 -z-10 shadow-xs"
+            transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+          />
+        )}
+      </button>
+    );
   };
 
   // Submit subscriber registration
@@ -149,21 +272,8 @@ export default function LandingPage({
         unpaidDays: 0
       };
 
-      const response = await fetch('/api/erp/subscribers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newSub)
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Une erreur est survenue lors de l'enregistrement.");
-      }
-
       // Success
-      onAddSubscriber(newSub);
+      await onAddSubscriber(newSub);
 
       // Log notification
       if (onAddNotificationLogs) {
@@ -254,58 +364,19 @@ export default function LandingPage({
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
-            <button 
-              onClick={() => scrollToSection('hero-section', 'home')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition ${
-                activeTab === 'home' ? 'text-emerald-500' : 'text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400'
-              }`}
-            >
-              Accueil
-            </button>
-            <button 
-              onClick={() => scrollToSection('services-section', 'services')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition ${
-                activeTab === 'services' ? 'text-emerald-500' : 'text-slate-600 dark:text-slate-300 hover:text-emerald-500'
-              }`}
-            >
-              Nos Services
-            </button>
-            <button 
-              onClick={() => scrollToSection('pricing-section', 'pricing')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition ${
-                activeTab === 'pricing' ? 'text-emerald-500' : 'text-slate-600 dark:text-slate-300 hover:text-emerald-500'
-              }`}
-            >
-              Forfaits
-            </button>
-            <button 
-              onClick={() => scrollToSection('zones-section', 'zones')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition ${
-                activeTab === 'zones' ? 'text-emerald-500' : 'text-slate-600 dark:text-slate-300 hover:text-emerald-500'
-              }`}
-            >
-              Secteurs & Stats
-            </button>
-            <button 
-              onClick={() => scrollToSection('registration-section', 'register')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition ${
-                activeTab === 'register' ? 'text-emerald-500' : 'text-slate-600 dark:text-slate-300 hover:text-emerald-500'
-              }`}
-            >
-              S'inscrire
-            </button>
-            <button 
-              onClick={() => scrollToSection('complaint-section', 'complaint')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition ${
-                activeTab === 'complaint' ? 'text-emerald-500' : 'text-slate-600 dark:text-slate-300 hover:text-emerald-500'
-              }`}
-            >
-              Réclamation
-            </button>
+            {renderDesktopNavLink('hero-section', 'home', 'Accueil')}
+            {renderDesktopNavLink('services-section', 'services', 'Nos Services')}
+            {renderDesktopNavLink('pricing-section', 'pricing', 'Forfaits')}
+            {renderDesktopNavLink('zones-section', 'zones', 'Secteurs & Stats')}
+            {renderDesktopNavLink('registration-section', 'register', "S'inscrire")}
+            {renderDesktopNavLink('complaint-section', 'complaint', 'Réclamation')}
           </nav>
 
           {/* Action Login button */}
           <div className="hidden md:flex items-center gap-4">
+            {theme && setTheme && (
+              <ThemeToggle theme={theme} setTheme={setTheme} />
+            )}
             <button 
               onClick={() => navigate('/login')}
               className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-650 dark:hover:bg-emerald-600 transition text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-500/5 hover:-translate-y-0.5"
@@ -316,12 +387,17 @@ export default function LandingPage({
           </div>
 
           {/* Toggle Mobile Menu */}
-          <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-705"
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex md:hidden items-center gap-2">
+            {theme && setTheme && (
+              <ThemeToggle theme={theme} setTheme={setTheme} />
+            )}
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-705"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu Panel */}
@@ -333,42 +409,12 @@ export default function LandingPage({
               exit={{ height: 0, opacity: 0 }}
               className="md:hidden border-t border-slate-200/65 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-4 space-y-2.5 overflow-hidden font-medium"
             >
-              <button 
-                onClick={() => scrollToSection('hero-section', 'home')}
-                className="w-full text-left py-2.5 px-4 text-xs font-bold hover:bg-slate-550/10 hover:text-emerald-500 rounded-lg"
-              >
-                Accueil
-              </button>
-              <button 
-                onClick={() => scrollToSection('services-section', 'services')}
-                className="w-full text-left py-2.5 px-4 text-xs font-bold hover:bg-slate-550/10 hover:text-emerald-500 rounded-lg"
-              >
-                Nos Services
-              </button>
-              <button 
-                onClick={() => scrollToSection('pricing-section', 'pricing')}
-                className="w-full text-left py-2.5 px-4 text-xs font-bold hover:bg-slate-550/10 hover:text-emerald-500 rounded-lg"
-              >
-                Forfaits
-              </button>
-              <button 
-                onClick={() => scrollToSection('zones-section', 'zones')}
-                className="w-full text-left py-2.5 px-4 text-xs font-bold hover:bg-slate-550/10 hover:text-emerald-500 rounded-lg"
-              >
-                Secteurs & Stats
-              </button>
-              <button 
-                onClick={() => scrollToSection('registration-section', 'register')}
-                className="w-full text-left py-2.5 px-4 text-xs font-bold hover:bg-slate-550/10 hover:text-emerald-500 rounded-lg"
-              >
-                S'inscrire en Ligne
-              </button>
-              <button 
-                onClick={() => scrollToSection('complaint-section', 'complaint')}
-                className="w-full text-left py-2.5 px-4 text-xs font-bold hover:bg-slate-550/10 hover:text-emerald-500 rounded-lg"
-              >
-                Réclamation
-              </button>
+              {renderMobileNavLink('hero-section', 'home', 'Accueil')}
+              {renderMobileNavLink('services-section', 'services', 'Nos Services')}
+              {renderMobileNavLink('pricing-section', 'pricing', 'Forfaits')}
+              {renderMobileNavLink('zones-section', 'zones', 'Secteurs & Stats')}
+              {renderMobileNavLink('registration-section', 'register', "S'inscrire en Ligne")}
+              {renderMobileNavLink('complaint-section', 'complaint', 'Réclamation')}
               <button 
                 onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}
                 className="w-full py-3 px-4 bg-emerald-600 text-white rounded-lg text-xs font-bold tracking-wider text-center flex justify-center items-center gap-2 shadow-xs"
@@ -727,7 +773,7 @@ export default function LandingPage({
                     </div>
 
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-black text-slate-950 dark:text-white">{p.price.toLocaleString()}</span>
+                      <span className="text-3xl font-black price-text !text-slate-950 dark:!text-white">{p.price.toLocaleString()}</span>
                       <span className="text-xs font-bold text-slate-500">FCFA / {p.frequency.toLowerCase()}</span>
                     </div>
 

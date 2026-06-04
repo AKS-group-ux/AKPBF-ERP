@@ -106,11 +106,12 @@ async function main() {
   // 5. Create Core Users (Enterprise Operational Staff)
   const passwordHash = await bcrypt.hash('AkpbfPass2026!', 10);
   const staff = [
-    { email: 'admin@akpbf.com', name: 'Alkaïda Benjamin', role: 'ADMINISTRATEUR', phone: '+225 05 01 02 03 04' },
+    { email: 'groupaksservices@zohomail.com', name: 'Alkaïda Benjamin', role: 'ADMINISTRATEUR', phone: '+225 05 01 02 03 04' },
     { email: 'comptable@akpbf.com', name: 'Doumbia Sylvain (Fisc)', role: 'COMPTABLE', phone: '+225 05 02 03 04 05' },
     { email: 'superviseur@akpbf.com', name: 'Gérard Gnakoury (Logistique)', role: 'SUPERVISEUR', phone: '+225 05 03 04 05 06' },
     { email: 'chauffeur@akpbf.com', name: 'Kaboré Moussa', role: 'CHAUFFEUR', phone: '+225 05 04 05 06 07' },
     { email: 'agent@akpbf.com', name: 'Coulibaly Issa', role: 'AGENT', phone: '+225 05 05 06 07 08' },
+    { email: 'groupaksservices@gmail.com', name: 'Direction AKP (Admin)', role: 'ADMINISTRATEUR', phone: '+225 05 00 00 00 01' },
   ];
 
   const createdUsers: Record<string, any> = {};

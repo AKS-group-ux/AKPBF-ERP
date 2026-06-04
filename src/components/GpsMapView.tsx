@@ -26,6 +26,8 @@ import {
   Plus
 } from 'lucide-react';
 import { Subscriber, CollectorAgent } from '../types';
+import { usePermissions } from '../context/PermissionContext';
+import { Phone, PhoneCall, Mic, Tv } from 'lucide-react';
 
 interface GpsMapViewProps {
   subscribers: Subscriber[];
@@ -55,10 +57,54 @@ export default function GpsMapView({
   onUpdateSubscriber,
   onUpdateAgentCollected 
 }: GpsMapViewProps) {
+  const { requestPermission, showFeedbackMessage } = usePermissions();
   const [selectedSector, setSelectedSector] = useState('All');
   const [activeTab, setActiveTab] = useState<'map' | 'optimize' | 'sla'>('map');
   const [activeTruckId, setActiveTruckId] = useState<string | null>(null);
   const [timestamp, setTimestamp] = useState(new Date());
+
+  const handleLocateClientDevice = async () => {
+    const isGranted = await requestPermission('geolocation');
+    if (!isGranted) return;
+
+    if (navigator.geolocation && mapRef.current) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          showFeedbackMessage("Position GPS identifiée !", `Coordonnées : ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`, "success");
+          
+          const L = (window as any).L;
+          if (L) {
+            const markerId = 'client-device-gps';
+            if (markersRef.current[markerId]) {
+              mapRef.current.removeLayer(markersRef.current[markerId]);
+            }
+            
+            const customIcon = L.divIcon({
+              className: 'custom-leaflet-device-location',
+              html: `<div class="relative flex items-center justify-center">
+                <span class="absolute inline-flex h-6 w-6 rounded-full bg-blue-400 animate-ping opacity-60"></span>
+                <span class="relative rounded-full h-4.5 w-4.5 bg-blue-600 border-2 border-white shadow-md flex items-center justify-center">
+                  <div class="h-1.5 w-1.5 bg-white rounded-full"></div>
+                </span>
+              </div>`,
+              iconSize: [24, 24]
+            });
+            
+            const marker = L.marker([latitude, longitude], { icon: customIcon }).addTo(mapRef.current);
+            marker.bindPopup(`<div class="font-bold text-xs">🔴 Votre Terminal (GPS Certifié)</div><p class="text-[10px] text-slate-500">Coordonnées de l'agent connectateur : ${latitude.toFixed(5)}, ${longitude.toFixed(5)}</p>`).openPopup();
+            
+            markersRef.current[markerId] = marker;
+            mapRef.current.setView([latitude, longitude], 14);
+          }
+        },
+        (error) => {
+          console.error("GPS live position acquisition error", error);
+          showFeedbackMessage("Signal GPS Faible", "Le navigateur n'a pas pu identifier le signal satellite.", "error");
+        }
+      );
+    }
+  };
 
   // Leaflet Load State
   const [leafletLoaded, setLeafletLoaded] = useState(false);
@@ -775,6 +821,41 @@ export default function GpsMapView({
                       📡 {truckCoordinates[selectedTruckDetails.id].lng.toFixed(5)} Lng
                     </div>
                   )}
+
+                  {/* Operational Radio & Intercom with Permission check constraints */}
+                  <div className="border-t border-slate-900 pt-3 space-y-2 mt-2">
+                    <span className="text-[9.5px] uppercase font-bold text-slate-500 tracking-wider">Liaison de Sécurité AKPBF</span>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const allowed = await requestPermission('microphone');
+                          if (allowed) {
+                            showFeedbackMessage("Appel Intercom Connecté !", `Audio d'urgence établi avec ${selectedTruckDetails.name}.`, "success");
+                          }
+                        }}
+                        className="bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-400 border border-emerald-900/50 py-1.5 rounded-xl text-center flex items-center justify-center gap-1.5 transition font-bold cursor-pointer"
+                      >
+                        <Mic className="w-3 h-3 animate-pulse text-emerald-400" />
+                        <span>Radio Chauffeur</span>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const allowed = await requestPermission('screenShare');
+                          if (allowed) {
+                            showFeedbackMessage("Cast Écran Actif !", `Affichage du tableau de bord déporté du Chauffeur.`, "success");
+                          }
+                        }}
+                        className="bg-indigo-950/40 hover:bg-indigo-900/40 text-indigo-400 border border-indigo-900/50 py-1.5 rounded-xl text-center flex items-center justify-center gap-1.5 transition font-bold cursor-pointer"
+                      >
+                        <Tv className="w-3 h-3 text-indigo-450" />
+                        <span>Cast Écran</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -849,6 +930,18 @@ export default function GpsMapView({
                 </div>
 
                 <div className="relative flex-1 bg-slate-105">
+                  
+                  {/* Floating locate device control button on upper right */}
+                  {leafletLoaded && (
+                    <button
+                      type="button"
+                      onClick={handleLocateClientDevice}
+                      className="absolute top-4 right-4 bg-slate-905 border border-slate-700/80 hover:bg-slate-800 text-slate-100 hover:text-white font-extrabold text-[10.5px] px-3.5 py-2.5 rounded-2xl cursor-pointer z-[1000] shadow-2xl flex items-center gap-1.8 transition"
+                    >
+                      <MapPin className="h-3.8 w-3.8 text-blue-400 animate-pulse" />
+                      <span>Localiser mon Agent</span>
+                    </button>
+                  )}
                   
                   {/* Map Leaflet mounting target Element */}
                   <div id="leaflet-map-gps" className="w-full h-full z-0"></div>

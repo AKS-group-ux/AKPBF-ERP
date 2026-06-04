@@ -27,6 +27,47 @@ export class InMemoryDb {
     return InMemoryDb.instance;
   }
 
+  private constructor() {
+    this.seedInMemoryDefaults();
+  }
+
+  private seedInMemoryDefaults() {
+    // 1. Seed Roles
+    const rolesData = [
+      { id: 'role-admin-id', name: 'ADMINISTRATEUR', description: 'Super-administrateur' },
+      { id: 'role-comptable-id', name: 'COMPTABLE', description: 'Gestion financière' },
+      { id: 'role-superviseur-id', name: 'SUPERVISEUR', description: 'Superviseur logistique' },
+      { id: 'role-chauffeur-id', name: 'CHAUFFEUR', description: 'Chauffeur' },
+      { id: 'role-agent-id', name: 'AGENT', description: 'Agent de terrain' },
+      { id: 'role-recouvrement-id', name: 'AGENT_RECOUVREMENT', description: 'Agent de Recouvrement' },
+      { id: 'role-client-id', name: 'CLIENT', description: 'Client / Citoyen' }
+    ];
+    this.collections.role = rolesData;
+
+    // 2. Seed Users
+    const usersData = [
+      { id: 'usr-admin-1', email: 'groupaksservices@zohomail.com', name: 'Alkaïda Benjamin', phone: '+225 05 01 02 03 04', isActive: true, passwordHash: '', createdAt: new Date() },
+      { id: 'usr-comptable-1', email: 'comptable@akpbf.com', name: 'Doumbia Sylvain (Fisc)', phone: '+225 05 02 03 04 05', isActive: true, passwordHash: '', createdAt: new Date() },
+      { id: 'usr-superviseur-1', email: 'superviseur@akpbf.com', name: 'Gérard Gnakoury (Logistique)', phone: '+225 05 03 04 05 06', isActive: true, passwordHash: '', createdAt: new Date() },
+      { id: 'usr-chauffeur-1', email: 'chauffeur@akpbf.com', name: 'Kaboré Moussa', phone: '+225 05 04 05 06 07', isActive: true, passwordHash: '', createdAt: new Date() },
+      { id: 'usr-agent-1', email: 'agent@akpbf.com', name: 'Coulibaly Issa', phone: '+225 05 05 06 07 08', isActive: true, passwordHash: '', createdAt: new Date() },
+      { id: 'usr-recouvrement-1', email: 'recouvrement@akpbf.com', name: 'Touré Moussa', phone: '+225 05 09 09 09 09', isActive: true, passwordHash: '', createdAt: new Date(), assignedZones: ['Cocody'] },
+      { id: 'usr-dir-admin', email: 'groupaksservices@gmail.com', name: 'Direction AKP (Admin)', phone: '+225 05 00 00 00 01', isActive: true, passwordHash: '', createdAt: new Date() }
+    ];
+    this.collections.user = usersData;
+
+    // 3. Seed UserRoles mapping
+    this.collections.userRole = [
+      { userId: 'usr-admin-1', roleId: 'role-admin-id' },
+      { userId: 'usr-comptable-1', roleId: 'role-comptable-id' },
+      { userId: 'usr-superviseur-1', roleId: 'role-superviseur-id' },
+      { userId: 'usr-chauffeur-1', roleId: 'role-chauffeur-id' },
+      { userId: 'usr-agent-1', roleId: 'role-agent-id' },
+      { userId: 'usr-recouvrement-1', roleId: 'role-recouvrement-id' },
+      { userId: 'usr-dir-admin', roleId: 'role-admin-id' }
+    ];
+  }
+
   // Real-time in-memory collections of entities
   public collections: Record<string, any[]> = {
     user: [],
@@ -244,6 +285,22 @@ export class InMemoryDb {
       return {
         ...record,
         customer: this.collections.customer.find(c => c.id === record.customerId)
+      };
+    }
+
+    if (name === 'user') {
+      const userRoles = (this.collections.userRole || [])
+        .filter(ur => ur.userId === record.id)
+        .map(ur => {
+          const roleData = this.collections.role.find(r => r.id === ur.roleId);
+          return {
+            ...ur,
+            role: roleData ? { ...roleData } : null
+          };
+        });
+      return {
+        ...record,
+        userRoles
       };
     }
 

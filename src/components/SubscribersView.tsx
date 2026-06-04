@@ -29,6 +29,7 @@ interface SubscribersViewProps {
   onAddSubscriber: (newSub: Subscriber) => void;
   onUpdateSubscriber: (updatedSub: Subscriber) => void;
   onDeleteSubscriber: (id: string) => void;
+  onSelectSubscriber?: (id: string) => void;
 }
 
 export default function SubscribersView({ 
@@ -37,7 +38,8 @@ export default function SubscribersView({
   collectionProofs = [],
   onAddSubscriber, 
   onUpdateSubscriber, 
-  onDeleteSubscriber 
+  onDeleteSubscriber,
+  onSelectSubscriber
 }: SubscribersViewProps) {
   // State for search and filter controls
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,8 +67,12 @@ export default function SubscribersView({
 
   // Handle subscriber selection
   const handleOpenDetails = (sub: Subscriber) => {
-    setSelectedSub(sub);
-    setIsDetailsOpen(true);
+    if (onSelectSubscriber) {
+      onSelectSubscriber(sub.id);
+    } else {
+      setSelectedSub(sub);
+      setIsDetailsOpen(true);
+    }
   };
 
   // Neighborhood option list
@@ -88,7 +94,7 @@ export default function SubscribersView({
   });
 
   // Handle adding new subscriber
-  const handleCreate = (e: FormEvent) => {
+  const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
     if (!newSubName || !newSubEmail || !newSubPhone || !newSubAddress) {
       setFormError('Veuillez remplir tous les champs requis.');
@@ -127,15 +133,19 @@ export default function SubscribersView({
       paymentStatus: 'unpaid'
     };
 
-    onAddSubscriber(newSub);
-    
-    // Clear variables
-    setNewSubName('');
-    setNewSubEmail('');
-    setNewSubPhone('');
-    setNewSubAddress('');
-    setFormError('');
-    setIsAddOpen(false);
+    try {
+      await onAddSubscriber(newSub);
+      
+      // Clear variables only after successful creation
+      setNewSubName('');
+      setNewSubEmail('');
+      setNewSubPhone('');
+      setNewSubAddress('');
+      setFormError('');
+      setIsAddOpen(false);
+    } catch (err: any) {
+      setFormError(err.message || "Impossible de créer le client.");
+    }
   };
 
   // Slider change for container fill levels simulation
@@ -303,17 +313,17 @@ export default function SubscribersView({
                         <span className="text-[9px] text-slate-400 block mt-0.5">{sub.binType}</span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                          sub.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 
-                          sub.status === 'suspended' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-wider ${
+                          sub.status === 'active' ? 'state-success' : 
+                          sub.status === 'suspended' ? 'state-error' : 'state-warning'
                         }`}>
-                          {sub.status === 'active' ? 'En Règle' : sub.status === 'suspended' ? 'Mise à pied' : 'Créé (Inactif)'}
+                          {sub.status === 'active' ? '✓ En Règle' : sub.status === 'suspended' ? '✕ Suspendu' : '🕒 En Attente'}
                         </span>
-                        <span className={`block text-[9px] mt-1 font-semibold ${
-                          sub.paymentStatus === 'paid' ? 'text-emerald-600' : 
-                          sub.paymentStatus === 'overdue' ? 'text-rose-600' : 'text-amber-600'
+                        <span className={`block text-[9px] mt-1 font-bold ${
+                          sub.paymentStatus === 'paid' ? 'text-theme-success' : 
+                          sub.paymentStatus === 'overdue' ? 'text-theme-error' : 'text-theme-warning'
                         }`}>
-                          {sub.paymentStatus === 'paid' ? 'À Jour' : sub.paymentStatus === 'overdue' ? 'Impayé Exigible' : 'Facturation Pending'}
+                          {sub.paymentStatus === 'paid' ? '✓ À Jour' : sub.paymentStatus === 'overdue' ? '✕ Impayé' : '🕒 En Attente'}
                         </span>
                       </td>
                       <td className="p-4 text-center">

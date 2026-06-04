@@ -70,7 +70,7 @@ export default function ArchitectHub() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           authMethod: 'email',
-          email: 'admin@akpbf.com',
+          email: 'groupaksservices@zohomail.com',
           password: 'Admin@2026'
         })
       });

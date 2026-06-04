@@ -28,6 +28,20 @@
   --attention-fg: #9a6700;
   --attention-bg: #fff5b1;
 
+  /* Global Color Design System - Light Mode */
+  --color-success-fg: #047857; /* Vert moderne foncé */
+  --color-success-bg: #ecfdf5; /* Vert très léger */
+  --color-error-fg: #b91c1c; /* Rouge moderne foncé */
+  --color-error-bg: #fef2f2; /* Rouge très léger */
+  --color-warning-fg: #c2410c; /* Orange moderne foncé */
+  --color-warning-bg: #fff7ed; /* Orange très léger */
+  --color-info-fg: #1d4ed8; /* Bleu moderne foncé */
+  --color-info-bg: #eff6ff; /* Bleu très léger */
+  --color-primary-fg: #4f46e5; /* Couleur principale */
+  --color-primary-bg: #eef2ff; /* Fond principal */
+  --color-secondary-fg: #374151; /* Couleur secondaire */
+  --color-secondary-bg: #f3f4f6; /* Fond secondaire */
+
   /* Typography scale - GitHub base 14px */
   --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-family-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
@@ -68,4 +82,18 @@
   --success-bg: #3fb9501a;
   --attention-fg: #d29922;
   --attention-bg: #d299221a;
+
+  /* Global Color Design System - Dark Mode */
+  --color-success-fg: #3fb950; /* Vert moderne lumineux */
+  --color-success-bg: rgba(63, 185, 80, 0.15); /* Vert transparent */
+  --color-error-fg: #f85149; /* Rouge moderne lumineux */
+  --color-error-bg: rgba(248, 81, 73, 0.15); /* Rouge transparent */
+  --color-warning-fg: #fb923c; /* Orange moderne lumineux */
+  --color-warning-bg: rgba(251, 146, 60, 0.15); /* Orange transparent */
+  --color-info-fg: #58a6ff; /* Bleu moderne lumineux */
+  --color-info-bg: rgba(88, 166, 255, 0.15); /* Bleu transparent */
+  --color-primary-fg: #818cf8; /* Violet/indigo lumineux */
+  --color-primary-bg: rgba(129, 140, 248, 0.15); /* Indigo transparent */
+  --color-secondary-fg: #c9d1d9; /* Gris clair */
+  --color-secondary-bg: rgba(240, 246, 252, 0.1); /* Gris transparent */
 }

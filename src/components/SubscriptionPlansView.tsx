@@ -219,7 +219,7 @@ export default function SubscriptionPlansView({
                 </div>
 
                 <div className="flex items-baseline gap-1.5 pb-2 border-b border-slate-100">
-                  <span className="text-3xl font-black text-slate-950 tracking-tight">{plan.price.toLocaleString()}</span>
+                  <span className="text-3xl font-black price-text !text-slate-950 dark:!text-white tracking-tight">{plan.price.toLocaleString()}</span>
                   <span className="text-xs font-bold text-slate-500">FCFA / {plan.frequency}</span>
                 </div>
 

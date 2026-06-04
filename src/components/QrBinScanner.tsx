@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Subscriber, CollectionProof } from '../types';
+import { usePermissions } from '../context/PermissionContext';
 
 // Matching Bins shape
 interface Bin {
@@ -68,6 +69,7 @@ export default function QrBinScanner({
   onUpdateSubscriber,
   onAddCollectionProof
 }: QrBinScannerProps) {
+  const { requestPermission } = usePermissions();
   const [selectedScannedBin, setSelectedScannedBin] = useState<Bin | null>(bins[0] || null);
   const [activeSubDetails, setActiveSubDetails] = useState<Subscriber | null>(null);
 
@@ -108,6 +110,16 @@ export default function QrBinScanner({
 
   const startCameraScanner = async () => {
     setWebcamError('');
+    
+    // Explicit browser permission request beforehand
+    const isGranted = await requestPermission('camera');
+    if (!isGranted) {
+      setWebcamError(
+        "⚠️ L'accès à la caméra a été explicitement bloqué ou refusé par l'utilisateur. Le mode SIMULATEUR interactif muni de codes d'Abidjan reste pleinement actif."
+      );
+      return;
+    }
+
     setIsRealWebcamActive(true);
     setScanLaserActive(true);
 

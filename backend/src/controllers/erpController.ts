@@ -234,6 +234,45 @@ export const ErpController = {
         return;
       }
 
+      // 1. Check if ID corresponds to a customer/subscriber
+      const customer = await prisma.customer.findFirst({
+        where: {
+          OR: [{ id }, { subscriberId: id }]
+        },
+        include: {
+          subscriptions: true,
+          invoices: {
+            include: {
+              payments: true
+            }
+          },
+          bins: {
+            include: {
+              collections: true
+            }
+          }
+        }
+      });
+
+      if (customer) {
+        const invoiceCount = customer.invoices.length;
+        const paymentCount = customer.invoices.reduce((sum, inv) => sum + inv.payments.length, 0);
+        const collectionCount = customer.bins.reduce((sum, bin) => sum + bin.collections.length, 0);
+
+        if (invoiceCount > 0 || paymentCount > 0 || collectionCount > 0) {
+          res.status(400).json({
+            error: `Règle de gestion : Impossible d'archiver ou de supprimer l'abonné "${customer.name}". Des pièces de facturation (${invoiceCount}), des écritures de règlements (${paymentCount}) ou des relevés de collectes de déchets (${collectionCount}) y sont historiquement rattachés.`
+          });
+          return;
+        }
+
+        // Safe status update (soft delete) instead of physical wipe
+        await prisma.customer.update({
+          where: { id: customer.id },
+          data: { status: 'TERMINATED' }
+        });
+      }
+
       // Get current list of archived IDs
       const setting = await prisma.setting.findUnique({
         where: { key: 'AKPBF_ARCHIVED_RECORDS' }
@@ -242,17 +281,7 @@ export const ErpController = {
 
       if (!list.includes(id)) {
         list.push(id);
-        // Also soft delete in customer table if it is a customer
-        const customer = await prisma.customer.findFirst({
-          where: {
-            OR: [{ id }, { subscriberId: id }]
-          }
-        });
         if (customer) {
-          await prisma.customer.update({
-            where: { id: customer.id },
-            data: { status: 'TERMINATED' }
-          });
           list.push(customer.id);
           if (customer.subscriberId) list.push(customer.subscriberId);
         }
@@ -516,6 +545,21 @@ export const ErpController = {
         update: { value: JSON.stringify(journals) },
         create: { key: 'AKPBF_ERP_JOURNAL', value: JSON.stringify(journals), desc: 'Journal General d\'Encaissement' }
       });
+
+      // Synchronize relational double-entry ledger
+      try {
+        const { AccountingService } = await import('../modules/accounting/services/accountingService');
+        await AccountingService.getInstance().createPaymentEntry({
+          id: nextReceiptNo,
+          invoiceId: invoicesToUpdate.join(', ') || 'Redevance Initiale',
+          customerName: customer.name,
+          amount: Number(amountPaid),
+          method: paymentMethod || 'Espèces',
+          paymentDate: todayString
+        });
+      } catch (comptaErr) {
+        console.error('[quickPayment] Failed to trigger double entry relational sync:', comptaErr);
+      }
 
       // 9. Auditing and logging
       const auditLogEntry = {

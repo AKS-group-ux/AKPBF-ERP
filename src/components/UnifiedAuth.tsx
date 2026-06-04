@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { 
   Lock, 
   Mail, 
@@ -22,6 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Subscriber } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { AuthService } from '../services/auth';
 
 interface UnifiedAuthProps {
   subscribers: Subscriber[];
@@ -38,7 +39,7 @@ interface UnifiedAuthProps {
 export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) {
   const navigate = useNavigate();
   const [authMethod, setAuthMethod] = useState<'email' | 'id' | 'phone'>('email');
-  const [email, setEmail] = useState('admin@akpbf.com');
+  const [email, setEmail] = useState('groupaksservices@zohomail.com');
   const [password, setPassword] = useState('Admin@2026');
   const [subscriberIdInput, setSubscriberIdInput] = useState('SUB-4029');
   const [phoneNumber, setPhoneNumber] = useState('+225 07 48 29 10 22');
@@ -60,7 +61,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
 
   // Static list of official enterprise accounts for quick testing & validation
   const ENTERPRISE_USERS = [
-    { email: 'admin@akpbf.com', password: 'Admin@2026', name: 'Alkaïda Benjamin', role: 'ADMINISTRATEUR' as const },
+    { email: 'groupaksservices@zohomail.com', password: 'Admin@2026', name: 'Alkaïda Benjamin', role: 'ADMINISTRATEUR' as const },
     { email: 'comptable@akpbf.com', password: 'Comptable@2026', name: 'Doumbia Sylvain (Fisc)', role: 'COMPTABLE' as const },
     { email: 'superviseur@akpbf.com', password: 'Superviseur@2026', name: 'Gérard Gnakoury (Logistique)', role: 'SUPERVISEUR' as const },
     { email: 'chauffeur@akpbf.com', password: 'Chauffeur@2026', name: 'Kaboré Moussa', role: 'CHAUFFEUR' as const },
@@ -167,15 +168,50 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
     }
   };
 
-  const handleForgotPassword = (e: FormEvent) => {
+  // Deeply linked action URLs on mount to automate the password reset form activation
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    const token = params.get('token');
+    const emailParam = params.get('email');
+
+    if (mode === 'reset' && token) {
+      setAuthMode('reset');
+      setResetOldPass(token);
+      if (emailParam) {
+        setResetEmail(emailParam);
+      }
+    }
+  }, []);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleForgotPassword = async (e: FormEvent) => {
     e.preventDefault();
     if (!forgotEmail) return;
-    setForgotSent(true);
-    setTimeout(() => {
-      setForgotSent(false);
-      setAuthMode('login');
-      alert(`Un lien sécurisé de réinitialisation de mot de passe a été expédié à l'adresse "${forgotEmail}".`);
-    }, 2000);
+    
+    setIsLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const res = await AuthService.forgotPassword(forgotEmail);
+      setSuccessMsg(res.message || "E-mail de récupération expédié avec succès.");
+      setForgotSent(true);
+      setTimeout(() => {
+        setForgotSent(false);
+        setAuthMode('login');
+        // Clear message
+        setSuccessMsg('');
+      }, 4000);
+    } catch (err: any) {
+      console.error('Forgot password error:', err);
+      setErrorMsg(err.response?.data?.error || err.message || "Une erreur s'est produite lors de l'envoi de la demande.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleVerifyEmail = (e: FormEvent) => {
@@ -188,15 +224,36 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
     }, 2000);
   };
 
-  const handleResetPassword = (e: FormEvent) => {
+  const handleResetPassword = async (e: FormEvent) => {
     e.preventDefault();
-    if (!resetNewPass || !resetEmail) return;
-    setResetSuccess(true);
-    setTimeout(() => {
-      setResetSuccess(false);
-      setAuthMode('login');
-      alert("Votre mot de passe a été modifié de manière immuable dans l'ERP.");
-    }, 1800);
+    if (!resetNewPass || !resetEmail || !resetOldPass) {
+      setErrorMsg("Tous les champs sont requis.");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const res = await AuthService.resetPassword(resetOldPass, resetNewPass);
+      setSuccessMsg(res.message || "Modifications validées. Votre nouveau mot de passe est actif.");
+      setResetSuccess(true);
+      setTimeout(() => {
+        setResetSuccess(false);
+        setAuthMode('login');
+        // Clear forms
+        setResetEmail('');
+        setResetOldPass('');
+        setResetNewPass('');
+        setSuccessMsg('');
+      }, 4500);
+    } catch (err: any) {
+      console.error('Reset password error:', err);
+      setErrorMsg(err.response?.data?.error || err.message || "La modification de mot de passe a échoué.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const autofillUser = (emailVal: string, passVal: string) => {
@@ -275,14 +332,14 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                   <div className="space-y-1.5 text-left">
                     <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Adresse E-mail Enregistrée</label>
                     <div className="relative">
-                      <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 transition-colors pointer-events-none" />
                       <input 
                         type="email"
                         required
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); setLoginError(''); }}
                         placeholder="nom@service-assainissement.ci"
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-3.5 py-3 text-xs font-semibold outline-none transition"
+                        className="w-full bg-slate-950/80 border border-slate-800 text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 hover:border-slate-700 rounded-xl pl-12 pr-4 py-3.5 text-sm font-semibold outline-none transition-all duration-200"
                       />
                     </div>
                   </div>
@@ -299,13 +356,13 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                       </button>
                     </div>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 transition-colors pointer-events-none" />
                       <input 
                         type="password"
                         required
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setLoginError(''); }}
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-3.5 py-3 text-xs font-semibold outline-none transition"
+                        className="w-full bg-slate-950/80 border border-slate-800 text-slate-100 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 hover:border-slate-700 rounded-xl pl-12 pr-4 py-3.5 text-sm font-semibold outline-none transition-all duration-200"
                       />
                     </div>
                   </div>
@@ -332,14 +389,14 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                   <div className="space-y-1.5 text-left">
                     <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Identifiant Unique d'Abonné (Ménages & Entreprises)</label>
                     <div className="relative">
-                      <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 transition-colors pointer-events-none" />
                       <input 
                         type="text"
                         required
                         value={subscriberIdInput}
                         onChange={(e) => { setSubscriberIdInput(e.target.value); setLoginError(''); }}
                         placeholder="Ex: SUB-4029 ou SUB-1933"
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-3.5 py-3 text-xs font-bold font-mono tracking-wider uppercase outline-none transition"
+                        className="w-full bg-slate-950/80 border border-slate-800 text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 hover:border-slate-700 rounded-xl pl-12 pr-4 py-3.5 text-sm font-bold font-mono tracking-wider uppercase outline-none transition-all duration-200"
                       />
                     </div>
                     <span className="text-[10px] text-slate-500 block leading-tight">Authentifiez-vous d'un coup grâce à votre référence de contrat de salubrité</span>
@@ -367,14 +424,14 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                   <div className="space-y-1.5 text-left">
                     <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Numéro de Téléphone Enregistré</label>
                     <div className="relative">
-                      <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 transition-colors pointer-events-none" />
                       <input 
                         type="text"
                         required
                         value={phoneNumber}
                         onChange={(e) => { setPhoneNumber(e.target.value); setLoginError(''); }}
                         placeholder="+225 07 48 29 10 22"
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-3.5 py-3 text-xs font-semibold outline-none transition"
+                        className="w-full bg-slate-950/80 border border-slate-800 text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 hover:border-slate-700 rounded-xl pl-12 pr-4 py-3.5 text-sm font-semibold outline-none transition-all duration-200"
                       />
                     </div>
                   </div>
@@ -391,14 +448,14 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                         value={phoneOtp}
                         onChange={(e) => { setPhoneOtp(e.target.value); setLoginError(''); }}
                         placeholder="Indiquez le code reçu (Ex: 2026)"
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl py-3 text-xs text-center font-bold font-mono tracking-widest outline-none transition"
+                        className="w-full bg-slate-950/80 border border-slate-800 text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 hover:border-slate-700 rounded-xl pl-12 pr-4 py-3.5 text-sm text-center font-bold font-mono tracking-widest outline-none transition"
                       />
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setOtpSent(true)}
-                      className="w-full py-2.5 bg-slate-950 hover:bg-slate-900 text-emerald-400 text-[11px] font-bold rounded-xl border border-dashed border-emerald-900 transition"
+                      className="w-full py-2.5 bg-slate-950 hover:bg-slate-900 text-emerald-400 text-[11px] font-bold rounded-xl border border-dashed border-emerald-900 transition cursor-pointer"
                     >
                       S'envoyer un code OTP SMS de test d'évaluation
                     </button>
@@ -436,6 +493,17 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
               <button type="button" onClick={() => setAuthMode('reset')} className="hover:text-emerald-400 transition">Changer mon Mot de Passe</button>
             </div>
 
+            <div className="bg-emerald-950/20 border border-emerald-900/40 p-3 rounded-2xl text-center space-y-1">
+              <p className="text-[11px] text-slate-300 font-semibold">Nouveau citoyen de la commune ?</p>
+              <button 
+                type="button"
+                onClick={() => navigate('/register')}
+                className="text-xs font-black text-emerald-400 hover:text-emerald-350 transition duration-150 inline-flex items-center gap-1 hover:underline cursor-pointer"
+              >
+                Créer un compte d'abonnement en Ligne →
+              </button>
+            </div>
+
             {/* Quick Autoconnect Demo Shortlists - ODOO Architecture */}
             <div className="pt-5 border-t border-slate-800/80 space-y-3.5 text-left">
               <span className="text-[10px] uppercase font-black text-amber-500 block tracking-widest font-mono">DÉMONSTRATION DU SYSTÈME (RBAC DIRECT)</span>
@@ -449,7 +517,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                 <div className="grid grid-cols-2 gap-2 text-left">
                   <button
                     type="button"
-                    onClick={() => autofillUser('admin@akpbf.com', 'Admin@2026')}
+                    onClick={() => autofillUser('groupaksservices@zohomail.com', 'Admin@2026')}
                     className="p-2 bg-slate-900 border border-slate-850 hover:border-emerald-500/50 rounded-xl text-[10.5px] font-bold hover:text-white transition cursor-pointer text-slate-400 flex items-center gap-1.5"
                   >
                     <span className="w-2 h-2 rounded-full bg-red-500" />
@@ -494,6 +562,15 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
 
                   <button
                     type="button"
+                    onClick={() => autofillUser('recouvrement@akpbf.com', 'Recouvrement@2026')}
+                    className="p-2 bg-slate-900 border border-slate-850 hover:border-emerald-500/50 rounded-xl text-[10.5px] font-bold hover:text-white transition cursor-pointer text-slate-400 flex items-center gap-1.5"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+                    <span>Recouvrement (Zones)</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => autofillUser('koffi.jj@email.com', 'Test@2026')}
                     className="p-2 bg-slate-900 border border-slate-850 hover:border-emerald-500/50 rounded-xl text-[10.5px] font-bold hover:text-white transition cursor-pointer text-slate-400 flex items-center gap-1.5"
                   >
@@ -509,27 +586,58 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
         {authMode === 'forgot' && (
           <div className="space-y-4 text-left animate-in duration-200 slide-in-from-right-3">
             <h3 className="font-extrabold text-white text-sm">Réinitialiser le Mot de Passe</h3>
-            <p className="text-[11.5px] text-slate-400 leading-relaxed">Saisissez l'adresse mail liée à votre compte. Nous vous transmettrons un lien de récupération sécurisé.</p>
+            <p className="text-[11.5px] text-slate-400 leading-relaxed">Saisissez l'adresse mail liée à votre compte administrative ou citoyen d'Abidjan. Nous transmettrons un lien de récupération sécurisé.</p>
+            
+            {errorMsg && (
+              <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs p-3 rounded-xl flex items-start gap-2 animate-in fade-in slide-in-from-top-1.5 duration-200">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl flex items-start gap-2 animate-in fade-in slide-in-from-top-1.5 duration-200">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
             <form onSubmit={handleForgotPassword} className="space-y-3.5">
-              <input 
-                type="email"
-                required
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                placeholder="Ex: citoyen@Abidjan.ci"
-                className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl p-3 text-xs font-semibold outline-none transition"
-              />
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input 
+                  type="email"
+                  required
+                  disabled={isLoading}
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="Ex: citoyen@Abidjan.ci"
+                  className="w-full bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-650 focus:border-emerald-500 rounded-xl pl-9 pr-3 py-3 text-xs font-semibold outline-none transition disabled:opacity-55"
+                />
+              </div>
               <button
                 type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl transition cursor-pointer"
+                disabled={isLoading}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 disabled:opacity-60 text-white font-bold text-xs py-3 rounded-xl transition cursor-pointer flex justify-center items-center gap-2"
               >
-                Envoyer le lien de récupération
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Communication SMTP...</span>
+                  </>
+                ) : (
+                  <span>Envoyer le lien de récupération</span>
+                )}
               </button>
             </form>
             <button 
               type="button" 
-              onClick={() => setAuthMode('login')} 
-              className="text-xs text-slate-400 hover:text-white block text-center w-full pt-2 font-bold"
+              onClick={() => {
+                setErrorMsg('');
+                setSuccessMsg('');
+                setAuthMode('login');
+              }} 
+              className="text-xs text-slate-400 hover:text-white block text-center w-full pt-1.5 font-bold transition"
             >
               Retour à la connexion
             </button>
@@ -569,51 +677,91 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
         {authMode === 'reset' && (
           <div className="space-y-4 text-left animate-in duration-200 slide-in-from-right-3">
             <h3 className="font-extrabold text-white text-sm">Changement de Mot de Passe</h3>
-            <p className="text-[11.5px] text-slate-400 leading-relaxed">Mettez à jour vos identifiants d'accès immuables et sécurisez votre espace comptable ou client.</p>
+            <p className="text-[11.5px] text-slate-400 leading-relaxed">Mettez à jour vos identifiants d'accès s'ils ont expiré ou si vous avez reçu un jeton secret par e-mail.</p>
+            
+            {errorMsg && (
+              <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs p-3 rounded-xl flex items-start gap-2 animate-in fade-in slide-in-from-top-1.5 duration-200">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs p-3 rounded-xl flex items-start gap-2 animate-in fade-in slide-in-from-top-1.5 duration-200">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
             <form onSubmit={handleResetPassword} className="space-y-3">
               <div className="space-y-1">
                 <label className="text-[10px] text-slate-500 font-bold uppercase">Adresse E-mail</label>
-                <input 
-                  type="email"
-                  required
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="nom@service-assainissement.ci"
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl p-2.5 text-xs font-semibold outline-none transition"
-                />
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                  <input 
+                    type="email"
+                    required
+                    disabled={isLoading}
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="nom@service-assainissement.ci"
+                    className="w-full bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-650 focus:border-emerald-500 rounded-xl pl-9 pr-3 py-2.5 text-xs font-semibold outline-none transition disabled:opacity-55"
+                  />
+                </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-500 font-bold uppercase">Ancien Mot de Passe</label>
-                <input 
-                  type="password"
-                  required
-                  value={resetOldPass}
-                  onChange={(e) => setResetOldPass(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl p-2.5 text-xs font-semibold outline-none transition"
-                />
+                <label className="text-[10px] text-slate-500 font-bold uppercase">Jeton Secret ou Mot de Passe</label>
+                <div className="relative">
+                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                  <input 
+                    type="password"
+                    required
+                    disabled={isLoading}
+                    value={resetOldPass}
+                    onChange={(e) => setResetOldPass(e.target.value)}
+                    placeholder="Jeton secret (Ex: RESET-123456) ou Ancien MDP"
+                    className="w-full bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-650 focus:border-emerald-500 rounded-xl pl-9 pr-3 py-2.5 text-xs font-semibold outline-none transition disabled:opacity-50"
+                  />
+                </div>
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-slate-500 font-bold uppercase">Nouveau Mot de Passe Fort</label>
-                <input 
-                  type="password"
-                  required
-                  value={resetNewPass}
-                  onChange={(e) => setResetNewPass(e.target.value)}
-                  placeholder="Minimum 8 caractères"
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl p-2.5 text-xs font-semibold outline-none transition"
-                />
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                  <input 
+                    type="password"
+                    required
+                    disabled={isLoading}
+                    value={resetNewPass}
+                    onChange={(e) => setResetNewPass(e.target.value)}
+                    placeholder="Min 8 carats (Maj, Min, Chiffre, Caractère spécial)"
+                    className="w-full bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-650 focus:border-emerald-500 rounded-xl pl-9 pr-3 py-2.5 text-xs font-semibold outline-none transition disabled:opacity-55"
+                  />
+                </div>
               </div>
               <button
                 type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl transition cursor-pointer"
+                disabled={isLoading}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-850 disabled:opacity-60 text-white font-bold text-xs py-3 rounded-xl transition cursor-pointer flex justify-center items-center gap-2"
               >
-                Mettre à jour mes accès
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Mise à jour dans la base...</span>
+                  </>
+                ) : (
+                  <span>Mettre à jour mes accès</span>
+                )}
               </button>
             </form>
             <button 
               type="button" 
-              onClick={() => setAuthMode('login')} 
-              className="text-xs text-slate-400 hover:text-white block text-center w-full pt-2 font-bold"
+              onClick={() => {
+                setErrorMsg('');
+                setSuccessMsg('');
+                setAuthMode('login');
+              }} 
+              className="text-xs text-slate-400 hover:text-white block text-center w-full pt-2 font-bold transition"
             >
               Retour à la connexion
             </button>

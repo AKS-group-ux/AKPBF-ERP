@@ -51,6 +51,7 @@ interface DashboardViewProps {
   agents: CollectorAgent[];
   plans: SubscriptionPlan[];
   routes: Route[];
+  userRole?: string;
   onNavigateToTab: (tab: string) => void;
 }
 
@@ -60,6 +61,7 @@ export default function DashboardView({
   agents, 
   plans,
   routes,
+  userRole,
   onNavigateToTab 
 }: DashboardViewProps) {
   
@@ -198,6 +200,216 @@ export default function DashboardView({
       };
     });
   }, [agents]);
+
+  if (userRole === 'AGENT_RECOUVREMENT') {
+    // Computes custom recovery indicators
+    const clientsUpToDateCount = subscribers.filter(s => {
+      const unpaidInvs = invoices.filter(i => i.subscriberId === s.id && i.status !== 'paid');
+      return unpaidInvs.length === 0;
+    }).length;
+
+    const clientsInArrearsCount = subscribers.filter(s => {
+      const unpaidInvs = invoices.filter(i => i.subscriberId === s.id && i.status !== 'paid');
+      return unpaidInvs.length > 0;
+    }).length;
+
+    // Sum of paid invoices on Abidjan today
+    const collectedTodaySum = invoices
+      .filter(i => i.status === 'paid' && (i.paidDate === '2026-06-03' || i.paidDate === '2026-05-22'))
+      .reduce((sum, curr) => sum + curr.amount, 0);
+
+    const collectedThisMonthSum = invoices
+      .filter(i => i.status === 'paid' && (i.period === 'Mai 2026' || i.period === 'Juin 2026'))
+      .reduce((sum, curr) => sum + curr.amount, 0);
+
+    // Identifies top 5 arrears contributors
+    const arrearsPerClient = subscribers.map(s => {
+      const unpaid = invoices.filter(i => i.subscriberId === s.id && i.status !== 'paid');
+      const totalDue = unpaid.reduce((sum, curr) => sum + curr.amount, 0);
+      return {
+        ...s,
+        unpaidCount: unpaid.length,
+        totalDue
+      };
+    })
+    .filter(x => x.totalDue > 0)
+    .sort((a, b) => b.totalDue - a.totalDue)
+    .slice(0, 5);
+
+    // List recent successes payments
+    const recentPaidInvoices = invoices
+      .filter(i => i.status === 'paid')
+      .sort((a, b) => (b.paidDate || '').localeCompare(a.paidDate || ''))
+      .slice(0, 5);
+
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto font-sans pb-10 animate-fadeIn">
+        
+        {/* Dynamic customized Agent Welcome Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-5 border-b border-slate-200">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#635BFF] font-black">
+              <Award className="h-4 w-4" />
+              <span>Espace Agent de Recouvrement Municipal — Abidjan</span>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Portail de Recouvrement Terrain</h2>
+            <p className="text-slate-500 text-xs">Suivi des encaissements communaux, détection des arriérés municipaux et quittances AKPBF.</p>
+          </div>
+          
+          <button
+            type="button"
+            onClick={() => onNavigateToTab('subscribers')}
+            className="mt-4 md:mt-0 bg-[#635BFF] hover:bg-indigo-700 text-white font-black text-xs px-4.5 py-2.5 rounded-xl cursor-pointer transition shadow-md flex items-center gap-2"
+          >
+            <Users className="h-4 w-4" />
+            <span>Consulter la Liste des Abonnés</span>
+          </button>
+        </div>
+
+        {/* Action tailored indicators layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-850 p-6 flex flex-col justify-between shadow-xs card-interactive">
+            <div>
+              <span className="text-[10px] font-black text-theme-success uppercase tracking-wider bg-theme-success border border-[#3fb950]/20 px-2 py-0.5 rounded w-fit block">✓ Clients à Jour</span>
+              <span className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight font-mono block mt-3">
+                {clientsUpToDateCount}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-2">Dépôts de voirie réglés, aucun arriéré.</p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-850 p-6 flex flex-col justify-between shadow-xs card-interactive">
+            <div>
+              <span className="text-[10px] font-black text-theme-error uppercase tracking-wider bg-theme-error border border-red-500/20 px-2 py-0.5 rounded w-fit block">✕ Clients en Retard</span>
+              <span className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight font-mono block mt-3">
+                {clientsInArrearsCount}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-theme-error animate-pulse" />
+              Débiteur d'au moins 1 mois.
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-850 p-6 flex flex-col justify-between shadow-xs card-interactive">
+            <div>
+              <span className="text-[10px] font-black text-theme-info uppercase tracking-wider bg-theme-info border border-blue-500/20 px-2 py-0.5 rounded w-fit block">⏳ Collecté Aujourd'hui</span>
+              <span className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight font-mono block mt-3">
+                {collectedTodaySum.toLocaleString()} FCFA
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-2">Dépôts fiscaux validés en temps réel.</p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-850 p-6 flex flex-col justify-between shadow-xs card-interactive">
+            <div>
+              <span className="text-[10px] font-black text-theme-primary uppercase tracking-wider bg-theme-primary border border-indigo-500/20 px-2 py-0.5 rounded w-fit block">🕒 Collecté ce Mois</span>
+              <span className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight font-mono block mt-3">
+                {collectedThisMonthSum.toLocaleString()} FCFA
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-2">Assiette de capitation réglementaire.</p>
+          </div>
+
+        </div>
+
+        {/* Visual Charts Layout representing recovery patterns */}
+        <div className="bg-white rounded-3xl border border-slate-200/70 p-6 shadow-xs space-y-4">
+          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+            <TrendingUp className="h-4 w-4 text-[#635BFF]" />
+            <span>Performance Mensuelle du Recouvrement Abidjan 2026</span>
+          </h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={billingHistory}>
+                <defs>
+                  <linearGradient id="agentColorPaid" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="month" fontSize={11} stroke="#94a3b8" />
+                <YAxis fontSize={11} stroke="#94a3b8" />
+                <Tooltip />
+                <Area type="monotone" dataKey="Encaissé" stroke="#10b981" fillOpacity={1} fill="url(#agentColorPaid)" strokeWidth={2.5} />
+                <Line type="monotone" dataKey="Facturé" stroke="#635bff" strokeWidth={2} strokeDasharray="4 4" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Top Retards & Recent Payments Side-by-Side Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Card Top Arrears / Retards */}
+          <div className="bg-white rounded-3xl border border-slate-200/70 p-6 shadow-xs space-y-4">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-500" />
+              <span>Top 5 Plus Grands Débiteurs</span>
+            </h3>
+            <div className="divide-y divide-slate-100">
+              {arrearsPerClient.map((client, i) => (
+                <div key={i} className="py-3 flex items-center justify-between text-xs">
+                  <div className="space-y-0.5">
+                    <p className="font-extrabold text-slate-900">{client.name}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      ID: {client.id} • Quartier: {client.neighborhood}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono font-black text-rose-600 block">
+                      {client.totalDue.toLocaleString()} FCFA
+                    </span>
+                    <span className="text-[9px] bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md font-bold mt-0.5 inline-block">
+                      {client.unpaidCount} mois impayés
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {arrearsPerClient.length === 0 && (
+                <p className="text-xs text-slate-400 py-6 text-center font-semibold">Aucun retard détecté dans votre secteur d'Abidjan.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Card Recent Payments */}
+          <div className="bg-white rounded-3xl border border-slate-200/70 p-6 shadow-xs space-y-4">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-[#635BFF]" />
+              <span>Derniers Paiements Reçus</span>
+            </h3>
+            <div className="divide-y divide-slate-100">
+              {recentPaidInvoices.map((inv, i) => (
+                <div key={i} className="py-3 flex items-center justify-between text-xs font-semibold font-sans">
+                  <div className="space-y-0.5">
+                    <p className="font-extrabold text-slate-900">{inv.subscriberName}</p>
+                    <p className="text-[10px] text-slate-450 font-normal">
+                      Période : {inv.period} • Réf : {inv.id}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono font-black text-emerald-600 block">
+                      +{inv.amount.toLocaleString()} FCFA
+                    </span>
+                    <span className="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg font-bold mt-0.5 inline-block">
+                      via {inv.paymentMethod || 'Espèces'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {recentPaidInvoices.length === 0 && (
+                <p className="text-xs text-slate-400 py-6 text-center font-semibold">Aucun encaissement de redevance.</p>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-10">
@@ -355,13 +567,13 @@ export default function DashboardView({
           </div>
 
           <div className="pt-2 border-t border-slate-50/60 flex flex-wrap items-center justify-between text-[10.5px] font-bold">
-            <span className="text-emerald-600 flex items-center gap-0.5 bg-emerald-50 px-1.5 py-0.5 rounded">
+            <span className="state-success border flex items-center gap-1.5 px-2 py-0.5 rounded-md">
               <CheckCircle2 className="h-3 w-3 inline" /> {activeSubscribers} actifs
             </span>
-            <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+            <span className="state-warning border flex items-center gap-1.5 px-2 py-0.5 rounded-md">
               {suspendedSubscribers} suspendus
             </span>
-            <span className="text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+            <span className="state-secondary border flex items-center gap-1.5 px-2 py-0.5 rounded-md">
               {pendingSubscribers} en attente
             </span>
           </div>
@@ -400,13 +612,13 @@ export default function DashboardView({
                 {metricTimeframe === 'current' ? "Montant Encaissé (Mai)" : "Montant Encaissé Global"}
               </h5>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-emerald-600 tracking-tight font-mono">
+                <span className="text-2xl font-black text-theme-success tracking-tight font-mono">
                   {(metricTimeframe === 'current' ? collectedThisMonth : totalCollectedGlobal).toLocaleString()}
                 </span>
-                <span className="text-[11px] font-black text-emerald-700">FCFA</span>
+                <span className="text-[11px] font-black text-theme-success">FCFA</span>
               </div>
             </div>
-            <div className="p-2 bg-emerald-50 border border-emerald-100/50 rounded-lg text-emerald-600">
+            <div className="p-2 bg-theme-success border border-[#3fb950]/20 rounded-lg text-theme-success">
               <Coins className="h-4 w-4" />
             </div>
           </div>
@@ -428,13 +640,13 @@ export default function DashboardView({
                 {metricTimeframe === 'current' ? "Créances Impayées (Mai)" : "Reste À Recouvrer Global"}
               </h5>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-rose-600 tracking-tight font-mono">
+                <span className="text-2xl font-black text-theme-error tracking-tight font-mono">
                   {(metricTimeframe === 'current' ? unpaidThisMonth : totalUnpaidGlobal).toLocaleString()}
                 </span>
-                <span className="text-[11px] font-black text-rose-500">FCFA</span>
+                <span className="text-[11px] font-black text-theme-error">FCFA</span>
               </div>
             </div>
-            <div className="p-2 bg-rose-50 border border-rose-100/50 rounded-lg text-rose-600">
+            <div className="p-2 bg-theme-error border border-red-500/20 rounded-lg text-theme-error">
               <AlertTriangle className="h-4 w-4" />
             </div>
           </div>
@@ -468,7 +680,7 @@ export default function DashboardView({
             </div>
           </div>
 
-          <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 shrink-0">
+          <div className="p-3.5 bg-theme-success text-theme-success rounded-xl border border-[#3fb950]/20 shrink-0">
             <CheckCircle2 className="h-6 w-6" />
           </div>
         </div>
@@ -487,7 +699,7 @@ export default function DashboardView({
             </div>
           </div>
 
-          <div className="p-3.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100 shrink-0">
+          <div className="p-3.5 bg-theme-warning text-theme-warning rounded-xl border border-orange-500/10 shrink-0">
             <Trash2 className="h-6 w-6" />
           </div>
         </div>
@@ -704,10 +916,10 @@ export default function DashboardView({
                   {/* Rating Grade Badges */}
                   <div className="text-right space-y-1">
                     <div className="text-xs font-mono font-black text-slate-950">{agent.totalCollectedKg.toLocaleString()} Kg</div>
-                    <span className={`inline-block text-[9.5px] font-bold px-2 py-0.5 rounded ${
+                    <span className={`inline-block text-[9.5px] font-bold px-2 py-1 rounded border ${
                       agent.ratingClass.includes('Élite') 
-                        ? 'bg-emerald-55 bg-emerald-50 text-emerald-800' 
-                        : 'bg-indigo-50 text-indigo-700'
+                        ? 'state-success' 
+                        : 'state-primary'
                     }`}>
                       Indice : {agent.ratingClass}
                     </span>

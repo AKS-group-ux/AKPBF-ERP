@@ -203,6 +203,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Persist token
         localStorage.setItem('akpbf_erp_token', data.token);
         localStorage.setItem('akpbf_user_role', data.user.role);
+        if (data.refreshToken) {
+          localStorage.setItem('akpbf_erp_refresh_token', data.refreshToken);
+        }
         setLoading(false);
         return { success: true };
       } else {
@@ -227,6 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     // Secure selective and complete sanitization
     localStorage.removeItem('akpbf_erp_token');
+    localStorage.removeItem('akpbf_erp_refresh_token');
     localStorage.removeItem('akpbf_user_role');
     sessionStorage.clear();
     

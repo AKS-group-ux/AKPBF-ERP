@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { motion } from 'motion/react';
 import { 
   Users, 
   Trash2, 
@@ -29,7 +30,8 @@ import {
   Camera,
   Cpu,
   Mail,
-  FileText
+  FileText,
+  Shield
 } from 'lucide-react';
 
 import { Subscriber, Invoice, CollectorAgent, Route, NotificationLog, SubscriptionPlan, SubscriptionHistoryLog, Contract, ContractTemplate, PaymentReceipt, Emplacement, CollectionProof } from './types';
@@ -68,6 +70,8 @@ import { BrowserRouter as Router, Routes, Route as RouterRoute, Navigate, useNav
 import LandingPage from './components/LandingPage';
 import ClientPortalView from './components/ClientPortalView';
 import UnifiedAuth from './components/UnifiedAuth';
+import RegisterPage from './components/RegisterPage';
+import SubscriberDetailView from './components/SubscriberDetailView';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -81,6 +85,7 @@ import HrView from './components/HrView';
 import UserProfileMenu from './components/UserProfileMenu';
 import EmplacementsView from './components/EmplacementsView';
 import ThemeToggle from './components/ThemeToggle';
+import UsersManagementView from './components/UsersManagementView';
 
 const INITIAL_TEMPLATES: ContractTemplate[] = [
   {
@@ -382,6 +387,9 @@ function AppContent() {
       } else if (user.role === 'CHAUFFEUR' || user.role === 'AGENT') {
         setActiveTab('routes');
         navigate('/agent');
+      } else if (user.role === 'AGENT_RECOUVREMENT') {
+        setActiveTab('dashboard');
+        navigate('/agent');
       } else {
         // ADMINISTRATEUR
         setActiveTab('dashboard');
@@ -396,21 +404,51 @@ function AppContent() {
     navigate('/');
   };
 
+  const [activeTab, setActiveTabState] = useState<string>(() => {
+    return localStorage.getItem('akpbf_erp_active_tab') || 'dashboard';
+  });
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    localStorage.setItem('akpbf_erp_active_tab', tab);
+  };
+
+  const isTabAllowedForRole = (tab: string, role: string) => {
+    if (!role) return false;
+    if (role === 'CLIENT') return ['dashboard', 'contract', 'invoices', 'receipts', 'collections', 'claims', 'profile', 'emplacements'].includes(tab);
+    if (role === 'COMPTABLE') return ['billing', 'accounts', 'reports'].includes(tab);
+    if (role === 'CHAUFFEUR' || role === 'AGENT') return ['routes', 'qr_scanner'].includes(tab);
+    if (role === 'AGENT_RECOUVREMENT') return ['dashboard', 'subscribers', 'quick_payment', 'billing', 'payments', 'unpaid_debts'].includes(tab);
+    if (role === 'SUPERVISEUR') return ['dashboard', 'contacts', 'billing', 'accounts', 'fleet', 'stock', 'reports', 'settings'].includes(tab);
+    return true; // ADMIN is allowed all
+  };
+
   // Sync URIs with matching active workspace tabs
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/agent') {
-      setActiveTab('routes');
-    } else if (path === '/cashier') {
-      setActiveTab('billing');
-    } else if (path === '/supervisor') {
-      setActiveTab('dashboard');
-    } else if (path === '/admin') {
-      setActiveTab('dashboard');
-    }
-  }, [location.pathname]);
+    const role = sessionUser?.role;
+    const savedTab = localStorage.getItem('akpbf_erp_active_tab');
 
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+    if (savedTab && role && isTabAllowedForRole(savedTab, role)) {
+      setActiveTabState(savedTab);
+      return;
+    }
+
+    if (path === '/agent') {
+      const defaultTab = 'routes';
+      setActiveTab(defaultTab);
+    } else if (path === '/cashier') {
+      const defaultTab = 'billing';
+      setActiveTab(defaultTab);
+    } else if (path === '/supervisor') {
+      const defaultTab = 'dashboard';
+      setActiveTab(defaultTab);
+    } else if (path === '/admin') {
+      const defaultTab = 'dashboard';
+      setActiveTab(defaultTab);
+    }
+  }, [location.pathname, sessionUser?.role]);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Dark/Light Theme state
@@ -464,6 +502,7 @@ function AppContent() {
   // Core municipal database states including subscription plans
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [selectedSubDetailId, setSelectedSubDetailId] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [agents, setAgents] = useState<CollectorAgent[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -688,18 +727,10 @@ function AppContent() {
   // State modification wrappers
   const handleAddSubscriber = async (newSub: Subscriber) => {
     try {
-      const response = await fetch('/api/erp/subscribers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newSub)
-      });
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Erreur de création.");
-      }
-      
+      // 1. Instantly update local React and local storage state eagerly
+      const updatedSubs = [newSub, ...subscribers];
+      setSubscribers(updatedSubs);
+
       // Auto-spawn enrollment notification log and sync ledger
       const enrollmentSmsLog: NotificationLog = {
         id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -714,16 +745,42 @@ function AppContent() {
       
       const updatedNotifs = [enrollmentSmsLog, ...notifLogs];
       setNotifLogs(updatedNotifs);
+
+      saveStateToLocalStorage(plans, updatedSubs, invoices, agents, routes, updatedNotifs);
+
+      // 2. Submit to database asynchronously
+      const response = await fetch('/api/erp/subscribers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newSub)
+      });
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erreur de création.");
+      }
       
       await syncLedgerToServer(contracts, receipts, emplacements, updatedNotifs, auditLogs);
-      await loadStateFromServer();
+      
+      // 3. Trigger server refresh in background if a valid token is present
+      const token = localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token');
+      if (token) {
+        await loadStateFromServer();
+      }
     } catch (err: any) {
-      alert(err.message);
+      console.error('Failed to add subscriber:', err);
+      // Flow gracefully with local memory safe-fallback
     }
   };
 
   const handleUpdateSubscriber = async (updatedSub: Subscriber) => {
     try {
+      // 1. Instantly update React state and local storage
+      const updatedSubs = subscribers.map(s => s.id === updatedSub.id ? updatedSub : s);
+      setSubscribers(updatedSubs);
+      saveStateToLocalStorage(plans, updatedSubs, invoices, agents, routes, notifLogs);
+
       const response = await fetch(`/api/erp/subscribers/${updatedSub.id}`, {
         method: 'PUT',
         headers: {
@@ -782,14 +839,23 @@ function AppContent() {
       }
 
       await syncLedgerToServer(contracts, receipts, emplacements, notifLogs, auditLogs);
-      await loadStateFromServer();
+      
+      const token = localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token');
+      if (token) {
+        await loadStateFromServer();
+      }
     } catch (err: any) {
-      alert(err.message);
+      console.error('Failed to update subscriber:', err);
     }
   };
 
   const handleDeleteSubscriber = async (id: string) => {
     try {
+      // 1. Instantly update React state and local storage
+      const updatedSubs = subscribers.filter(s => s.id !== id);
+      setSubscribers(updatedSubs);
+      saveStateToLocalStorage(plans, updatedSubs, invoices, agents, routes, notifLogs);
+
       const response = await fetch(`/api/erp/subscribers/${id}`, {
         method: 'DELETE',
         headers: {
@@ -800,9 +866,13 @@ function AppContent() {
         const errData = await response.json();
         throw new Error(errData.error || "Erreur de suppression.");
       }
-      await loadStateFromServer();
+
+      const token = localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token');
+      if (token) {
+        await loadStateFromServer();
+      }
     } catch (err: any) {
-      alert(err.message);
+      console.error('Failed to delete subscriber:', err);
     }
   };
 
@@ -907,6 +977,105 @@ function AppContent() {
 
       saveStateToLocalStorage(plans, updatedSubs, updatedInvs, agents, routes, updatedNotifs);
     }
+  };
+
+  const handleProcessBulkPayment = (
+    subscriberId: string,
+    invoiceIds: string[],
+    method: 'Orange Money' | 'Wave' | 'Carte Bancaire' | 'Espèces',
+    agentName: string = 'Agent de Recouvrement AKPBF'
+  ) => {
+    // 1. Mark matched invoices as paid
+    const updatedInvs = invoices.map(i => {
+      if (invoiceIds.includes(i.id)) {
+        return {
+          ...i,
+          status: 'paid' as const,
+          paymentMethod: method,
+          paidDate: '2026-06-03'
+        };
+      }
+      return i;
+    });
+    setInvoices(updatedInvs);
+
+    // 2. Aggregate amount and update subscriber paymentStatus
+    const sub = subscribers.find(s => s.id === subscriberId);
+    if (!sub) return;
+
+    const totalPaidSum = invoices
+      .filter(i => invoiceIds.includes(i.id))
+      .reduce((sum, curr) => sum + curr.amount, 0);
+
+    const updatedSubs = subscribers.map(s => {
+      if (s.id === subscriberId) {
+        return {
+          ...s,
+          paymentStatus: 'paid' as const,
+          status: 'active' as const
+        };
+      }
+      return s;
+    });
+    setSubscribers(updatedSubs);
+
+    // 3. Register unified Receipt
+    const newReceipt: PaymentReceipt = {
+      id: `REC-${Math.floor(1000 + Math.random() * 9000)}`,
+      subscriberId: subscriberId,
+      subscriberName: sub.name,
+      amountPaid: totalPaidSum,
+      paymentDate: '2026-06-03',
+      paymentMethod: method,
+      paymentRef: `TXN-MUN-${Math.floor(100000 + Math.random() * 900000)}`,
+      invoiceId: invoiceIds.join(', '),
+      contractNumber: `CNT-2026-${subscriberId.split('-')[1] || '0129'}`,
+      remainingBalance: 0,
+      electronicSignature: `AKPBF-MASS-STAMP-${Math.floor(100000 + Math.random() * 900000)}`
+    };
+    const updatedReceipts = [newReceipt, ...receipts];
+    setReceipts(updatedReceipts);
+
+    // 4. Save SMS alert dispatch
+    const bulkSmsLog: NotificationLog = {
+      id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
+      recipientName: sub.name,
+      recipientContact: sub.phone || '+225 00 00 00',
+      type: 'sms',
+      templateName: 'Validation Encaiss. Regroupé',
+      content: `MAIRIE D'ABIDJAN : Encaissé régulé de ${totalPaidSum} FCFA (${invoiceIds.length} mois) par l'agent ${agentName} via ${method}. Reçu unique de voirie durable de l'assainissement : ${newReceipt.id}. Merci de votre civisme !`,
+      sentAt: 'À l\'instant',
+      status: 'sent'
+    };
+    const updatedNotifs = [bulkSmsLog, ...notifLogs];
+    setNotifLogs(updatedNotifs);
+
+    // 5. Add Audit Trail log
+    const auditLogEntry: SubscriptionHistoryLog = {
+      id: `AUD-${Math.floor(1000 + Math.random() * 9000)}`,
+      subscriberId: subscriberId,
+      subscriberName: sub.name,
+      action: 'state_change',
+      description: `Règlement collectif de ${invoiceIds.length} mois pour un total de ${totalPaidSum} FCFA (Encaissé terrain : ${agentName} via ${method})`,
+      timestamp: new Date().toISOString(),
+      operator: agentName
+    };
+    const updatedAuditLogs = [auditLogEntry, ...auditLogs];
+    setAuditLogs(updatedAuditLogs);
+
+    saveStateToLocalStorage(
+      plans,
+      updatedSubs,
+      updatedInvs,
+      agents,
+      routes,
+      updatedNotifs,
+      contracts,
+      templates,
+      updatedReceipts,
+      emplacements,
+      collectionProofs
+    );
   };
 
   const handleSendMockReminders = () => {
@@ -1108,6 +1277,10 @@ function AppContent() {
     if (r === 'AGENT') {
       return ['routes', 'bins'].includes(tab);
     }
+
+    if (r === 'AGENT_RECOUVREMENT') {
+      return ['dashboard', 'subscribers', 'quick_payment', 'billing', 'payments', 'unpaid_debts'].includes(tab);
+    }
     
     return false;
   };
@@ -1160,6 +1333,8 @@ function AppContent() {
             setNotifLogs(logs);
             saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, logs, contracts, templates, receipts);
           }}
+          theme={theme}
+          setTheme={setTheme}
         />
       } />
 
@@ -1168,12 +1343,32 @@ function AppContent() {
           sessionUser.role === 'CLIENT' ? <Navigate to="/client" replace /> :
           sessionUser.role === 'COMPTABLE' ? <Navigate to="/cashier" replace /> :
           sessionUser.role === 'SUPERVISEUR' ? <Navigate to="/supervisor" replace /> :
-          sessionUser.role === 'CHAUFFEUR' || sessionUser.role === 'AGENT' ? <Navigate to="/agent" replace /> :
+          sessionUser.role === 'CHAUFFEUR' || sessionUser.role === 'AGENT' || sessionUser.role === 'AGENT_RECOUVREMENT' ? <Navigate to="/agent" replace /> :
           <Navigate to="/admin" replace />
         ) : (
           <UnifiedAuth 
             subscribers={subscribers}
             onLogin={handleLogin}
+          />
+        )
+      } />
+
+      <RouterRoute path="/register" element={
+        sessionUser ? (
+          sessionUser.role === 'CLIENT' ? <Navigate to="/client" replace /> :
+          sessionUser.role === 'COMPTABLE' ? <Navigate to="/cashier" replace /> :
+          sessionUser.role === 'SUPERVISEUR' ? <Navigate to="/supervisor" replace /> :
+          sessionUser.role === 'CHAUFFEUR' || sessionUser.role === 'AGENT' || sessionUser.role === 'AGENT_RECOUVREMENT' ? <Navigate to="/agent" replace /> :
+          <Navigate to="/admin" replace />
+        ) : (
+          <RegisterPage 
+            plans={plans}
+            onAddSubscriber={handleAddSubscriber}
+            onAddNotificationLogs={(notif) => {
+              const logs = [notif, ...notifLogs];
+              setNotifLogs(logs);
+              saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, logs, contracts, templates, receipts);
+            }}
           />
         )
       } />
@@ -1227,7 +1422,7 @@ function AppContent() {
 
       {/* Internal ERP Dashboard paths */}
       <RouterRoute path="/agent" element={
-        sessionUser && (sessionUser.role === 'AGENT' || sessionUser.role === 'CHAUFFEUR' || sessionUser.role === 'SUPERVISEUR' || sessionUser.role === 'ADMINISTRATEUR') ? (
+        sessionUser && (sessionUser.role === 'AGENT' || sessionUser.role === 'CHAUFFEUR' || sessionUser.role === 'SUPERVISEUR' || sessionUser.role === 'ADMINISTRATEUR' || sessionUser.role === 'AGENT_RECOUVREMENT') ? (
           adminWorkspace()
         ) : (
           <Navigate to="/" replace />
@@ -1263,6 +1458,122 @@ function AppContent() {
   );
 
   function adminWorkspace() {
+    const isRecoveryAgent = sessionUser?.role === 'AGENT_RECOUVREMENT';
+    const assignedZones = sessionUser?.assignedZones || [];
+    const hasZoneFilter = isRecoveryAgent && assignedZones.length > 0;
+
+    // Filter subscribers, invoices, receipts and contracts according to agents zones
+    const zoneFilteredSubscribers = hasZoneFilter 
+      ? subscribers.filter(s => assignedZones.some(z => s.neighborhood?.toLowerCase() === z.toLowerCase())) 
+      : subscribers;
+
+    const zoneFilteredInvoices = hasZoneFilter 
+      ? invoices.filter(i => {
+          const sub = subscribers.find(s => s.id === i.subscriberId);
+          return sub && assignedZones.some(z => sub.neighborhood?.toLowerCase() === z.toLowerCase());
+        }) 
+      : invoices;
+
+    const zoneFilteredReceipts = hasZoneFilter 
+      ? receipts.filter(r => {
+          const sub = subscribers.find(s => s.id === r.subscriberId);
+          return sub && assignedZones.some(z => sub.neighborhood?.toLowerCase() === z.toLowerCase());
+        }) 
+      : receipts;
+
+    const zoneFilteredContracts = hasZoneFilter 
+      ? contracts.filter(c => {
+          const sub = subscribers.find(s => s.id === c.subscriberId);
+          return sub && assignedZones.some(z => sub.neighborhood?.toLowerCase() === z.toLowerCase());
+        }) 
+      : contracts;
+
+    const renderSidebarButton = (
+      tabId: string, 
+      label: string, 
+      IconComponent: any, 
+      colorTheme: 'emerald' | 'amber' | 'indigo' | 'sky' | 'purple' = 'emerald',
+      pulseEffect = false,
+      badge?: string | number
+    ) => {
+      const isActive = activeTab === tabId;
+      
+      const colors = {
+        emerald: {
+          activeBg: 'text-indigo-205 text-white font-extrabold',
+          hoverBg: 'hover:bg-slate-800/40 hover:text-indigo-300',
+          iconActive: 'text-indigo-350',
+          iconHover: 'group-hover:text-indigo-400',
+          pillColor: 'bg-indigo-600/20 border-l-4 border-[#635BFF] border-r border-[#635BFF]/20 border-t border-b border-[#635BFF]/20'
+        },
+        amber: {
+          activeBg: 'text-indigo-205 text-white font-extrabold',
+          hoverBg: 'hover:bg-slate-800/40 hover:text-indigo-300',
+          iconActive: 'text-indigo-350',
+          iconHover: 'group-hover:text-indigo-400',
+          pillColor: 'bg-indigo-600/20 border-l-4 border-[#635BFF] border-r border-[#635BFF]/20 border-t border-b border-[#635BFF]/20'
+        },
+        indigo: {
+          activeBg: 'text-indigo-205 text-white font-extrabold',
+          hoverBg: 'hover:bg-slate-800/40 hover:text-indigo-300',
+          iconActive: 'text-indigo-350',
+          iconHover: 'group-hover:text-[#635BFF]',
+          pillColor: 'bg-indigo-600/20 border-l-4 border-[#635BFF] border-r border-[#635BFF]/20 border-t border-b border-[#635BFF]/20'
+        },
+        sky: {
+          activeBg: 'text-indigo-205 text-white font-extrabold',
+          hoverBg: 'hover:bg-slate-800/40 hover:text-indigo-300',
+          iconActive: 'text-indigo-350',
+          iconHover: 'group-hover:text-[#635BFF]',
+          pillColor: 'bg-indigo-600/20 border-l-4 border-[#635BFF] border-r border-[#635BFF]/20 border-t border-b border-[#635BFF]/20'
+        },
+        purple: {
+          activeBg: 'text-indigo-205 text-white font-extrabold',
+          hoverBg: 'hover:bg-slate-800/40 hover:text-indigo-300',
+          iconActive: 'text-indigo-350',
+          iconHover: 'group-hover:text-[#635BFF]',
+          pillColor: 'bg-indigo-600/20 border-l-4 border-[#635BFF] border-r border-[#635BFF]/20 border-t border-b border-[#635BFF]/20'
+        }
+      };
+
+      const c = colors[colorTheme];
+
+      return (
+        <button
+          type="button"
+          onClick={() => { setActiveTab(tabId); setIsSidebarOpen(false); }}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs transition-all duration-300 ease-out group select-none cursor-pointer relative ${
+            isActive 
+              ? `${c.activeBg} scale-[1.02]` 
+              : `text-slate-400 hover:text-slate-200 hover:translate-x-1.5 ${c.hoverBg} rounded-xl`
+          }`}
+        >
+          <div className="flex items-center gap-3 relative z-10">
+            <IconComponent className={`h-4.5 w-4.5 shrink-0 transition-transform duration-300 ${
+              isActive 
+                ? `${c.iconActive} scale-110 ${pulseEffect ? 'animate-pulse' : ''}` 
+                : `text-slate-500 ${c.iconHover} group-hover:scale-105`
+            }`} />
+            <span className="font-semibold tracking-wide">{label}</span>
+          </div>
+          {badge !== undefined && (
+            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-wide relative z-10 ${
+              isActive ? 'bg-slate-950 text-emerald-400 border border-emerald-950/30' : 'bg-slate-850 text-slate-500 group-hover:bg-slate-750 group-hover:text-white'
+            }`}>
+              {badge}
+            </span>
+          )}
+          {isActive && (
+            <motion.span
+              layoutId="activeAdminTabBackground"
+              className={`absolute inset-0 rounded-xl -z-10 ${c.pillColor}`}
+              transition={{ type: 'spring', stiffness: 350, damping: 26 }}
+            />
+          )}
+        </button>
+      );
+    };
+
     return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col md:flex-row antialiased transition-colors duration-200">
       
@@ -1273,7 +1584,6 @@ function AppContent() {
           <span className="font-extrabold text-xs sm:text-sm tracking-tight text-white">AKPBF Salubrité</span>
         </div>
         <div className="flex items-center gap-2">
-          <ThemeToggle theme={theme} setTheme={setTheme} />
           {sessionUser && (
             <UserProfileMenu 
               user={sessionUser} 
@@ -1315,357 +1625,49 @@ function AppContent() {
 
           {/* Nav Items */}
           <nav className="space-y-1 my-4 flex-1">
-            {canAccessTab('dashboard') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'dashboard' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <LayoutDashboard className="h-4 w-4 shrink-0" />
-                Tableau de Bord
-              </button>
-            )}
-
-            {canAccessTab('subscribers') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('subscribers'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'subscribers' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Users className="h-4 w-4 shrink-0" />
-                Gestion des Abonnés
-              </button>
-            )}
-
-            {canAccessTab('emplacements') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('emplacements'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'emplacements' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <MapPin className="h-4 w-4 shrink-0 text-amber-500 animate-pulse" />
-                Gestion des Emplacements
-              </button>
-            )}
-
-            {canAccessTab('contracts') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('contracts'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'contracts' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <FileText className="h-4 w-4 shrink-0 text-emerald-500" />
-                Gestion des Contrats
-              </button>
-            )}
-
-            {canAccessTab('bins') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('bins'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'bins' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Camera className="h-4 w-4 shrink-0 text-emerald-500" />
-                Gestion des Poubelles
-              </button>
-            )}
-
-            {canAccessTab('ai') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('ai'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'ai' 
-                    ? 'bg-slate-800 text-amber-400 font-bold border-l-4 border-amber-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Cpu className="h-4 w-4 shrink-0 text-amber-500 animate-pulse" />
-                Prévisions IA & Assistant
-              </button>
-            )}
-
-            {canAccessTab('plans') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('plans'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'plans' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Layers className="h-4 w-4 shrink-0" />
-                Abonnements (Forfaits)
-              </button>
-            )}
-
-            {canAccessTab('quick_payment') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('quick_payment'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'quick_payment' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Coins className="h-4 w-4 shrink-0 text-emerald-400 animate-pulse" />
-                Encaissement Rapide
-              </button>
-            )}
-
-            {canAccessTab('billing') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('billing'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'billing' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Coins className="h-4 w-4 shrink-0" />
-                Facturation - Caisse
-              </button>
-            )}
-
-            {canAccessTab('payments') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('payments'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'payments' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <CreditCard className="h-4 w-4 shrink-0" />
-                Paiements & Trésorerie
-              </button>
-            )}
-
-            {canAccessTab('unpaid_debts') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('unpaid_debts'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'unpaid_debts' 
-                    ? 'bg-slate-800 text-amber-400 font-bold border-l-4 border-amber-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                Gestion des Impayés
-              </button>
-            )}
-
-            {canAccessTab('routes') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('routes'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'routes' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Navigation className="h-4 w-4 shrink-0" />
-                Tournées (SIG)
-              </button>
-            )}
-
-            {canAccessTab('gps') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('gps'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'gps' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <MapPin className="h-4 w-4 shrink-0" />
-                Carte GPS Live
-              </button>
-            )}
-
-            {canAccessTab('reports') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('reports'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'reports' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <TrendingUp className="h-4 w-4 shrink-0" />
-                Rapports & Stats
-              </button>
-            )}
-
-            {canAccessTab('agents') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('agents'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'agents' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Award className="h-4 w-4 shrink-0" />
-                Agents & Équipages
-              </button>
-            )}
-
-            {canAccessTab('notifications') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('notifications'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'notifications' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Smartphone className="h-4 w-4 shrink-0" />
-                Canaux d'Alerte SMS
-              </button>
-            )}
-
-            {canAccessTab('emails') && (
-              <button 
-                type="button"
-                onClick={() => { setActiveTab('emails'); setIsSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                  activeTab === 'emails' 
-                    ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                    : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                }`}
-              >
-                <Mail className="h-4 w-4 shrink-0 text-emerald-400" />
-                Emails Professionnels
-              </button>
-            )}
+            {canAccessTab('dashboard') && renderSidebarButton('dashboard', 'Tableau de Bord', LayoutDashboard, 'emerald')}
+            {canAccessTab('subscribers') && renderSidebarButton('subscribers', 'Gestion des Abonnés', Users, 'emerald', false, subscribers.length)}
+            {canAccessTab('emplacements') && renderSidebarButton('emplacements', 'Gestion des Emplacements', MapPin, 'amber', true, emplacements.length)}
+            {canAccessTab('contracts') && renderSidebarButton('contracts', 'Gestion des Contrats', FileText, 'emerald', false, contracts.length)}
+            {canAccessTab('bins') && renderSidebarButton('bins', 'Gestion des Poubelles', Camera, 'emerald')}
+            {canAccessTab('ai') && renderSidebarButton('ai', 'Prévisions IA & Assistant', Cpu, 'amber', true)}
+            {canAccessTab('plans') && renderSidebarButton('plans', 'Abonnements (Forfaits)', Layers, 'emerald', false, plans.length)}
+            {canAccessTab('quick_payment') && renderSidebarButton('quick_payment', 'Encaissement Rapide', Coins, 'emerald', true)}
+            {canAccessTab('billing') && renderSidebarButton('billing', 'Facturation - Caisse', Coins, 'emerald')}
+            {canAccessTab('payments') && renderSidebarButton('payments', 'Paiements & Trésorerie', CreditCard, 'emerald')}
+            {canAccessTab('unpaid_debts') && renderSidebarButton('unpaid_debts', 'Gestion des Impayés', AlertCircle, 'amber')}
+            {canAccessTab('routes') && renderSidebarButton('routes', 'Tournées (SIG)', Navigation, 'emerald', false, routes.length)}
+            {canAccessTab('gps') && renderSidebarButton('gps', 'Carte GPS Live', MapPin, 'emerald')}
+            {canAccessTab('reports') && renderSidebarButton('reports', 'Rapports & Stats', TrendingUp, 'emerald')}
+            {canAccessTab('agents') && renderSidebarButton('agents', 'Agents & Équipages', Award, 'emerald', false, agents.length)}
+            {canAccessTab('notifications') && renderSidebarButton('notifications', "Canaux d'Alerte SMS", Smartphone, 'emerald')}
+            {canAccessTab('emails') && renderSidebarButton('emails', 'Emails Professionnels', Mail, 'emerald')}
 
             {(canAccessTab('accounting') || canAccessTab('expenses') || canAccessTab('stock') || canAccessTab('fleet') || canAccessTab('hr')) && (
               <div className="pt-3 border-t border-slate-800 mt-3 block">
-                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest block px-3 mb-1.5 font-mono">FINANCES & OPÉRATIONS</span>
+                <span className="text-[9.5px] font-bold text-amber-500 uppercase tracking-widest block px-3.5 mb-2 font-mono">FINANCES & OPÉRATIONS</span>
                 
-                {canAccessTab('accounting') && (
-                  <button 
-                    type="button"
-                    onClick={() => { setActiveTab('accounting'); setIsSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                      activeTab === 'accounting' 
-                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                    }`}
-                  >
-                    <BookOpen className="h-4 w-4 shrink-0 text-emerald-500" />
-                    Comptabilité Générale
-                  </button>
-                )}
+                {canAccessTab('accounting') && renderSidebarButton('accounting', 'Comptabilité Générale', BookOpen, 'emerald')}
+                {canAccessTab('expenses') && renderSidebarButton('expenses', 'Dépenses & Achats', Coins, 'amber')}
+                {canAccessTab('stock') && renderSidebarButton('stock', 'Gestion de Stock', Layers, 'sky')}
+                {canAccessTab('fleet') && renderSidebarButton('fleet', 'Flotte & Véhicules', Award, 'amber')}
+                {canAccessTab('hr') && renderSidebarButton('hr', 'Ressources Humaines (RH)', Users, 'purple')}
+              </div>
+            )}
 
-                {canAccessTab('expenses') && (
-                  <button 
-                    type="button"
-                    onClick={() => { setActiveTab('expenses'); setIsSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                      activeTab === 'expenses' 
-                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                    }`}
-                  >
-                    <Coins className="h-4 w-4 shrink-0 text-amber-500" />
-                    Dépenses & Achats
-                  </button>
-                )}
-
-                {canAccessTab('stock') && (
-                  <button 
-                    type="button"
-                    onClick={() => { setActiveTab('stock'); setIsSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                      activeTab === 'stock' 
-                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                    }`}
-                  >
-                    <Layers className="h-4 w-4 shrink-0 text-sky-500" />
-                    Gestion de Stock
-                  </button>
-                )}
-
-                {canAccessTab('fleet') && (
-                  <button 
-                    type="button"
-                    onClick={() => { setActiveTab('fleet'); setIsSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                      activeTab === 'fleet' 
-                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                    }`}
-                  >
-                    <Award className="h-4 w-4 shrink-0 text-amber-400" />
-                    Flotte & Véhicules
-                  </button>
-                )}
-
-                {canAccessTab('hr') && (
-                  <button 
-                    type="button"
-                    onClick={() => { setActiveTab('hr'); setIsSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-xs transition duration-150 ${
-                      activeTab === 'hr' 
-                        ? 'bg-slate-800 text-emerald-400 font-bold border-l-4 border-emerald-500 rounded-r-xl' 
-                        : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                    }`}
-                  >
-                    <Users className="h-4 w-4 shrink-0 text-violet-500" />
-                    Ressources Humaines (RH)
-                  </button>
-                )}
+            {canAccessTab('users') && (
+              <div className="pt-3.5 border-t border-slate-800/80 mt-3.5 block">
+                <span className="text-[9.5px] font-extrabold text-indigo-400 uppercase tracking-widest block px-3.5 mb-2 font-mono flex items-center gap-1.5">
+                  <Shield className="h-3 w-3 text-indigo-500 animate-pulse" /> SÉCURITÉ ADMINISTRATIVE
+                </span>
+                {renderSidebarButton('users', 'Habilitations & Rôles', Shield, 'indigo')}
               </div>
             )}
 
             {canAccessTab('architect_hub') && (
               <div className="pt-3 border-t border-slate-800 mt-3 block">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block px-3 mb-1.5">Documentation</span>
-                <button 
-                  type="button"
-                  onClick={() => { setActiveTab('architect_hub'); setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-2 py-2 text-xs transition duration-150 ${
-                    activeTab === 'architect_hub' 
-                      ? 'bg-emerald-600/90 text-white font-bold rounded-xl' 
-                      : 'hover:bg-slate-800/60 text-slate-400 font-semibold hover:text-slate-200 rounded-xl'
-                  }`}
-                >
-                  <Layers className="h-4 w-4 shrink-0" />
-                  Portail de l'Architecte
-                </button>
+                <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-widest block px-3 mb-2">Documentation</span>
+                {renderSidebarButton('architect_hub', "Portail de l'Architecte", Layers, 'emerald')}
               </div>
             )}
           </nav>
@@ -1705,10 +1707,6 @@ function AppContent() {
             
             <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
 
-            <ThemeToggle theme={theme} setTheme={setTheme} />
-
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
-
             {sessionUser && (
               <UserProfileMenu 
                 user={sessionUser} 
@@ -1720,16 +1718,34 @@ function AppContent() {
 
         {/* INNER SCROLL CONTENT - VIEWS SWITCH */}
         <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-          <ProtectedRoute allowedRoles={
-            activeTab === 'dashboard' ? ['ADMINISTRATEUR', 'COMPTABLE', 'SUPERVISEUR'] :
-            activeTab === 'subscribers' ? ['ADMINISTRATEUR', 'SUPERVISEUR'] :
-            activeTab === 'bins' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR', 'AGENT'] :
-            activeTab === 'ai' ? ['ADMINISTRATEUR'] :
-            activeTab === 'plans' ? ['ADMINISTRATEUR'] :
-            activeTab === 'quick_payment' ? ['ADMINISTRATEUR', 'COMPTABLE', 'CAISSIER'] :
-            activeTab === 'billing' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
-            activeTab === 'payments' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
-            activeTab === 'unpaid_debts' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
+          {selectedSubDetailId ? (
+            <SubscriberDetailView 
+              subscriberId={selectedSubDetailId}
+              onClose={() => setSelectedSubDetailId(null)}
+              subscribers={subscribers}
+              plans={plans}
+              invoices={invoices}
+              receipts={receipts}
+              contracts={contracts}
+              notifLogs={notifLogs}
+              auditLogs={auditLogs}
+              emplacements={emplacements}
+              userRole={sessionUser?.role}
+              sessionUser={sessionUser}
+              onUpdateSubscriber={handleUpdateSubscriber}
+              onProcessBulkPayment={handleProcessBulkPayment}
+            />
+          ) : (
+            <ProtectedRoute allowedRoles={
+              activeTab === 'dashboard' ? ['ADMINISTRATEUR', 'COMPTABLE', 'SUPERVISEUR', 'AGENT_RECOUVREMENT'] :
+              activeTab === 'subscribers' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'AGENT_RECOUVREMENT'] :
+              activeTab === 'bins' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR', 'AGENT'] :
+              activeTab === 'ai' ? ['ADMINISTRATEUR'] :
+              activeTab === 'plans' ? ['ADMINISTRATEUR'] :
+              activeTab === 'quick_payment' ? ['ADMINISTRATEUR', 'COMPTABLE', 'CAISSIER', 'AGENT_RECOUVREMENT'] :
+              activeTab === 'billing' ? ['ADMINISTRATEUR', 'COMPTABLE', 'AGENT_RECOUVREMENT'] :
+              activeTab === 'payments' ? ['ADMINISTRATEUR', 'COMPTABLE', 'AGENT_RECOUVREMENT'] :
+              activeTab === 'unpaid_debts' ? ['ADMINISTRATEUR', 'COMPTABLE', 'AGENT_RECOUVREMENT'] :
             activeTab === 'routes' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR', 'AGENT'] :
             activeTab === 'gps' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR'] :
             activeTab === 'reports' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
@@ -1743,34 +1759,37 @@ function AppContent() {
             activeTab === 'stock' ? ['ADMINISTRATEUR'] :
             activeTab === 'fleet' ? ['ADMINISTRATEUR', 'SUPERVISEUR'] :
             activeTab === 'hr' ? ['ADMINISTRATEUR'] :
+            activeTab === 'users' ? ['ADMINISTRATEUR'] :
             activeTab === 'architect_hub' ? ['ADMINISTRATEUR'] :
             []
           }>
             {activeTab === 'dashboard' && (
             <DashboardView 
-              subscribers={subscribers} 
-              invoices={invoices} 
+              subscribers={zoneFilteredSubscribers} 
+              invoices={zoneFilteredInvoices} 
               agents={agents} 
               plans={plans}
               routes={routes}
+              userRole={sessionUser?.role}
               onNavigateToTab={handleNavToTab}
             />
           )}
 
           {activeTab === 'subscribers' && (
             <SubscribersView 
-              subscribers={subscribers} 
+              subscribers={zoneFilteredSubscribers} 
               plans={plans}
               collectionProofs={collectionProofs}
               onAddSubscriber={handleAddSubscriber}
               onUpdateSubscriber={handleUpdateSubscriber}
               onDeleteSubscriber={handleDeleteSubscriber}
+              onSelectSubscriber={setSelectedSubDetailId}
             />
           )}
 
           {activeTab === 'bins' && (
             <BinsManagementView 
-              subscribers={subscribers}
+              subscribers={zoneFilteredSubscribers}
               onUpdateSubscriber={handleUpdateSubscriber}
               onAddCollectionProof={handleAddCollectionProof}
             />
@@ -1778,8 +1797,8 @@ function AppContent() {
 
           {activeTab === 'ai' && (
             <AiPredictionsView 
-              subscribers={subscribers}
-              invoices={invoices}
+              subscribers={zoneFilteredSubscribers}
+              invoices={zoneFilteredInvoices}
               plans={plans}
               routes={routes}
               onNavigateToTab={handleNavToTab}
@@ -1789,7 +1808,7 @@ function AppContent() {
           {activeTab === 'plans' && (
             <SubscriptionPlansView 
               plans={plans}
-              subscribers={subscribers}
+              subscribers={zoneFilteredSubscribers}
               onAddPlan={handleAddPlan}
               onUpdatePlan={handleUpdatePlan}
               onDeletePlan={handleDeletePlan}
@@ -1798,8 +1817,8 @@ function AppContent() {
 
           {activeTab === 'billing' && (
             <BillingView 
-              invoices={invoices} 
-              subscribers={subscribers}
+              invoices={zoneFilteredInvoices} 
+              subscribers={zoneFilteredSubscribers}
               plans={plans}
               onGenerateMonthlyInvoices={handleGenerateMonthlyInvoices}
               onPayInvoice={handlePayInvoice}
@@ -1809,25 +1828,25 @@ function AppContent() {
 
           {activeTab === 'payments' && (
             <PaymentsView 
-              invoices={invoices}
-              subscribers={subscribers}
+              invoices={zoneFilteredInvoices}
+              subscribers={zoneFilteredSubscribers}
               onPayInvoice={handlePayInvoice}
             />
           )}
 
           {activeTab === 'quick_payment' && (
             <QuickPaymentView 
-              subscribers={subscribers}
-              invoices={invoices}
-              receipts={receipts}
+              subscribers={zoneFilteredSubscribers}
+              invoices={zoneFilteredInvoices}
+              receipts={zoneFilteredReceipts}
               onPaymentSuccess={loadStateFromServer}
             />
           )}
 
           {activeTab === 'unpaid_debts' && (
             <UnpaidDebtsView 
-              subscribers={subscribers}
-              invoices={invoices}
+              subscribers={zoneFilteredSubscribers}
+              invoices={zoneFilteredInvoices}
               plans={plans}
               onUpdateSubscriber={handleUpdateSubscriber}
               onPayInvoice={handlePayInvoice}
@@ -1877,7 +1896,7 @@ function AppContent() {
           )}
 
           {activeTab === 'notifications' && (
-            <NotificationsView logs={notifLogs} />
+            <NotificationsView />
           )}
 
           {activeTab === 'emails' && (
@@ -1952,10 +1971,15 @@ function AppContent() {
             <HrView />
           )}
 
+          {activeTab === 'users' && (
+            <UsersManagementView />
+          )}
+
           {activeTab === 'architect_hub' && (
             <ArchitectHub />
           )}
           </ProtectedRoute>
+          )}
         </div>
       </main>
     </div>

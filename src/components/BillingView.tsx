@@ -299,11 +299,11 @@ export default function BillingView({
                     <td className="p-4 text-slate-500">{inv.dueDate}</td>
                     <td className="p-4">
                       <div className="flex flex-col gap-1">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold self-start ${
-                          inv.status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 
-                          inv.status === 'overdue' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[9px] font-black uppercase tracking-wider self-start ${
+                          inv.status === 'paid' ? 'state-success' : 
+                          inv.status === 'overdue' ? 'state-error' : 'state-warning'
                         }`}>
-                          {inv.status === 'paid' ? 'Soldée (Émargé)' : inv.status === 'overdue' ? 'Contrainte Exigible' : 'En Attente'}
+                          {inv.status === 'paid' ? '✓ Soldée (Émargé)' : inv.status === 'overdue' ? '✕ Contrainte Exigible' : '🕒 En Attente'}
                         </span>
                         {inv.status === 'paid' && (
                           <span className="text-[10px] text-slate-400 italic block">Via : <strong>{inv.paymentMethod}</strong> (le {inv.paidDate})</span>
@@ -423,10 +423,10 @@ export default function BillingView({
               {/* Status stamp */}
               <div className="flex items-center justify-between pt-2 border-t border-slate-200">
                 <span className="text-[9px] text-slate-400 italic">Signature de l'ordonnateur : Trésor Public Municipal d'Abidjan</span>
-                <span className={`inline-block px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
-                  viewingInvoice.status === 'paid' ? 'bg-emerald-100 text-emerald-800 border-2 border-dashed border-emerald-400' : 'bg-rose-100 text-rose-800 border-2 border-dashed border-rose-400'
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border-2 border-dashed ${
+                  viewingInvoice.status === 'paid' ? 'state-success' : 'state-error'
                 }`}>
-                  {viewingInvoice.status === 'paid' ? '✓ FACTURE ACQUITTEE' : '⚠ EN SOUFFRANCE'}
+                  {viewingInvoice.status === 'paid' ? '✓ FACTURE ACQUITTEE' : '✕ EN SOUFFRANCE'}
                 </span>
               </div>
             </div>

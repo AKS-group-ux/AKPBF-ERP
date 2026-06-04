@@ -38,9 +38,34 @@ interface DbEmailLog {
 }
 
 export default function EmailsManagementView() {
-  const [activeSubTab, setActiveSubTab] = useState<'SANDBOX' | 'MONITORING'>('SANDBOX');
+  const [activeSubTab, setActiveSubTab] = useState<'SANDBOX' | 'MONITORING' | 'CONFIG'>('SANDBOX');
   const [toEmail, setToEmail] = useState('');
   const [templateType, setTemplateType] = useState('WELCOME');
+  
+  // Custom SMTP configuration states
+  const [smtpConfig, setSmtpConfig] = useState({
+    enabled: false,
+    host: 'smtp.zoho.com',
+    port: '465',
+    secure: true,
+    user: '',
+    pass: '',
+    fromName: 'AKPBF ERP Assainissement'
+  });
+
+  // Periodic digest configuration states
+  const [digestConfig, setDigestConfig] = useState({
+    enabled: false,
+    recipients: 'groupaksservices@gmail.com',
+    period: 'HEBDOMADAIRE',
+    dayOfWeek: '1',
+    timeOfDay: '08:00'
+  });
+
+  const [hasPassword, setHasPassword] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [triggeringDigest, setTriggeringDigest] = useState(false);
   
   // Customizable parameters for testing mock data
   const [clientName, setClientName] = useState('Jean-Pierre Kouadio');
@@ -59,11 +84,15 @@ export default function EmailsManagementView() {
   const [sendingTest, setSendingTest] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  const getAuthToken = () => {
+    return localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token') || '';
+  };
+
   // Load the logs from the backend safely
   const fetchLogs = async () => {
     setLoadingLogs(true);
     try {
-      const token = localStorage.getItem('akpbf_erp_jwt_token');
+      const token = getAuthToken();
       const res = await fetch('/api/email/logs', {
         headers: {
           'Content-Type': 'application/json',
@@ -84,9 +113,97 @@ export default function EmailsManagementView() {
     }
   };
 
+  // Load SMTP configurations saved in Database Setting keys
+  const fetchConfig = async () => {
+    setLoadingConfig(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/email/digest/settings', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          if (data.smtpConfig) setSmtpConfig(data.smtpConfig);
+          if (data.digestConfig) setDigestConfig(data.digestConfig);
+          setHasPassword(data.hasPassword);
+        }
+      }
+    } catch (e) {
+      console.error('[FETCH CONFIG ERROR]:', e);
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
+
   useEffect(() => {
     fetchLogs();
+    if (activeSubTab === 'CONFIG') {
+      fetchConfig();
+    }
   }, [activeSubTab]);
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingConfig(true);
+    setActionMessage(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/email/digest/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ smtpConfig, digestConfig })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionMessage({ type: 'success', text: data.message });
+        setHasPassword(smtpConfig.pass !== '');
+        fetchLogs();
+      } else {
+        setActionMessage({ type: 'error', text: data.error || 'Erreur lors de la sauvegarde.' });
+      }
+    } catch (err) {
+      setActionMessage({ type: 'error', text: 'Impossible de joindre le serveur ERP.' });
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleTriggerDigest = async () => {
+    setTriggeringDigest(true);
+    setActionMessage(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/email/digest/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          recipients: digestConfig.recipients,
+          period: digestConfig.period
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionMessage({ type: 'success', text: data.message });
+        fetchLogs();
+      } else {
+        setActionMessage({ type: 'error', text: data.error || 'Échec de transmission.' });
+      }
+    } catch (err) {
+      setActionMessage({ type: 'error', text: 'Erreur réseau lors de la génération.' });
+    } finally {
+      setTriggeringDigest(false);
+    }
+  };
 
   // Sends email test requesting backend
   const handleSendTest = async (e: React.FormEvent) => {
@@ -99,7 +216,7 @@ export default function EmailsManagementView() {
     setSendingTest(true);
     setActionMessage(null);
     try {
-      const token = localStorage.getItem('akpbf_erp_jwt_token');
+      const token = getAuthToken();
       const res = await fetch('/api/email/send-test', {
         method: 'POST',
         headers: {
@@ -146,7 +263,7 @@ export default function EmailsManagementView() {
   // Trigger bulk retry
   const handleRetryFailed = async () => {
     try {
-      const token = localStorage.getItem('akpbf_erp_jwt_token');
+      const token = getAuthToken();
       const res = await fetch('/api/email/retry', {
         method: 'POST',
         headers: {
@@ -168,7 +285,7 @@ export default function EmailsManagementView() {
   const handlePurgeQueue = async () => {
     if (!confirm('Voulez-vous purger complètement la file d\'attente d\'email temporaire ?')) return;
     try {
-      const token = localStorage.getItem('akpbf_erp_jwt_token');
+      const token = getAuthToken();
       const res = await fetch('/api/email/purge', {
         method: 'POST',
         headers: {
@@ -288,10 +405,20 @@ export default function EmailsManagementView() {
           className={`px-4 py-2 text-xs font-bold leading-normal transition-all shrink-0 cursor-pointer ${
             activeSubTab === 'MONITORING' 
               ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-extrabold' 
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+              : 'text-slate-500 dark:text-slate-500 hover:text-slate-700'
           }`}
         >
           📊 File d'Attente & Historiques PostgreSQL ({dbLogs.length})
+        </button>
+        <button
+          onClick={() => setActiveSubTab('CONFIG')}
+          className={`px-4 py-2 text-xs font-bold leading-normal transition-all shrink-0 cursor-pointer ${
+            activeSubTab === 'CONFIG' 
+              ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-300 font-extrabold' 
+              : 'text-slate-500 dark:text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          ⚙️ Services SMTP Réels & Digests Financiers SYSCOHADA
         </button>
       </div>
 
@@ -763,6 +890,246 @@ export default function EmailsManagementView() {
             </div>
           </div>
 
+        </div>
+      )}
+
+      {activeSubTab === 'CONFIG' && (
+        <div className="space-y-6">
+          {loadingConfig ? (
+            <div className="py-24 text-center text-xs font-bold text-slate-500 flex flex-col items-center justify-center space-y-2">
+              <RefreshCw className="h-8 w-8 text-emerald-500 animate-spin" />
+              <span>Chargement des configurations sécurisées depuis PostgreSQL...</span>
+            </div>
+          ) : (
+            <form onSubmit={handleSaveConfig} className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                
+                {/* SMTP Config Card */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <Layers className="h-4.5 w-4.5 text-blue-500" />
+                      <span>Passerelle SMTP Personnelle</span>
+                    </h3>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={smtpConfig.enabled}
+                        onChange={(e) => setSmtpConfig({ ...smtpConfig, enabled: e.target.checked })}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-500"></div>
+                      <span className="ml-2 text-[10px] font-bold text-slate-500 uppercase">Activer</span>
+                    </label>
+                  </div>
+
+                  <p className="text-slate-500 text-[11px] leading-relaxed">
+                    Configurez vos propres identifiants d'expédition. L'activation de cette option contourne le bac à sable de simulation pour acheminer de <strong>vrais emails certifiés</strong> via votre hébergeur (Zoho Mail, Orange, Gmail, GMX, etc.).
+                  </p>
+
+                  <div className="space-y-3 font-sans text-xs">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2 space-y-1">
+                        <label className="block font-bold text-slate-700 dark:text-slate-300">Hôte du Serveur SMTP</label>
+                        <input 
+                          type="text" 
+                          disabled={!smtpConfig.enabled}
+                          value={smtpConfig.host}
+                          onChange={(e) => setSmtpConfig({ ...smtpConfig, host: e.target.value })}
+                          placeholder="smtp.zoho.com" 
+                          className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block font-bold text-slate-700 dark:text-slate-300">Port</label>
+                        <input 
+                          type="text" 
+                          disabled={!smtpConfig.enabled}
+                          value={smtpConfig.port}
+                          onChange={(e) => setSmtpConfig({ ...smtpConfig, port: e.target.value })}
+                          placeholder="465" 
+                          className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-mono font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 py-1">
+                      <input 
+                        type="checkbox" 
+                        id="secureSsl"
+                        disabled={!smtpConfig.enabled}
+                        checked={smtpConfig.secure}
+                        onChange={(e) => setSmtpConfig({ ...smtpConfig, secure: e.target.checked })}
+                        className="rounded-sm border-slate-350"
+                      />
+                      <label htmlFor="secureSsl" className="font-bold text-slate-600 dark:text-slate-400 select-none">Considérer une connexion SSL stricte (obligatoire sur le port 465)</label>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block font-bold text-slate-700 dark:text-slate-300">Nom complet de l'expéditeur</label>
+                      <input 
+                        type="text" 
+                        disabled={!smtpConfig.enabled}
+                        value={smtpConfig.fromName}
+                        onChange={(e) => setSmtpConfig({ ...smtpConfig, fromName: e.target.value })}
+                        placeholder="AKPBF Trésorerie Abidjan" 
+                        className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-bold"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block font-bold text-slate-700 dark:text-slate-300">Identifiant / Adresse Email Expéditeur</label>
+                      <input 
+                        type="email" 
+                        disabled={!smtpConfig.enabled}
+                        value={smtpConfig.user}
+                        onChange={(e) => setSmtpConfig({ ...smtpConfig, user: e.target.value })}
+                        placeholder="facturation@akpbf.com" 
+                        className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-mono font-bold text-slate-800 dark:text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block font-bold text-slate-700 dark:text-slate-300">
+                        Mot de Passe d'Application (App Password)
+                      </label>
+                      <input 
+                        type="password" 
+                        disabled={!smtpConfig.enabled}
+                        value={smtpConfig.pass}
+                        onChange={(e) => setSmtpConfig({ ...smtpConfig, pass: e.target.value })}
+                        placeholder={hasPassword ? "********" : "Saisissez votre mot de passe d'application"} 
+                        className="w-full p-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-bold"
+                      />
+                      <p className="text-[10px] text-slate-400 leading-normal pt-0.5">
+                        💡 Pour Zoho Mail ou Gmail avec la Double Authentification (2FA) active, vous devez obligatoirement générer un <strong>Mot de Passe d'Application</strong> spécifique dans les réglages de votre compte Zoho, au lieu d'utiliser votre mot de passe habituel.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Periodic Digest Card */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <Sparkles className="h-4.5 w-4.5 text-teal-500" />
+                      <span>Digests Comptables Automatiques</span>
+                    </h3>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={digestConfig.enabled}
+                        onChange={(e) => setDigestConfig({ ...digestConfig, enabled: e.target.checked })}
+                        className="sr-only peer" 
+                      />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-teal-500"></div>
+                      <span className="ml-2 text-[10px] font-bold text-slate-500 uppercase">Activer</span>
+                    </label>
+                  </div>
+
+                  <p className="text-slate-500 text-[11px] leading-relaxed">
+                    Déterminez la fréquence et les responsables de direction devant recevoir le <strong>digest périodique consolidé des états financiers</strong> d'assainissement AKPBF sous le référentiel d'UEMOA SYSCOHADA.
+                  </p>
+
+                  <div className="space-y-3 font-sans text-xs">
+                    <div className="space-y-1">
+                      <label className="block font-bold text-slate-700 dark:text-slate-300">
+                        Destinataires (Séparez par des virgules)
+                      </label>
+                      <input 
+                        type="text" 
+                        disabled={!digestConfig.enabled}
+                        value={digestConfig.recipients}
+                        onChange={(e) => setDigestConfig({ ...digestConfig, recipients: e.target.value })}
+                        placeholder="groupaksservices@gmail.com, direction@akpbf.com" 
+                        className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-bold"
+                      />
+                      <p className="text-[10px] text-slate-400">
+                        Chaque destinataire recevra un email individuel contenant la balance à jour, le bilan actif/passif et le P&L.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="block font-bold text-slate-700 dark:text-slate-300">Périodicité</label>
+                        <select 
+                          disabled={!digestConfig.enabled}
+                          value={digestConfig.period}
+                          onChange={(e) => setDigestConfig({ ...digestConfig, period: e.target.value })}
+                          className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-bold"
+                        >
+                          <option value="HOURLY">Toutes les Heures (Tests)</option>
+                          <option value="JOURNALIER">Chaque Matin (Daily)</option>
+                          <option value="HEBDOMADAIRE">Chaque Semaine (Weekly)</option>
+                          <option value="MENSUEL">Chaque Fin de Mois (Monthly)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block font-bold text-slate-700 dark:text-slate-300">Heure d'Expédition</label>
+                        <input 
+                          type="time" 
+                          disabled={!digestConfig.enabled}
+                          value={digestConfig.timeOfDay}
+                          onChange={(e) => setDigestConfig({ ...digestConfig, timeOfDay: e.target.value })}
+                          className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    {digestConfig.period === 'HEBDOMADAIRE' && (
+                      <div className="space-y-1">
+                        <label className="block font-bold text-slate-700 dark:text-slate-305">Jour de la Semaine</label>
+                        <select 
+                          disabled={!digestConfig.enabled}
+                          value={digestConfig.dayOfWeek}
+                          onChange={(e) => setDigestConfig({ ...digestConfig, dayOfWeek: e.target.value })}
+                          className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-bold"
+                        >
+                          <option value="1">Lundi (Début d'exercice)</option>
+                          <option value="2">Mardi</option>
+                          <option value="3">Mercredi</option>
+                          <option value="4">Jeudi</option>
+                          <option value="5">Vendredi (Bilan hebdomadaire)</option>
+                          <option value="6">Samedi</option>
+                          <option value="0">Dimanche</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Action and Save Area */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4.5 bg-slate-105/40 dark:bg-slate-950/20 border border-slate-150 dark:border-slate-850 rounded-xl">
+                <div className="text-xs text-slate-550 dark:text-slate-400 leading-normal flex-1 max-w-sm shrink-0">
+                  <strong>💡 Actions comptables AKPBF :</strong> Vous pouvez enregistrer la planification dans PostgreSQL ou forcer un envoi test immédiat à vos destinataires pour auditer l'impression du mail SYSCOHADA.
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleTriggerDigest}
+                    disabled={triggeringDigest || !digestConfig.recipients}
+                    className="p-2.5 px-4 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-755 border border-slate-200 dark:border-slate-705 text-slate-700 dark:text-slate-300 font-extrabold text-xs rounded-lg shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Send className={`h-4 w-4 ${triggeringDigest ? 'animate-pulse' : ''}`} />
+                    <span>{triggeringDigest ? 'Génération...' : 'Envoyer un Digest Live Maintenant'}</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={savingConfig}
+                    className="p-2.5 px-6 bg-gradient-to-r from-emerald-550 to-emerald-650 text-white font-black text-xs rounded-lg shadow-md cursor-pointer hover:from-emerald-600 hover:to-emerald-700 transition disabled:opacity-55 flex items-center justify-center gap-1.5"
+                  >
+                    <Database className="h-4 w-4" />
+                    <span>{savingConfig ? 'Enregistrement...' : 'Sauvegarder les Paramètres'}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
         </div>
       )}
 

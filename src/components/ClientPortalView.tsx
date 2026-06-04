@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { 
   FileText, 
   CreditCard, 
@@ -79,7 +80,15 @@ export default function ClientPortalView({
   theme = 'light',
   setTheme = () => {}
 }: ClientPortalViewProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'contract' | 'invoices' | 'receipts' | 'collections' | 'claims' | 'profile' | 'emplacements'>('dashboard');
+  const [activeTab, setActiveTabState] = useState<'dashboard' | 'contract' | 'invoices' | 'receipts' | 'collections' | 'claims' | 'profile' | 'emplacements'>(() => {
+    const saved = localStorage.getItem('akpbf_client_active_tab');
+    return (saved as any) || 'dashboard';
+  });
+
+  const setActiveTab = (tab: 'dashboard' | 'contract' | 'invoices' | 'receipts' | 'collections' | 'claims' | 'profile' | 'emplacements') => {
+    setActiveTabState(tab);
+    localStorage.setItem('akpbf_client_active_tab', tab);
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Close sidebar on ESC key
@@ -158,6 +167,71 @@ export default function ClientPortalView({
   const activePlan = useMemo(() => {
     return plans.find(p => p.id === loggedClient.planId) || plans[0];
   }, [plans, loggedClient]);
+
+  const renderClientSidebarButton = (
+    tabId: 'dashboard' | 'contract' | 'invoices' | 'receipts' | 'collections' | 'claims' | 'profile' | 'emplacements',
+    label: string,
+    IconComponent: any,
+    colorTheme: 'emerald' | 'amber' = 'emerald',
+    pulseEffect = false,
+    badge?: string | number
+  ) => {
+    const isActive = activeTab === tabId;
+    
+    const colors = {
+      emerald: {
+        activeBg: 'text-emerald-400 font-extrabold',
+        hoverBg: 'hover:bg-slate-800/40 hover:text-emerald-300',
+        iconActive: 'text-emerald-400',
+        iconHover: 'group-hover:text-emerald-400',
+        pillColor: 'bg-emerald-950/40 border-l-4 border-l-emerald-500 border-r border-t border-b border-emerald-900/30'
+      },
+      amber: {
+        activeBg: 'text-amber-400 font-extrabold',
+        hoverBg: 'hover:bg-slate-800/40 hover:text-amber-300',
+        iconActive: 'text-amber-400',
+        iconHover: 'group-hover:text-amber-400',
+        pillColor: 'bg-amber-955/40 border-l-4 border-l-amber-500 border-r border-t border-b border-amber-900/30'
+      }
+    };
+
+    const c = colors[colorTheme];
+
+    return (
+      <button
+        type="button"
+        onClick={() => { setActiveTab(tabId); setIsSidebarOpen(false); }}
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs transition-all duration-305 ease-out group select-none cursor-pointer relative ${
+          isActive 
+            ? `${c.activeBg} scale-[1.02]` 
+            : `text-slate-400 hover:text-slate-200 hover:translate-x-1.5 ${c.hoverBg} rounded-xl`
+        }`}
+      >
+        <div className="flex items-center gap-3 relative z-10">
+          <IconComponent className={`h-4.5 w-4.5 shrink-0 transition-transform duration-300 ${
+            isActive 
+              ? `${c.iconActive} scale-110 ${pulseEffect ? 'animate-pulse' : ''}` 
+              : `text-slate-500 ${c.iconHover} group-hover:scale-105`
+          }`} />
+          <span className="font-semibold tracking-wide">{label}</span>
+        </div>
+        {badge !== undefined && badge !== 0 && (
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-wide relative z-10 ${
+            isActive ? 'bg-slate-950 text-emerald-400 border border-emerald-950/30' : 'bg-red-500 text-white animate-pulse'
+          }`}>
+            {badge}
+          </span>
+        )}
+        {isActive && (
+          <motion.span
+            layoutId="activeClientTabBackground"
+            className={`absolute inset-0 rounded-xl -z-10 ${c.pillColor}`}
+            transition={{ type: 'spring', stiffness: 350, damping: 26 }}
+          />
+        )}
+      </button>
+    );
+  };
 
   // Handle Contract electronic signature submit
   const handleElectronicSignatureSubmit = (e: React.FormEvent) => {
@@ -356,91 +430,14 @@ export default function ClientPortalView({
           </div>
 
           <nav className="space-y-1 block">
-            <button
-              onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2.5 transition ${
-                activeTab === 'dashboard' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Layers className="h-4.5 w-4.5" />
-              Tableau de Bord
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('contract'); setIsSidebarOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2.5 transition ${
-                activeTab === 'contract' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <FileCheck2 className="h-4.5 w-4.5" />
-              Mon Contrat d'Enlèvement
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setActiveTab('invoices'); setIsSidebarOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2.5 transition relative ${
-                activeTab === 'invoices' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <CreditCard className="h-4.5 w-4.5" />
-              <span>Mes Factures de Salubrité</span>
-              {clientInvoices.filter(i => i.status !== 'paid').length > 0 && (
-                <span className="absolute right-2 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[9px] font-black animate-pulse">
-                  {clientInvoices.filter(i => i.status !== 'paid').length}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('receipts'); setIsSidebarOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2.5 transition ${
-                activeTab === 'receipts' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Printer className="h-4.5 w-4.5" />
-              Mes Reçus Officiels
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('collections'); setIsSidebarOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2.5 transition ${
-                activeTab === 'collections' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Clock className="h-4.5 w-4.5" />
-              Mes Collectes Historiques
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('claims'); setIsSidebarOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2.5 transition ${
-                activeTab === 'claims' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <AlertTriangle className="h-4.5 w-4.5" />
-              Mes Réclamations Mairie
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('emplacements'); setIsSidebarOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2.5 transition ${
-                activeTab === 'emplacements' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <MapPin className="h-4.5 w-4.5 text-amber-500 animate-pulse" />
-              <span>Mes Emplacements ({emplacements.filter(e => e.subscriberId === loggedClient.id).length})</span>
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('profile'); setIsSidebarOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2.5 transition ${
-                activeTab === 'profile' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <User className="h-4.5 w-4.5" />
-              Mon Profil & Contact
-            </button>
+            {renderClientSidebarButton('dashboard', 'Tableau de Bord', Layers)}
+            {renderClientSidebarButton('contract', "Mon Contrat d'Enlèvement", FileCheck2)}
+            {renderClientSidebarButton('invoices', 'Mes Factures de Salubrité', CreditCard, 'emerald', false, clientInvoices.filter(i => i.status !== 'paid').length)}
+            {renderClientSidebarButton('receipts', 'Mes Reçus Officiels', Printer)}
+            {renderClientSidebarButton('collections', 'Mes Collectes Historiques', Clock)}
+            {renderClientSidebarButton('claims', 'Mes Réclamations Mairie', AlertTriangle, 'amber')}
+            {renderClientSidebarButton('emplacements', 'Mes Emplacements', MapPin, 'amber', true, emplacements.filter(e => e.subscriberId === loggedClient.id).length)}
+            {renderClientSidebarButton('profile', 'Mon Profil & Contact', User)}
           </nav>
         </div>
 
