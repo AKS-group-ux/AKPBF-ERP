@@ -33,7 +33,7 @@ import ThemeToggle from './ThemeToggle';
 interface LandingPageProps {
   plans: SubscriptionPlan[];
   subscribers: Subscriber[];
-  onAddSubscriber: (sub: any) => Promise<void>;
+  onAddSubscriber: (sub: any) => Promise<any>;
   onLogin: (sessionUser: any) => void;
   onAddNotificationLogs?: (notif: any) => void;
   theme?: 'light' | 'dark';
@@ -57,9 +57,9 @@ export default function LandingPage({
   // Registration Form states
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('+225 ');
+  const [regPhone, setRegPhone] = useState('+226 ');
   const [regAddress, setRegAddress] = useState('');
-  const [regNeighborhood, setRegNeighborhood] = useState('Cocody Riviera 3');
+  const [regNeighborhood, setRegNeighborhood] = useState('Karpala');
   const [regPlanId, setRegPlanId] = useState('plan_eco');
   const [regBinType, setRegBinType] = useState<'Standard 240L' | 'Bac Grand 360L' | 'Conteneur 1100L'>('Standard 240L');
   const [regLoading, setRegLoading] = useState(false);
@@ -234,11 +234,11 @@ export default function LandingPage({
     // Email format checks
     const mailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!mailRegex.test(regEmail.trim())) {
-      setRegError("L'adresse e-mail n'est pas au format valide (ex: citoyen@Abidjan.ci).");
+      setRegError("L'adresse e-mail n'est pas au format valide (ex: citoyen@ouaga.bf).");
       return;
     }
 
-    // Phone format checks (Côte d'Ivoire phone length is usually 10 digits post-2021)
+    // Phone format checks (Burkina Faso phone length is usually 8 digits)
     const cleanPh = regPhone.replace(/[\s\-\+]/g, '');
     if (cleanPh.length < 8) {
       setRegError("Le numéro de téléphone est trop court ou invalide.");
@@ -273,7 +273,8 @@ export default function LandingPage({
       };
 
       // Success
-      await onAddSubscriber(newSub);
+      const serverSub = await onAddSubscriber(newSub);
+      const actualId = serverSub?.id || generatedId;
 
       // Log notification
       if (onAddNotificationLogs) {
@@ -283,19 +284,19 @@ export default function LandingPage({
           recipientContact: regPhone,
           type: 'sms',
           templateName: 'Bienvenue',
-          content: `Bonjour ${regName}, bienvenue chez AKPBF ! Votre inscription à la formule ${selectedPlan.name} est enregistrée. Identifiant : ${generatedId}.`,
+          content: `Bonjour ${regName}, bienvenue chez AKPBF ! Votre inscription à la formule ${selectedPlan.name} est enregistrée. Identifiant : ${actualId}.`,
           sentAt: new Date().toISOString(),
           status: 'sent'
         });
       }
 
-      setRegSuccess(generatedId);
+      setRegSuccess(actualId);
       setRegLoading(false);
 
       // Clear fields
       setRegName('');
       setRegEmail('');
-      setRegPhone('+225 ');
+      setRegPhone('+226 ');
       setRegAddress('');
     } catch (err: any) {
       setRegError(err.message);
@@ -325,7 +326,7 @@ export default function LandingPage({
           recipientContact: compPhone,
           type: 'sms',
           templateName: 'Ticket Réclamation',
-          content: `Mairie d'Abidjan - AKPBF : Réclamation ${ticketId} enregistrée avec succès. Notre équipe technique intervient dans un délai de 24h. Merci.`,
+          content: `Mairie de Ouagadougou - AKPBF : Réclamation ${ticketId} enregistrée avec succès. Notre équipe technique intervient dans un délai de 24h. Merci.`,
           sentAt: new Date().toISOString(),
           status: 'sent'
         });
@@ -333,16 +334,15 @@ export default function LandingPage({
 
       // Clear fields
       setCompName('');
-      setCompPhone('+225 ');
+      setCompPhone('+226 ');
       setCompSubscriberId('');
       setCompMessage('');
     }, 1500);
   };
 
   const neighborhoods = [
-    'Cocody Riviera 3', 'Cocody Riviera 2', 'Cocody Riviera Palmeraie', 'Riviera M’Badon',
-    'Cocody Ambassades', 'Cocody Danga', 'Marcory Zone 4', 'Marcory Residentiel', 'Yopougon Selmer',
-    'Yopougon Maroc', 'Plateau Centre', 'Treichville Arras'
+    'Karpala', 'Somgandé', 'Gounghin', 'Pissy', 'Ouaga 2000', 'Tampouy',
+    'Patte d\'Oie', 'Cissin', 'Wemtenga', 'Dassasgho', 'Koulouba', 'Sanyiri'
   ];
 
   return (
@@ -440,7 +440,7 @@ export default function LandingPage({
               Technologie Civique & Salubrité Digitale
             </span>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-950 dark:text-white tracking-tight leading-none">
-              Simplifions la gestion des déchets à <span className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">Abidjan</span>
+              Simplifions la gestion des déchets à <span className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">Ouagadougou</span>
             </h1>
             <p className="text-sm sm:text-md text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-2xl">
               Al-Kaïda Prestations - Bureaux & Facturation (AKPBF) propose un écosystème intelligent de ramassage municipal connecté par puce RFID, de planification de flotte verte par GPS, de signature de contrats électroniques de services civiques, et d'alertes par SMS.
@@ -591,10 +591,10 @@ export default function LandingPage({
           <div className="lg:col-span-5 text-left space-y-4">
             <span className="text-emerald-500 dark:text-emerald-400 font-bold block text-xs tracking-wider uppercase font-mono">QUI SOMMES-NOUS ?</span>
             <h2 className="text-2xl sm:text-3.5xl font-black text-slate-950 dark:text-white tracking-tight leading-tight">
-              Al-Kaïda Prestations - Bureaux & Facturation (AKPBF) : Pilier de la transition écologique d'Abidjan
+              Al-Kaïda Prestations - Bureaux & Facturation (AKPBF) : Pilier de la transition écologique de Ouagadougou
             </h2>
             <p className="text-xs sm:text-sm text-slate-655 text-slate-600 dark:text-slate-350 leading-relaxed font-semibold">
-              Sous l'égide de la politique d'assainissement et de préservation de l'environnement des municipalités de l'UEMOA, nous opérons avec ferveur pour doter les citoyens ivoiriens d'outils technologiques avancés de salubrité publique.
+              Sous l'égide de la politique d'assainissement et de préservation de l'environnement des municipalités de l'UEMOA, nous opérons avec ferveur pour doter les citoyens burkinabè d'outils technologiques avancés de salubrité publique.
             </p>
             
             <div className="space-y-3 text-xs">
@@ -624,13 +624,13 @@ export default function LandingPage({
             <div className="p-5 bg-emerald-50/50 dark:bg-slate-950/40 rounded-2xl space-y-2 border border-emerald-100/50 dark:border-emerald-950/20">
               <Shield className="h-7 w-7 text-emerald-500" />
               <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-none">Certifié Salubrité Verte</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">Conformité stricte avec les normes environnementales et chartes de salubrité de Côte d'Ivoire.</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">Conformité stricte avec les normes environnementales et chartes de salubrité du Burkina Faso.</p>
             </div>
 
             <div className="p-5 bg-emerald-50/50 dark:bg-slate-950/40 rounded-2xl space-y-2 border border-emerald-100/50 dark:border-emerald-950/20">
               <Smartphone className="h-7 w-7 text-emerald-500" />
               <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white leading-none">Alertes SMS & Factures</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">Notifications instantanées avant le passage des bennes et relances par Mobile Money d'Abidjan.</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">Notifications instantanées avant le passage des bennes et relances par Mobile Money de Ouagadougou.</p>
             </div>
 
             <div className="p-5 bg-emerald-50/50 dark:bg-slate-950/40 rounded-2xl space-y-2 border border-emerald-100/50 dark:border-emerald-950/20">
@@ -658,7 +658,7 @@ export default function LandingPage({
             <span className="text-xs font-bold text-emerald-500 tracking-wider uppercase font-mono">DÉTAIL DES SERVICES</span>
             <h2 className="text-3xl font-black text-slate-950 dark:text-white tracking-tight">Des prestations modernes adaptées à votre quotidien</h2>
             <p className="text-slate-550 dark:text-slate-400 text-xs sm:text-sm leading-relaxed max-w-2xl mx-auto font-medium">
-              Du ménage individuel aux industries complexes d'Abidjan, AKPBF met en œuvre des approches de ramassage structurées et technologiques.
+              Du ménage individuel aux industries complexes de Ouagadougou, AKPBF met en œuvre des approches de ramassage structurées et technologiques.
             </p>
           </div>
 
@@ -692,7 +692,7 @@ export default function LandingPage({
               </div>
               <h3 className="text-lg font-extrabold text-slate-950 dark:text-white">Services Commerciaux & B2B</h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Opérations d'élimination de déchets pour boutiques, bureaux administratifs, restaurants et commerces d'Abidjan Riviera et Plateau, avec fréquence de rotation modulée.
+                Opérations d'élimination de déchets pour boutiques, bureaux administratifs, restaurants et commerces de Ouagadougou, avec fréquence de rotation modulée.
               </p>
               <ul className="text-xs font-bold space-y-2 pt-2 text-slate-600 dark:text-slate-350">
                 <li className="flex items-center gap-2">
@@ -847,7 +847,7 @@ export default function LandingPage({
 
                 <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 p-4 rounded-2xl max-w-md mx-auto text-xs text-left leading-relaxed">
                   <span className="font-bold text-emerald-800 dark:text-emerald-400 block mb-1">ℹ Prochaines étapes :</span>
-                  1. Un installateur d'Abidjan AKPBF prendra contact pour arrimer la puce RFID à votre portail.<br/>
+                  1. Un installateur de Ouagadougou AKPBF prendra contact pour arrimer la puce RFID à votre portail.<br/>
                   2. Vos codes d'accès ont été configurés avec votre adresse e-mail.<br/>
                   3. Vous recevrez un premier SMS de confirmation.
                 </div>
@@ -900,13 +900,13 @@ export default function LandingPage({
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Phone */}
                   <div className="space-y-1.5">
-                    <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Téléphone d'Abidjan (+225)</label>
+                    <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Téléphone de Ouagadougou (+226)</label>
                     <input 
                       type="text"
                       required
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
-                      placeholder="+225 07 48 29 10 22"
+                      placeholder="+226 70 12 34 56"
                       className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-805 rounded-xl px-4 py-3 text-xs font-semibold outline-none focus:border-emerald-500 text-slate-850 dark:text-white transition"
                     />
                   </div>
@@ -1114,11 +1114,11 @@ export default function LandingPage({
                       onChange={(e) => setCompLocation(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-805 rounded-xl px-4 py-3 text-xs font-semibold outline-none focus:border-emerald-500 text-slate-850 dark:text-white transition"
                     >
-                      <option value="Cocody">Cocody Riviera</option>
-                      <option value="Marcory">Marcory / Zone 4</option>
-                      <option value="Yopougon">Yopougon</option>
-                      <option value="Plateau">Le Plateau</option>
-                      <option value="Treichville">Treichville</option>
+                      <option value="Karpala">Karpala</option>
+                      <option value="Somgandé">Somgandé / Zone Ind.</option>
+                      <option value="Gounghin">Gounghin</option>
+                      <option value="Pissy">Pissy</option>
+                      <option value="Ouaga 2000">Ouaga 2000</option>
                     </select>
                   </div>
 
@@ -1169,7 +1169,7 @@ export default function LandingPage({
           
           <div className="text-center space-y-3">
             <span className="text-xs font-bold text-emerald-500 tracking-wider uppercase font-mono">ZONES DE COUVERTURE</span>
-            <h2 className="text-3xl font-black text-slate-950 dark:text-white tracking-tight">Secteurs opérationnels d'Abidjan</h2>
+            <h2 className="text-3xl font-black text-slate-950 dark:text-white tracking-tight">Secteurs opérationnels de Ouagadougou</h2>
             <p className="text-slate-550 dark:text-slate-400 text-xs sm:text-sm leading-relaxed max-w-2xl mx-auto font-medium">
               Nous couvrons les principaux pôles économiques et résidentiels avec une planification rigoureuse sous SIG.
             </p>
@@ -1184,49 +1184,49 @@ export default function LandingPage({
                 <div className="p-4 bg-emerald-50/50 dark:bg-slate-950/40 border border-emerald-100/50 dark:border-emerald-950/10 rounded-2xl flex items-start gap-4">
                   <MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white">Zone Nord (Cocody - Riviera)</h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">Ambassades, Riviera 2, Riviera 3, M'Badon, Riviera Palmeraie. 3 camions connectés de garde par jour.</p>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white">Zone Est (Somgandé - Wemtenga)</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">Somgandé, Wemtenga, Dassasgho, Sanyiri. 3 camions connectés de garde par jour.</p>
                   </div>
                 </div>
 
                 <div className="p-4 bg-emerald-50/50 dark:bg-slate-950/40 border border-emerald-100/50 dark:border-emerald-950/10 rounded-2xl flex items-start gap-4">
                   <MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white">Zone Sud (Marcory - Treichville)</h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">Marcory Zone 4, Marcory Résidentiel, Treichville, Arras. Point de fort trafic commercial B2B.</p>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white">Zone Sud (Karpala - Ouaga 2000)</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">Karpala, Ouaga 2000, Patte d'Oie. Point de fort trafic commercial B2B.</p>
                   </div>
                 </div>
 
                 <div className="p-4 bg-emerald-50/50 dark:bg-slate-950/40 border border-emerald-100/50 dark:border-emerald-950/10 rounded-2xl flex items-start gap-4">
                   <MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white">Zone Ouest (Yopougon - Adjamé)</h3>
-                    <p className="text-[11px] text-slate-505 dark:text-slate-400 leading-normal">Yopougon Maroc, Selmer, Niangon, Adjamé centre. Secteurs à forte densité résidentielle.</p>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white">Zone Ouest (Gounghin - Pissy)</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">Gounghin, Pissy, Tampouy, Cissin. Secteurs à forte densité résidentielle.</p>
                   </div>
                 </div>
 
                 <div className="p-4 bg-emerald-50/50 dark:bg-slate-950/40 border border-emerald-100/50 dark:border-emerald-950/10 rounded-2xl flex items-start gap-4">
                   <MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white">Zone Centrale Administrative (Plateau)</h3>
-                    <p className="text-[11px] text-slate-505 dark:text-slate-400 leading-normal">Quartier des affaires, banques, ministères, ambassades. Service d'enlèvement quotidien de nuit.</p>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white">Zone Centrale Administrative (Koulouba)</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">Quartier des affaires, banques, ministères, Koulouba. Service d'enlèvement quotidien de nuit.</p>
                   </div>
                 </div>
               </div>
 
             </div>
 
-            {/* Right Map/Graphic Panel of Abidjan Operations */}
+            {/* Right Map/Graphic Panel of Ouagadougou Operations */}
             <div className="lg:col-span-7 bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-805 p-6 rounded-3xl space-y-4">
               <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
                 <span className="text-[10px] font-mono text-emerald-500 font-bold uppercase tracking-wider flex items-center gap-1">
                   <Map className="h-4 w-4" />
                   Cartographie logistique réactive
                 </span>
-                <span className="text-xs text-slate-500 font-bold">Abidjan SIG v2.4</span>
+                <span className="text-xs text-slate-500 font-bold">Ouagadougou SIG v2.4</span>
               </div>
 
-              {/* Graphical simulation panel of Abidjan Map */}
+              {/* Graphical simulation panel of Ouagadougou Map */}
               <div className="bg-slate-900 dark:bg-slate-950 h-72 rounded-2xl relative overflow-hidden flex items-center justify-center p-4 border border-slate-800">
                 
                 {/* Simulated geographic paths */}
@@ -1243,19 +1243,19 @@ export default function LandingPage({
                 {/* Simulated markers */}
                 <div className="absolute top-[20%] left-[30%] bg-emerald-500 text-white p-2 rounded-xl text-[9px] font-black tracking-wide shadow-lg transform scale-95 flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  COCODY (RIVIERA 3)
+                  KARPALA
                 </div>
                 <div className="absolute top-[50%] left-[65%] bg-emerald-500 text-white p-2 rounded-xl text-[9px] font-black tracking-wide shadow-lg transform rotate-2 flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  MARCORY (ZONE 4)
+                  OUAGA 2000
                 </div>
                 <div className="absolute top-[70%] left-[15%] bg-teal-500/80 text-white p-1.5 rounded-lg text-[8.5px] font-semibold tracking-wide shadow-lg flex items-center gap-1">
                   <MapPin className="h-3 w-3 text-white" />
-                  YOP_MAROC
+                  SOMGANDE
                 </div>
                 <div className="absolute top-[40%] left-[45%] bg-indigo-550 bg-indigo-600 text-white p-1.5 rounded-lg text-[8.5px] font-bold tracking-wide shadow-lg flex items-center gap-1">
                   <MapPin className="h-3 w-3 text-white" />
-                  PLATEAU CENTRAL
+                  KOULOUBA
                 </div>
 
                 {/* Connected truck indicator icon moving around */}
@@ -1286,7 +1286,7 @@ export default function LandingPage({
               <span className="text-white font-extrabold text-sm tracking-tight">AKPBF Salubrité</span>
             </div>
             <p className="text-[11px] leading-relaxed">
-              Al-Kaïda Prestations - Bureaux & Facturation (Commune d'Abidjan). ERP de gestion intégrée, plan d'hygiène urbaine et de services civiques intelligents connectés en direct.
+              Al-Kaïda Prestations - Bureaux & Facturation (Commune de Ouagadougou). ERP de gestion intégrée, plan d'hygiène urbaine et de services civiques intelligents connectés en direct.
             </p>
           </div>
 
@@ -1313,17 +1313,17 @@ export default function LandingPage({
           <div className="space-y-3">
             <h4 className="text-white font-extrabold text-xs tracking-wider uppercase">Contact d'assistance</h4>
             <p className="text-[11px] leading-relaxed">
-              <strong>Mairie d'Abidjan, Côte d'Ivoire</strong><br/>
-              Boîte Postale : BP 42 Abidjan 01<br/>
-              Téléphone : +225 27 22 45 61<br/>
-              Email : <a href="mailto:contact@salubrite.akpbf.ci" className="text-emerald-500 hover:underline">contact@salubrite.akpbf.ci</a>
+              <strong>Mairie de Ouagadougou, Burkina Faso</strong><br/>
+              Boîte Postale : BP 42 Ouagadougou 01<br/>
+              Téléphone : +226 25 30 11 22<br/>
+              Email : <a href="mailto:contact@salubrite.akpbf.bf" className="text-emerald-500 hover:underline">contact@salubrite.akpbf.bf</a>
             </p>
           </div>
 
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800 mt-8 pt-8 flex flex-col sm:flex-row items-center justify-between text-[10px]">
-          <span>© 2026 AKPBF Salubrité d'Abidjan. Tous droits de salubrité publique réservés par l'UEMOA.</span>
+          <span>© 2026 AKPBF Salubrité de Ouagadougou. Tous droits de salubrité publique réservés par l'UEMOA.</span>
           <div className="flex gap-4 mt-4 sm:mt-0">
             <a href="#" className="hover:text-white transition">Mentions Légales</a>
             <a href="#" className="hover:text-white transition">Charte de Confidentialité RGPD</a>

@@ -160,7 +160,7 @@ export default function DashboardView({
 
   // 5. Recovery Rate per sector
   const sectorPerformanceData = useMemo(() => {
-    const sectors = ['Cocody', 'Plateau', 'Marcory', 'Yopougon'];
+    const sectors = ['Karpala', 'Somgandé', 'Gounghin', 'Pissy'];
     return sectors.map(sec => {
       const secInvoices = invoices.filter(i => {
         const sub = subscribers.find(s => s.id === i.subscriberId);
@@ -213,7 +213,7 @@ export default function DashboardView({
       return unpaidInvs.length > 0;
     }).length;
 
-    // Sum of paid invoices on Abidjan today
+    // Sum of paid invoices on Ouagadougou today
     const collectedTodaySum = invoices
       .filter(i => i.status === 'paid' && (i.paidDate === '2026-06-03' || i.paidDate === '2026-05-22'))
       .reduce((sum, curr) => sum + curr.amount, 0);
@@ -250,7 +250,7 @@ export default function DashboardView({
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#635BFF] font-black">
               <Award className="h-4 w-4" />
-              <span>Espace Agent de Recouvrement Municipal — Abidjan</span>
+              <span>Espace Agent de Recouvrement Municipal — Ouagadougou</span>
             </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Portail de Recouvrement Terrain</h2>
             <p className="text-slate-500 text-xs">Suivi des encaissements communaux, détection des arriérés municipaux et quittances AKPBF.</p>
@@ -318,7 +318,7 @@ export default function DashboardView({
         <div className="bg-white rounded-3xl border border-slate-200/70 p-6 shadow-xs space-y-4">
           <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
             <TrendingUp className="h-4 w-4 text-[#635BFF]" />
-            <span>Performance Mensuelle du Recouvrement Abidjan 2026</span>
+            <span>Performance Mensuelle du Recouvrement Ouagadougou 2026</span>
           </h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -369,7 +369,7 @@ export default function DashboardView({
                 </div>
               ))}
               {arrearsPerClient.length === 0 && (
-                <p className="text-xs text-slate-400 py-6 text-center font-semibold">Aucun retard détecté dans votre secteur d'Abidjan.</p>
+                <p className="text-xs text-slate-400 py-6 text-center font-semibold">Aucun retard détecté dans votre secteur de Ouagadougou.</p>
               )}
             </div>
           </div>
@@ -422,7 +422,7 @@ export default function DashboardView({
             <span>EXECUTIVE ERP PLATFORM • AKPBF</span>
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Tableau de Bord Exécutif de Direction</h2>
-          <p className="text-slate-500 text-xs">Analyse en temps réel de la fiscalité d'assainissement, du recouvrement de voirie et de la logistique d'Abidjan.</p>
+          <p className="text-slate-500 text-xs">Analyse en temps réel de la fiscalité d'assainissement, du recouvrement de voirie et de la logistique de Ouagadougou.</p>
         </div>
 
         {/* Action Toggle controls */}
@@ -839,7 +839,7 @@ export default function DashboardView({
             </div>
 
             <p className="text-slate-400 text-xs leading-relaxed">
-              Moteur d'estimation d'assiette fiscale basé sur les abonnés actifs municipaux d'Abidjan.
+              Moteur d'estimation d'assiette fiscale basé sur les abonnés actifs municipaux de Ouagadougou.
             </p>
 
             {/* KPI Stacked detail representation */}

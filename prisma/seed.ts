@@ -150,132 +150,7 @@ async function main() {
     const plan = await prisma.subscriptionPlan.create({ data: pl });
     createdPlans.push(plan);
   }
-  console.log('✅ Created subscription plans.');
-
-  // 7. Seed Customers (Abonnés)
-  const customersData = [
-    { name: 'Kouassi Kouadio Jean', email: 'jean.kouassi@gmail.com', phone: '+225 07 48 29 10 33', address: 'Riviera 3 Copraci, Lot 14', subscriberId: 'ABJ-COS-0012', latitude: 5.3489, longitude: -3.9995 },
-    { name: 'Syndic Résidence Soleil', email: 'soleil.syndic@hotmail.fr', phone: '+225 01 02 44 91 22', address: 'Palmeraie Triangle, Rue L82', subscriberId: 'ABJ-COS-0941', latitude: 5.3612, longitude: -3.9875 },
-    { name: 'Madame Touré Fatoumata', email: 'fatou.toure@yahoo.fr', phone: '+225 05 52 81 92 00', address: 'Marcory Zone 4, Av. 18 de Décembre', subscriberId: 'ABJ-MAR-0120', latitude: 5.2985, longitude: -3.9782 },
-    { name: 'Yao Amenan Chantal', email: 'chantal.yao@gmail.com', phone: '+225 07 11 22 33 44', address: 'Yopougon Selmer, Carrefour Sogefiha', subscriberId: 'ABJ-YOP-0349', latitude: 5.3125, longitude: -4.0152 },
-  ];
-
-  const createdCustomers: any[] = [];
-  for (let i = 0; i < customersData.length; i++) {
-    const custData = customersData[i];
-    const cust = await prisma.customer.create({ data: custData });
-    createdCustomers.push(cust);
-
-    // Create Subscription
-    const planSelected = createdPlans[i % createdPlans.length];
-    const sub = await prisma.subscription.create({
-      data: {
-        customerId: cust.id,
-        planId: planSelected.id,
-        startDate: new Date(),
-        status: 'ACTIVE',
-      },
-    });
-
-    // Create Invoice (Unpaid)
-    await prisma.invoice.create({
-      data: {
-        customerId: cust.id,
-        subscriptionId: sub.id,
-        amount: planSelected.price,
-        dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // in 15 days
-        status: 'UNPAID',
-        billingPeriodStart: new Date(),
-        billingPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    // Create Invoice (Paid helper)
-    if (i % 2 === 0) {
-      const paidInvoice = await prisma.invoice.create({
-        data: {
-          customerId: cust.id,
-          subscriptionId: sub.id,
-          amount: planSelected.price,
-          dueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-          status: 'PAID',
-          billingPeriodStart: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
-          billingPeriodEnd: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-        },
-      });
-
-      // Bind payment
-      await prisma.payment.create({
-        data: {
-          invoiceId: paidInvoice.id,
-          amount: planSelected.price,
-          method: 'MOBILE_MONEY',
-          status: 'SUCCESS',
-          transactionId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-        },
-      });
-    }
-  }
-  console.log('✅ Seeded abonnés, active subscriptions, payments, and invoice ledger items.');
-
-  // 8. Seed Vehicles & Collection Routes
-  const route = await prisma.collectionRoute.create({
-    data: {
-      name: 'Zone A - Cocody Riviera 3-4',
-      description: 'Collecte journalière résidences et commerces Riviera.',
-      startPoint: 'Dépôt Central Boulevard M’Badon',
-      endPoint: 'Décharge Technique de Kossihouen',
-    },
-  });
-
-  const vehicle = await prisma.vehicle.create({
-    data: {
-      plateNumber: 'BG-402-CI',
-      model: 'Renault D Wide 26T Benne Tasseuse',
-      capacity: 18.5,
-      status: 'ACTIVE',
-    },
-  });
-
-  // Gps Coordinates logs
-  await prisma.vehicleLocation.create({
-    data: {
-      vehicleId: vehicle.id,
-      latitude: 5.3489,
-      longitude: -3.9995,
-    },
-  });
-
-  // Route assignment
-  await prisma.routeAssignment.create({
-    data: {
-      routeId: route.id,
-      driverId: createdUsers['CHAUFFEUR'].id,
-      vehicleId: vehicle.id,
-      date: new Date(),
-      status: 'IN_PROGRESS',
-    },
-  });
-
-  console.log('✅ Seeded logistical routes, vehicle trackers and team assignments.');
-
-  // 9. Bins (Poubelles) RFID/Connected
-  for (let i = 0; i < createdCustomers.length; i++) {
-    const customer = createdCustomers[i];
-    await prisma.bin.create({
-      data: {
-        qrCode: `RFID-${customer.subscriberId}`,
-        customerId: customer.id,
-        routeId: route.id,
-        capacity: i % 2 === 0 ? 240.0 : 360.0,
-        fillLevel: Math.floor(Math.random() * 85),
-        latitude: customer.latitude,
-        longitude: customer.longitude,
-        status: 'OK',
-      },
-    });
-  }
-  console.log('✅ Synchronized IoT connected bin RFID/QR logs with abonnés.');
+  console.log('✅ Created empty subscription plans catalogue.');
 
   // 10. System settings seeds
   await prisma.setting.createMany({
@@ -287,7 +162,7 @@ async function main() {
   });
   console.log('✅ Default settings loaded.');
 
-  console.log('🎉 Database seeding compiled successfully!');
+  console.log('🎉 Database seeding compiled successfully with blank transactions!');
 }
 
 main()

@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error('Le mot de passe doit comporter au moins 5 caractères.');
         }
         if (credentials.email.trim().toLowerCase() === 'locked@akpbf.com') {
-          throw new Error('Ce compte est verrouillé par la sécurité administrative d\'Abidjan.');
+          throw new Error('Ce compte est verrouillé par la sécurité administrative de Ouagadougou.');
         }
       } else if (credentials.authMethod === 'id') {
         if (!credentials.subscriberId || !credentials.subscriberId.trim()) {
@@ -217,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Custom wording for typical fetch exceptions or network failures
       let displayError = err.message;
       if (err instanceof TypeError && (err.message.includes('fetch') || err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
-        displayError = 'Erreur de connexion au serveur d\'Abidjan. Veuillez vérifier votre connexion ou réinstaller l\'application.';
+        displayError = 'Erreur de connexion au serveur de Ouagadougou. Veuillez vérifier votre connexion ou réinstaller l\'application.';
       } else if (!displayError) {
         displayError = 'Erreur lors de la tentative de connexion.';
       }

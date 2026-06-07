@@ -374,7 +374,7 @@ export default function UnpaidDebtsView({
             <span>CRON ENGINE • MODULE FISCAL DE RECOUVREMENT OBSTINÉ</span>
           </div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Gestion des Impayés & Contentieux</h2>
-          <p className="text-slate-500 text-sm mt-0.5">Automatisation des suspensions de service d'assainissement et relances juridiques multi-canaux d'Abidjan.</p>
+          <p className="text-slate-500 text-sm mt-0.5">Automatisation des suspensions de service d'assainissement et relances juridiques multi-canaux de Ouagadougou.</p>
         </div>
 
         {/* Global manual audit scanner button */}
@@ -658,7 +658,7 @@ export default function UnpaidDebtsView({
 
             {/* Bottom info banner */}
             <div className="bg-slate-50 p-3 px-4 text-[10.5px] text-slate-400 font-semibold border-t border-slate-100 flex items-center justify-between">
-              <span>Le batch comptable nocturne s'exécute à 00h00 heure locale d'Abidjan.</span>
+              <span>Le batch comptable nocturne s'exécute à 00h00 heure locale de Ouagadougou.</span>
               <span className="text-[#635BFF] flex items-center gap-0.5">
                 <Info className="h-3.5 w-3.5" />
                 Loi ERP UEMOA v12.1 Compliance
@@ -730,7 +730,7 @@ export default function UnpaidDebtsView({
               </div>
 
               <p className="text-slate-500 text-[11.5px] leading-relaxed">
-                Le diagramme d'état ci-dessous schématise la transition de contrat d'un foyer d'Abidjan :
+                Le diagramme d'état ci-dessous schématise la transition de contrat d'un foyer de Ouagadougou :
               </p>
 
               {/* Visual SVG diagram representation */}

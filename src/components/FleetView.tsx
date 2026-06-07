@@ -32,12 +32,7 @@ interface Vehicle {
   status: 'active' | 'maintenance' | 'out_of_service';
 }
 
-const INITIAL_VEHICLES: Vehicle[] = [
-  { id: 'CAM-402', licensePlate: 'D-2051-CI', brandModel: 'Renault Trucks D-Wide Compacteur', driverName: 'Kouamé N\'Guessan', mileageKm: 142000, lastServiceMileage: 135000, insuranceExpiryDate: '2026-06-15', maintenanceInspectionDate: '2026-05-30', avgFuelConsumptionLitres: 24.5, status: 'active' },
-  { id: 'CAM-403', licensePlate: 'E-0024-CI', brandModel: 'Mercedes-Benz Arocs Benne tasseuse', driverName: 'Coulibaly Moussa', mileageKm: 98500, lastServiceMileage: 98000, insuranceExpiryDate: '2026-07-02', maintenanceInspectionDate: '2026-06-12', avgFuelConsumptionLitres: 26.0, status: 'active' },
-  { id: 'CAM-404', licensePlate: 'A-8854-CI', brandModel: 'Volvo FL Hydro-cureuse Voirie', driverName: 'Sangaré Alassane', mileageKm: 184100, lastServiceMileage: 172000, insuranceExpiryDate: '2026-05-10', maintenanceInspectionDate: '2026-05-20', avgFuelConsumptionLitres: 28.5, status: 'maintenance' },
-  { id: 'CAM-405', licensePlate: 'F-9902-CI', brandModel: 'IVECO Eurocargo Multi-bacs', driverName: 'N\'dri Koffi Blaise', mileageKm: 62000, lastServiceMileage: 60000, insuranceExpiryDate: '2026-12-05', maintenanceInspectionDate: '2026-09-18', avgFuelConsumptionLitres: 22.0, status: 'active' }
-];
+const INITIAL_VEHICLES: Vehicle[] = [];
 
 interface MaintenanceItem {
   id: string;
@@ -49,11 +44,7 @@ interface MaintenanceItem {
   status: 'completed' | 'scheduled';
 }
 
-const INITIAL_MAINTENANCE_LOG: MaintenanceItem[] = [
-  { id: 'MAINT-001', vehicleId: 'CAM-402', date: '2026-05-15', type: 'Vidange', costFcfa: 80000, mechanicName: 'Sodirep Sce', status: 'completed' },
-  { id: 'MAINT-002', vehicleId: 'CAM-404', date: '2026-05-20', type: 'Freins', costFcfa: 185000, mechanicName: 'Garage de l\'Ouest', status: 'completed' },
-  { id: 'MAINT-003', vehicleId: 'CAM-403', date: '2026-05-22', type: 'Pneumatiques', costFcfa: 320000, mechanicName: 'Michelin Abidjan', status: 'completed' }
-];
+const INITIAL_MAINTENANCE_LOG: MaintenanceItem[] = [];
 
 export default function FleetView() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
@@ -291,43 +282,49 @@ export default function FleetView() {
             <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">Registre Général de la Flotte Lourde</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {vehicles.map(v => {
-                const isServiceDue = v.mileageKm - v.lastServiceMileage >= 10000;
-                return (
-                  <div key={v.id} className="p-4 rounded-xl border border-slate-200 hover:border-slate-350 transition space-y-3 flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <strong className="text-slate-800 block text-sm">{v.brandModel}</strong>
-                          <span className="text-[10px] font-mono bg-indigo-50/50 text-indigo-700 px-1.5 py-0.5 rounded-md font-bold mt-1 inline-block">{v.id} • Plaque: {v.licensePlate}</span>
+              {vehicles.length === 0 ? (
+                <div className="col-span-2 p-8 text-center text-slate-400 font-sans font-semibold border border-dashed border-slate-200 rounded-xl">
+                  Aucun véhicule de la flotte d'assainissement enregistré.
+                </div>
+              ) : (
+                vehicles.map(v => {
+                  const isServiceDue = v.mileageKm - v.lastServiceMileage >= 10000;
+                  return (
+                    <div key={v.id} className="p-4 rounded-xl border border-slate-200 hover:border-slate-350 transition space-y-3 flex flex-col justify-between">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <strong className="text-slate-800 block text-sm">{v.brandModel}</strong>
+                            <span className="text-[10px] font-mono bg-indigo-50/50 text-indigo-700 px-1.5 py-0.5 rounded-md font-bold mt-1 inline-block">{v.id} • Plaque: {v.licensePlate}</span>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-black uppercase ${
+                            v.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                            v.status === 'maintenance' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                            'bg-rose-50 text-rose-700 border border-rose-105'
+                          }`}>
+                            {v.status === 'active' ? 'Opérationnel' : v.status === 'maintenance' ? 'Révision' : 'Arrêt'}
+                          </span>
                         </div>
-                        <span className={`text-[10px] px-2 py-0.5 rounded font-black uppercase ${
-                          v.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                          v.status === 'maintenance' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                          'bg-rose-50 text-rose-700 border border-rose-105'
-                        }`}>
-                          {v.status === 'active' ? 'Opérationnel' : v.status === 'maintenance' ? 'Révision' : 'Arrêt'}
-                        </span>
+
+                        <div className="text-xs space-y-1 text-slate-500">
+                          <div>Odomètre : <strong className="text-slate-800 font-mono">{v.mileageKm.toLocaleString()} Km</strong></div>
+                          <div>Chauffeur Assigné : <strong className="text-indigo-605">{v.driverName}</strong></div>
+                          <div>Consommation : <strong className="text-slate-700 font-mono">{v.avgFuelConsumptionLitres} L / 100 Km</strong></div>
+                        </div>
                       </div>
 
-                      <div className="text-xs space-y-1 text-slate-500">
-                        <div>Odomètre : <strong className="text-slate-800 font-mono">{v.mileageKm.toLocaleString()} Km</strong></div>
-                        <div>Chauffeur Assigné : <strong className="text-indigo-605">{v.driverName}</strong></div>
-                        <div>Consommation : <strong className="text-slate-700 font-mono">{v.avgFuelConsumptionLitres} L / 100 Km</strong></div>
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400 font-bold">Prochaine intervention :</span>
+                        {isServiceDue ? (
+                          <span className="text-rose-700 font-extrabold bg-rose-50 px-1.5 py-0.5 rounded animate-pulse">⚠️ Vidange Requise !</span>
+                        ) : (
+                          <span className="text-slate-500 font-semibold">{v.maintenanceInspectionDate}</span>
+                        )}
                       </div>
                     </div>
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                      <span className="text-slate-400 font-bold">Prochaine intervention :</span>
-                      {isServiceDue ? (
-                        <span className="text-rose-700 font-extrabold bg-rose-50 px-1.5 py-0.5 rounded animate-pulse">⚠️ Vidange Requise !</span>
-                      ) : (
-                        <span className="text-slate-500 font-semibold">{v.maintenanceInspectionDate}</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -336,16 +333,22 @@ export default function FleetView() {
             <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest flex items-center gap-1.5"><Wrench className="h-4.5 w-4.5 text-slate-405" /> Carnet de Suivi d’Atelier Mécanique</h3>
             
             <div className="divide-y divide-slate-100 text-xs">
-              {maintenanceLog.map((log) => (
-                <div key={log.id} className="py-2.5 flex items-center justify-between gap-4 font-sans text-slate-650">
-                  <div className="text-left font-sans">
-                    <span className="font-mono text-[10px] text-indigo-700 font-bold mr-2">{log.id}</span>
-                    <strong className="text-slate-800">{log.type} ─ Camion {log.vehicleId}</strong>
-                    <div className="text-[10px] text-slate-400 font-bold mt-0.5">Mécanicien: {log.mechanicName} • Date: {log.date}</div>
-                  </div>
-                  <strong className="font-mono text-xs font-black text-emerald-800">{log.costFcfa.toLocaleString()} FCFA</strong>
+              {maintenanceLog.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 font-sans font-semibold">
+                  Aucun mouvement de maintenance ou de suivi d'atelier enregistré.
                 </div>
-              ))}
+              ) : (
+                maintenanceLog.map((log) => (
+                  <div key={log.id} className="py-2.5 flex items-center justify-between gap-4 font-sans text-slate-650">
+                    <div className="text-left font-sans">
+                      <span className="font-mono text-[10px] text-indigo-700 font-bold mr-2">{log.id}</span>
+                      <strong className="text-slate-800">{log.type} ─ Camion {log.vehicleId}</strong>
+                      <div className="text-[10px] text-slate-400 font-bold mt-0.5">Mécanicien: {log.mechanicName} • Date: {log.date}</div>
+                    </div>
+                    <strong className="font-mono text-xs font-black text-emerald-800">{log.costFcfa.toLocaleString()} FCFA</strong>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

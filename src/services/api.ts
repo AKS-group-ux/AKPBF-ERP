@@ -88,7 +88,7 @@ api.interceptors.response.use(
     }
 
     // 3. Centralized global business error formatting
-    let customErrorMsg = 'Une erreur imprévue est survenue avec le serveur AKPBF d\'Abidjan.';
+    let customErrorMsg = 'Une erreur imprévue est survenue avec le serveur AKPBF de Ouagadougou.';
     if (error.response?.data?.error) {
       customErrorMsg = error.response.data.error;
     } else if (error.message) {

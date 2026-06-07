@@ -68,14 +68,14 @@ export default function EmailsManagementView() {
   const [triggeringDigest, setTriggeringDigest] = useState(false);
   
   // Customizable parameters for testing mock data
-  const [clientName, setClientName] = useState('Jean-Pierre Kouadio');
+  const [clientName, setClientName] = useState('Souleymane Ouédraogo');
   const [amount, setAmount] = useState('3500');
   const [invoiceId, setInvoiceId] = useState('FAC-MAY-2026-891');
   const [dueDate, setDueDate] = useState('10 Juin 2026');
-  const [reference, setReference] = useState('TXN-WAVE-8921-CIV');
-  const [complaintId, setComplaintId] = useState('REC-Cocody-3392');
+  const [reference, setReference] = useState('TXN-WAVE-8921-BFA');
+  const [complaintId, setComplaintId] = useState('REC-Karpala-3392');
   const [category, setCategory] = useState('NON_COLLECTE');
-  const [replyText, setReplyText] = useState('Nos équipes d\'assainissement passeront vider votre bac Riviera 3 en urgence ce mardi soir (23h).');
+  const [replyText, setReplyText] = useState('Nos équipes d\'assainissement passeront vider votre bac Karpala Secteur 15 en urgence ce mardi soir (23h).');
 
   // Logs states
   const [queue, setQueue] = useState<EmailQueueItem[]>([]);
@@ -306,12 +306,12 @@ export default function EmailsManagementView() {
   const templateDescriptionMap: Record<string, { title: string, desc: string, icon: string }> = {
     WELCOME: {
       title: 'Email de bienvenue',
-      desc: 'Souhaiter la bienvenue au citoyen nouvellement inscrit, lui fournir son ID d\'abonné d\'Abidjan et détailler les fonctionnalités du portail d\'assainissement.',
+      desc: 'Souhaiter la bienvenue au citoyen nouvellement inscrit, lui fournir son ID d\'abonné de Ouagadougou et détailler les fonctionnalités du portail d\'assainissement.',
       icon: 'BIENVENUE'
     },
     SUBSCRIPTION_CONFIRM: {
       title: 'Confirmation d\'abonnement',
-      desc: 'Notifier officiellement que le contrat d\'assainissement (ex: Riviera, Cocody) a été activé en base, avec détails de prix et engagement.',
+      desc: 'Notifier officiellement que le contrat d\'assainissement (ex: Karpala, Somgandé) a été activé en base, avec détails de prix et engagement.',
       icon: 'CONTRAT ACTIF'
     },
     INVOICE_PDF: {
@@ -341,12 +341,12 @@ export default function EmailsManagementView() {
     },
     COMPLAINT_REPLY: {
       title: 'Réponse officielle à une réclamation',
-      desc: 'Émettre un avis d\'intervention logistique en réponse à une plainte de citoyen (ex: bac Riviera non collecté).',
+      desc: 'Émettre un avis d\'intervention logistique en réponse à une plainte de citoyen (ex: bac Karpala non collecté).',
       icon: 'RÉCLAMATION TRAITÉE'
     },
     ADMIN_NOTIF: {
       title: 'Alerte administrative et technique',
-      desc: 'Transmission d\'un rapport d\'écart technique automatique destiné aux cadres ERP de Plateau, Abidjan.',
+      desc: 'Transmission d\'un rapport d\'écart technique automatique destiné aux cadres ERP de Koulouba, Ouagadougou.',
       icon: 'ALERTE SYSTÈME'
     }
   };
@@ -628,7 +628,7 @@ export default function EmailsManagementView() {
                 {/* Header widget */}
                 <div className="text-center pb-2.5 border-b border-amber-500/80 bg-emerald-600 -m-4 mb-2 p-3 text-white">
                   <span className="font-extrabold tracking-wide uppercase text-[12px] block">AKPBF ERP</span>
-                  <span className="text-[7.5px] tracking-widest text-emerald-250 uppercase font-black">Salubrité de Côte d'Ivoire</span>
+                  <span className="text-[7.5px] tracking-widest text-emerald-250 uppercase font-black">Salubrité du Burkina Faso</span>
                 </div>
 
                 {/* Email text custom representations */}
@@ -636,9 +636,9 @@ export default function EmailsManagementView() {
                   <div className="space-y-1 text-slate-600 pt-1">
                     <span className="inline-block bg-emerald-100 text-emerald-800 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">BIENVENUE</span>
                     <p className="font-bold text-slate-800 text-xs">Bonjour {clientName},</p>
-                    <p>Nous sommes ravis de vous compter parmi les citoyens abonnés d'AKPBF d'Abidjan. Notre engagement principal consiste à garder notre capitale propre.</p>
+                    <p>Nous sommes ravis de vous compter parmi les citoyens abonnés d'AKPBF de Ouagadougou. Notre engagement principal consiste à garder notre capitale propre.</p>
                     <div className="bg-slate-50 p-2 rounded border-l-2 border-emerald-500 font-extrabold text-slate-800">
-                      Identifiant Unique d'Abonné : portail d'Abidjan actif.
+                      Identifiant Unique d'Abonné : portail de Ouagadougou actif.
                     </div>
                   </div>
                 )}
@@ -710,13 +710,13 @@ export default function EmailsManagementView() {
                 {templateType === 'ADMIN_NOTIF' && (
                   <div className="space-y-1 text-slate-600">
                     <span className="inline-block bg-rose-100 text-rose-800 font-black p-0.5 px-2 rounded-full text-[8px] mb-1">ALERTE SYSTÈME</span>
-                    <p className="font-bold text-slate-800 text-xs text-red-500">Alerte administrative d'exploitation d'Abidjan :</p>
+                    <p className="font-bold text-slate-800 text-xs text-red-500">Alerte administrative d'exploitation de Ouagadougou :</p>
                     <p>Cette alerte technique a été générée par l'automate de l'ERP AKPBF pour notifier le comité directeur.</p>
                   </div>
                 )}
 
                 <div className="pt-2 border-t border-slate-100 font-mono text-[8px] text-slate-400 text-center leading-normal">
-                  AKPBF ERP CI - Bureau Régional <br /> Plateau, Abidjan, Côte d'Ivoire
+                  AKPBF ERP BF - Bureau Régional <br /> Koulouba, Ouagadougou, Burkina Faso
                 </div>
 
               </div>
@@ -724,7 +724,7 @@ export default function EmailsManagementView() {
             </div>
 
             <p className="text-[10px] text-slate-500 text-center italic mt-2.5 leading-normal">
-              Note : En mode production, les emails sont transmis d'Abidjan via Zoho SMTP (Port 465 SSL sécurisé).
+              Note : En mode production, les emails sont transmis de Ouagadougou via Zoho SMTP (Port 465 SSL sécurisé).
             </p>
           </div>
 
@@ -886,7 +886,7 @@ export default function EmailsManagementView() {
             <Info className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
             <div>
               <p className="font-extrabold pb-0.5">🔒 Résilience de la Messagerie d'Assainissement AKPBF :</p>
-              <p>Chaque fois qu'un processus administratif ou logistique (comme la mise en service d'un abonnement Riviera, l'apurement de compte ou la génération périodique de factures papier PDF) s'exécute, l'ERP insère automatiquement les correspondances d'avis au sein de l'index PostgreSQL avec acte sécurisé "PENDING" ou "SENT". Si des dysfonctionnements du serveur SMTP surviennent, le worker intelligent d'Abidjan active automatiquement un algorithme d'attente à rétroaction exponentielle (Exponential Backoff, multiplier: 2.0x) pour surmonter les pannes d'Internet temporaires.</p>
+              <p>Chaque fois qu'un processus administratif ou logistique (comme la mise en service d'un abonnement Karpala, l'apurement de compte ou la génération périodique de factures papier PDF) s'exécute, l'ERP insère automatiquement les correspondances d'avis au sein de l'index PostgreSQL avec acte sécurisé "PENDING" ou "SENT". Si des dysfonctionnements du serveur SMTP surviennent, le worker intelligent de Ouagadougou active automatiquement un algorithme d'attente à rétroaction exponentielle (Exponential Backoff, multiplier: 2.0x) pour surmonter les pannes d'Internet temporaires.</p>
             </div>
           </div>
 
@@ -972,7 +972,7 @@ export default function EmailsManagementView() {
                         disabled={!smtpConfig.enabled}
                         value={smtpConfig.fromName}
                         onChange={(e) => setSmtpConfig({ ...smtpConfig, fromName: e.target.value })}
-                        placeholder="AKPBF Trésorerie Abidjan" 
+                        placeholder="AKPBF Trésorerie Ouagadougou" 
                         className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg disabled:opacity-50 font-bold"
                       />
                     </div>

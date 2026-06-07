@@ -44,7 +44,7 @@ import {
   INITIAL_NOTIFS,
   INITIAL_EMPLACEMENTS
 } from './mockData';
-import { generateAllDemoData } from './demo_generator';
+import { generateAllDemoData, DEMO_PLANS } from './demo_generator';
 
 // Sub views imports
 import DashboardView from './components/DashboardView';
@@ -94,7 +94,7 @@ const INITIAL_TEMPLATES: ContractTemplate[] = [
     status: 'active',
     body: `CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ AKPBF
 Numéro du contrat : {{contract_number}}
-Client Citoyen d'Abidjan : {{client_name}} (N° Citoyen: {{client_number}})
+Client Citoyen de Ouagadougou : {{client_name}} (N° Citoyen: {{client_number}})
 
 Il est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine (contact : {{company_phone}} / {{company_email}}) et l'Abonné(e) désigné(e) ci-dessus :
 
@@ -102,17 +102,17 @@ Il est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine (co
 2. Formule Souscrite : {{subscription_name}} au prix mensuel fixe de {{subscription_price}}.
 3. Période de validité : Le présent engagement prend effet le {{start_date}} et restera d'application stricte jusqu'au {{end_date}}.
 
-Fait à Abidjan, Côte d'Ivoire.`
+Fait à Ouagadougou, Burkina Faso.`
   },
   {
     id: 'tpl_premium',
     name: 'Contrat d\'Abonnement Premium Famille',
     status: 'active',
-    body: `CONTRAT PREMIUM RESIDENTIEL - AKPBF CODY
+    body: `CONTRAT PREMIUM RESIDENTIEL - AKPBF OUAGA
 Réf Contrat : {{contract_number}}
 Bénéficiaire : {{client_name}} (ID Mairie: {{client_number}})
 
-Conclu sous l'égide de la mairie d'Abidjan pour la salubrité publique :
+Conclu sous l'égide de la mairie de Ouagadougou pour la salubrité publique :
 
 - Type de forfait : {{subscription_name}}
 - Redevance mensuelle : {{subscription_price}}
@@ -156,7 +156,7 @@ function generateInitialContracts(): Contract[] {
       amount: 3500,
       status: 'active',
       signatureDate: '2026-01-01',
-      termsAndConditions: `CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ AKPBF\nNuméro du contrat : CNT-2026-6081\nClient Citoyen d'Abidjan : Koffi Jean-Jacques (N° Citoyen: SUB-4029)\n\nIl est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine (contact : +225 27 22 45 61 / contact@salubrite.akpbf.ci) et l'Abonné(e) désigné(e) ci-dessus :\n\n1. Prestation : AKPBF met à disposition un bac standard d'enlèvement et effectuera le ramassage planifié à l'adresse indiquée.\n2. Formule Souscrite : Standard Municipal au prix mensuel fixe de 3 500 FCFA.\n3. Période de validité : Le présent engagement prend effet le 2026-01-01 et restera d'application stricte jusqu'au 2026-12-31.\n\nFait à Abidjan, Côte d'Ivoire.`
+      termsAndConditions: `CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ AKPBF\nNuméro du contrat : CNT-2026-6081\nClient Citoyen de Ouagadougou : Koffi Jean-Jacques (N° Citoyen: SUB-4029)\n\nIl est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine (contact : +226 25 30 11 22 / contact@salubrite.akpbf.bf) et l'Abonné(e) désigné(e) ci-dessus :\n\n1. Prestation : AKPBF met à disposition un bac standard d'enlèvement et effectuera le ramassage planifié à l'adresse indiquée.\n2. Formule Souscrite : Standard Municipal au prix mensuel fixe de 3 500 FCFA.\n3. Période de validité : Le présent engagement prend effet le 2026-01-01 et restera d'application stricte jusqu'au 2026-12-31.\n\nFait à Ouagadougou, Burkina Faso.`
     },
     {
       id: 'CNT-2026-1933',
@@ -170,7 +170,7 @@ function generateInitialContracts(): Contract[] {
       amount: 15000,
       status: 'active',
       signatureDate: '2026-02-01',
-      termsAndConditions: `CONVENTION COMMERCIALE D'ENLÈVEMENT DE DÉCHETS B2B\nContrat N° : CNT-2026-1933\nPartenaire B2B : Soro Aminata (N° de registre : SUB-1933)\n\nLe prestataire AKPBF s'engage à vider sur un plan quotidien (Lundi au Samedi) les conteneurs du client.\n\nConditions Financières:\n- Abonnement : Professionnel & Commerce\n- Redevance Mensuelle : 15 005 FCFA\n- Engagement : Du 2026-02-01 au 2027-01-31\n\nContact assistance B2B : +225 27 22 45 61 / contact@salubrite.akpbf.ci.`
+      termsAndConditions: `CONVENTION COMMERCIALE D'ENLÈVEMENT DE DÉCHETS B2B\nContrat N° : CNT-2026-1933\nPartenaire B2B : Soro Aminata (N° de registre : SUB-1933)\n\nLe prestataire AKPBF s'engage à vider sur un plan quotidien (Lundi au Samedi) les conteneurs du client.\n\nConditions Financières:\n- Abonnement : Professionnel & Commerce\n- Redevance Mensuelle : 15 005 FCFA\n- Engagement : Du 2026-02-01 au 2027-01-31\n\nContact assistance B2B : +226 25 30 11 22 / contact@salubrite.akpbf.bf.`
     },
     {
       id: 'CNT-2026-8842',
@@ -184,7 +184,7 @@ function generateInitialContracts(): Contract[] {
       amount: 3500,
       status: 'suspended',
       signatureDate: '2025-10-01',
-      termsAndConditions: `CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ AKPBF\nNuméro du contrat : CNT-2026-8842\nClient Citoyen d'Abidjan : Mamadou Diallo (N° Citoyen: SUB-8842)\n\nIl est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine et l'Abonné(e) désigné(e) ci-dessus :\n\n- Type de forfait : Standard Municipal au prix mensuel fixe de 3 500 FCFA.\n- Engagement : Du 2025-10-01 au 2026-09-30.`
+      termsAndConditions: `CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ AKPBF\nNuméro du contrat : CNT-2026-8842\nClient Citoyen de Ouagadougou : Mamadou Diallo (N° Citoyen: SUB-8842)\n\nIl est d'un commun accord convenu ce qui suit entre AKPBF Salubrité Urbaine et l'Abonné(e) désigné(e) ci-dessus :\n\n- Type de forfait : Standard Municipal au prix mensuel fixe de 3 500 FCFA.\n- Engagement : Du 2025-10-01 au 2026-09-30.`
     }
   ];
 }
@@ -582,19 +582,19 @@ function AppContent() {
       if (savedState) {
         try {
           const parsed = JSON.parse(savedState);
-          setPlans(parsed.plans && parsed.plans.length > 0 ? parsed.plans : generateAllDemoData().plans);
-          setSubscribers(parsed.subscribers && parsed.subscribers.length > 0 ? parsed.subscribers : generateAllDemoData().subscribers);
-          setInvoices(parsed.invoices && parsed.invoices.length > 0 ? parsed.invoices : generateAllDemoData().invoices);
-          setAgents(parsed.agents && parsed.agents.length > 0 ? parsed.agents : generateAllDemoData().agents);
-          setRoutes(parsed.routes && parsed.routes.length > 0 ? parsed.routes : generateAllDemoData().routes);
-          setNotifLogs(parsed.notifLogs && parsed.notifLogs.length > 0 ? parsed.notifLogs : generateAllDemoData().notifLogs);
+          setPlans(parsed.plans && parsed.plans.length > 0 ? parsed.plans : DEMO_PLANS);
+          setSubscribers(parsed.subscribers && parsed.subscribers.length > 0 ? parsed.subscribers : []);
+          setInvoices(parsed.invoices && parsed.invoices.length > 0 ? parsed.invoices : []);
+          setAgents(parsed.agents && parsed.agents.length > 0 ? parsed.agents : []);
+          setRoutes(parsed.routes && parsed.routes.length > 0 ? parsed.routes : []);
+          setNotifLogs(parsed.notifLogs && parsed.notifLogs.length > 0 ? parsed.notifLogs : []);
           
           // Load contracts, templates, receipts, or seed them if empty
-          setContracts(parsed.contracts && parsed.contracts.length > 0 ? parsed.contracts : generateInitialContracts());
+          setContracts(parsed.contracts && parsed.contracts.length > 0 ? parsed.contracts : []);
           setTemplates(parsed.templates && parsed.templates.length > 0 ? parsed.templates : INITIAL_TEMPLATES);
-          setReceipts(parsed.receipts && parsed.receipts.length > 0 ? parsed.receipts : generateInitialReceipts());
-          setEmplacements(parsed.emplacements && parsed.emplacements.length > 0 ? parsed.emplacements : INITIAL_EMPLACEMENTS);
-          setCollectionProofs(parsed.collectionProofs && parsed.collectionProofs.length > 0 ? parsed.collectionProofs : generateInitialCollectionProofs());
+          setReceipts(parsed.receipts && parsed.receipts.length > 0 ? parsed.receipts : []);
+          setEmplacements(parsed.emplacements && parsed.emplacements.length > 0 ? parsed.emplacements : []);
+          setCollectionProofs(parsed.collectionProofs && parsed.collectionProofs.length > 0 ? parsed.collectionProofs : []);
         } catch (e) {
           console.error('Error parsing local storage ERP state - loading high fidelity presets', e);
           loadInitialPresets();
@@ -623,19 +623,24 @@ function AppContent() {
 
   // Helper method to reload initials with high-fidelity AKPBF simulated databases
   const loadInitialPresets = () => {
-    const demo = generateAllDemoData();
-    const initContracts = generateInitialContracts();
+    const cleanPlans: SubscriptionPlan[] = DEMO_PLANS;
+    const cleanSubscribers: Subscriber[] = [];
+    const cleanInvoices: Invoice[] = [];
+    const cleanAgents: CollectorAgent[] = [];
+    const cleanRoutes: Route[] = [];
+    const cleanNotifs: NotificationLog[] = [];
+    const initContracts: Contract[] = [];
     const initTemplates = INITIAL_TEMPLATES;
-    const initReceipts = generateInitialReceipts();
-    const initEmplacements = INITIAL_EMPLACEMENTS;
-    const initCollectionProofs = generateInitialCollectionProofs();
+    const initReceipts: PaymentReceipt[] = [];
+    const initEmplacements: Emplacement[] = [];
+    const initCollectionProofs: CollectionProof[] = [];
 
-    setPlans(demo.plans);
-    setSubscribers(demo.subscribers);
-    setInvoices(demo.invoices);
-    setAgents(demo.agents);
-    setRoutes(demo.routes);
-    setNotifLogs(demo.notifLogs);
+    setPlans(cleanPlans);
+    setSubscribers(cleanSubscribers);
+    setInvoices(cleanInvoices);
+    setAgents(cleanAgents);
+    setRoutes(cleanRoutes);
+    setNotifLogs(cleanNotifs);
     setContracts(initContracts);
     setTemplates(initTemplates);
     setReceipts(initReceipts);
@@ -643,12 +648,12 @@ function AppContent() {
     setCollectionProofs(initCollectionProofs);
 
     saveStateToLocalStorage(
-      demo.plans, 
-      demo.subscribers, 
-      demo.invoices, 
-      demo.agents, 
-      demo.routes, 
-      demo.notifLogs,
+      cleanPlans, 
+      cleanSubscribers, 
+      cleanInvoices, 
+      cleanAgents, 
+      cleanRoutes, 
+      cleanNotifs,
       initContracts,
       initTemplates,
       initReceipts,
@@ -725,13 +730,11 @@ function AppContent() {
   };
 
   // State modification wrappers
-  const handleAddSubscriber = async (newSub: Subscriber) => {
+  const handleAddSubscriber = async (newSub: Subscriber): Promise<Subscriber> => {
     try {
-      // 1. Instantly update local React and local storage state eagerly
-      const updatedSubs = [newSub, ...subscribers];
-      setSubscribers(updatedSubs);
+      console.log(`[FRONTEND-ADD-SUBSCRIBER] Lancement de la création. Payload local:`, newSub);
 
-      // Auto-spawn enrollment notification log and sync ledger
+      // A. Setup local notifications
       const enrollmentSmsLog: NotificationLog = {
         id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
         recipientName: newSub.name,
@@ -746,31 +749,52 @@ function AppContent() {
       const updatedNotifs = [enrollmentSmsLog, ...notifLogs];
       setNotifLogs(updatedNotifs);
 
-      saveStateToLocalStorage(plans, updatedSubs, invoices, agents, routes, updatedNotifs);
-
-      // 2. Submit to database asynchronously
+      // B. Submit to PostgreSQL database
+      console.log(`[FRONTEND-ADD-SUBSCRIBER] Envoi de la requête POST au serveur...`);
       const response = await fetch('/api/erp/subscribers', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token')}`
         },
         body: JSON.stringify(newSub)
       });
+      
       if (!response.ok) {
         const errData = await response.json();
+        console.error(`[FRONTEND-ADD-SUBSCRIBER-ERROR] Erreur retournée par l'API:`, errData.error);
         throw new Error(errData.error || "Erreur de création.");
       }
-      
+
+      const resData = await response.json();
+      console.log(`[FRONTEND-ADD-SUBSCRIBER-SUCCESS] Réponse obtenue :`, resData);
+
+      let savedSub = newSub;
+      if (resData.success && resData.subscriber) {
+        savedSub = resData.subscriber;
+      }
+
+      // C. Update React state with the real server-mapped subscriber
+      setSubscribers(prev => {
+        const filtered = prev.filter(s => s.phone !== newSub.phone && s.email !== newSub.email && s.id !== newSub.id);
+        const next = [savedSub, ...filtered];
+        saveStateToLocalStorage(plans, next, invoices, agents, routes, updatedNotifs);
+        return next;
+      });
+
       await syncLedgerToServer(contracts, receipts, emplacements, updatedNotifs, auditLogs);
       
-      // 3. Trigger server refresh in background if a valid token is present
+      // D. Trigger server refresh in background if a valid token is present
       const token = localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token');
       if (token) {
         await loadStateFromServer();
       }
+
+      return savedSub;
     } catch (err: any) {
-      console.error('Failed to add subscriber:', err);
-      // Flow gracefully with local memory safe-fallback
+      console.error('[FRONTEND-ADD-SUBSCRIBER-FAIL] Échec du processus de création:', err);
+      // Fail explicitly to let the form UI show the correct toast/error to the user
+      throw err;
     }
   };
 
@@ -1176,7 +1200,7 @@ function AppContent() {
       `Votre preuve numérique de passage de service a été consignée sous la référence ${proof.id} et est disponible en temps réel dans votre Portail Client AKPBF.\n\n` +
       `Merci pour votre engagement civique.\n\n` +
       `Cordialement,\n` +
-      `AKPBF - Salubrité Urbaine & Logistique Verte Abidjan.`;
+      `AKPBF - Salubrité Urbaine & Logistique Verte Ouagadougou.`;
 
     const newNotifLog: NotificationLog = {
       id: `NTF-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -1303,10 +1327,10 @@ function AppContent() {
       name: sessionUser.name,
       email: sessionUser.email || "",
       phone: sessionUser.phone || "",
-      address: "Mairie d'Abidjan, Côte d'Ivoire",
-      neighborhood: "Cocody",
-      lat: 5.3489,
-      lng: -3.9995,
+      address: "Mairie de Ouagadougou, Burkina Faso",
+      neighborhood: "Karpala",
+      lat: 12.3714,
+      lng: -1.5197,
       planId: "plan_eco",
       status: 'active' as const,
       binType: 'Standard 240L' as const,
@@ -1584,6 +1608,7 @@ function AppContent() {
           <span className="font-extrabold text-xs sm:text-sm tracking-tight text-white">AKPBF Salubrité</span>
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle theme={theme} setTheme={setTheme} />
           {sessionUser && (
             <UserProfileMenu 
               user={sessionUser} 
@@ -1707,6 +1732,10 @@ function AppContent() {
             
             <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
 
+            <ThemeToggle theme={theme} setTheme={setTheme} />
+
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
             {sessionUser && (
               <UserProfileMenu 
                 user={sessionUser} 
@@ -1734,6 +1763,16 @@ function AppContent() {
               sessionUser={sessionUser}
               onUpdateSubscriber={handleUpdateSubscriber}
               onProcessBulkPayment={handleProcessBulkPayment}
+              onAddInvoices={(newInvs) => {
+                const updated = [...newInvs, ...invoices];
+                setInvoices(updated);
+                saveStateToLocalStorage(plans, subscribers, updated, agents, routes, notifLogs, contracts, templates, receipts, emplacements);
+              }}
+              onRemoveInvoices={(invIdsToRemove) => {
+                const updated = invoices.filter(i => !invIdsToRemove.includes(i.id));
+                setInvoices(updated);
+                saveStateToLocalStorage(plans, subscribers, updated, agents, routes, notifLogs, contracts, templates, receipts, emplacements);
+              }}
             />
           ) : (
             <ProtectedRoute allowedRoles={

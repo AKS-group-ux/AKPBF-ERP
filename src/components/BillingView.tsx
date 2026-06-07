@@ -371,7 +371,7 @@ export default function BillingView({
                   <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Abonné Client</span>
                   <div className="font-bold text-slate-800 text-sm mt-1">{viewingInvoice.subscriberName}</div>
                   <div className="text-slate-500 mt-1">ID Abonné : <span className="font-mono font-bold text-slate-700">{viewingInvoice.subscriberId}</span></div>
-                  <div className="text-slate-550">Secteur géographique : Abidjan Zone 4/Plateau</div>
+                  <div className="text-slate-550">Secteur géographique : Arrondissement 5 / Karpala</div>
                 </div>
 
                 <div className="text-right">
@@ -422,7 +422,7 @@ export default function BillingView({
 
               {/* Status stamp */}
               <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                <span className="text-[9px] text-slate-400 italic">Signature de l'ordonnateur : Trésor Public Municipal d'Abidjan</span>
+                <span className="text-[9px] text-slate-400 italic">Signature de l'ordonnateur : Trésor Public Municipal de Ouagadougou</span>
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border-2 border-dashed ${
                   viewingInvoice.status === 'paid' ? 'state-success' : 'state-error'
                 }`}>

@@ -998,7 +998,7 @@ export default function AccountingView({ invoices, subscribers }: AccountingView
 
                   <div className="p-3 bg-white border border-slate-200/65 rounded-xl text-[10px] text-slate-500 leading-relaxed">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 inline mr-1" />
-                    <span>Le rapprochement est automatique. Les pièces d’encaissement d’Abidjan s’associent avec les relevés bancaires d'opérateurs Wave/Orange.</span>
+                    <span>Le rapprochement est automatique. Les pièces d’encaissement de Ouagadougou s’associent avec les relevés bancaires d'opérateurs Wave/Orange.</span>
                   </div>
                 </div>
 

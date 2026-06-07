@@ -51,7 +51,7 @@ export default function RoutesView({
   // Modal for new route
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newRouteName, setNewRouteName] = useState('');
-  const [newRouteSector, setNewRouteSector] = useState('Cocody');
+  const [newRouteSector, setNewRouteSector] = useState('Karpala');
   const [newRouteAgentId, setNewRouteAgentId] = useState('');
 
   // Auto-selection of a route to highlight upon loading
@@ -300,7 +300,7 @@ export default function RoutesView({
             <div className="bg-slate-50 border-b border-slate-100 p-3 flex items-center justify-between text-slate-700">
               <div className="flex items-center gap-2">
                 <Map className="h-4.5 w-4.5 text-indigo-500" />
-                <h3 className="font-extrabold text-sm">Console SIG Interactive d'Abidjan (AKPBF Sim)</h3>
+                <h3 className="font-extrabold text-sm">Console SIG Interactive de Ouagadougou (AKPBF Sim)</h3>
               </div>
               <span className="text-[10px] text-slate-400 font-mono">Territoire Actif : <strong>{selectedRoute?.sector || 'Aucun'}</strong></span>
             </div>
@@ -468,10 +468,10 @@ export default function RoutesView({
                   onChange={(e) => setNewRouteSector(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 p-2.5 text-slate-700 text-xs rounded-lg focus:outline-none cursor-pointer"
                 >
-                  <option value="Cocody">Cocody</option>
-                  <option value="Plateau">Plateau</option>
-                  <option value="Marcory">Marcory</option>
-                  <option value="Yopougon">Yopougon</option>
+                  <option value="Karpala">Karpala</option>
+                  <option value="Somgandé">Somgandé</option>
+                  <option value="Gounghin">Gounghin</option>
+                  <option value="Pissy">Pissy</option>
                 </select>
               </div>
 

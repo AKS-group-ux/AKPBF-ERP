@@ -52,18 +52,9 @@ interface SupplierInvoice {
   justificatifUrl?: string;
 }
 
-const INITIAL_SUPPLIERS: Supplier[] = [
-  { id: 'FOUR-001', name: 'Sodirep Engrenages Abidjan', contactName: 'Koffi Paul', email: 'contact@sodirep.ci', phone: '+225 07 45 12 89', address: 'Zone Industrielle de Yopougon, Lot 45', category: 'Vehicles Repair', outstandingDebt: 120000 },
-  { id: 'FOUR-002', name: 'Shell Côte d\'Ivoire (Pétroci)', contactName: 'Moussa Touré', email: 'b2b@shell.ci', phone: '+225 05 04 22 91', address: 'Plateau Boulevard de la République', category: 'Fuel', outstandingDebt: 350000 },
-  { id: 'FOUR-003', name: 'Sotra Pièces & Carrosserie', contactName: 'Fofana Alassane', email: 'procurement@sotra.ci', phone: '+225 01 02 03 04', address: 'Vridi Rue des Pétroliers', category: 'Equipment', outstandingDebt: 0 },
-  { id: 'FOUR-004', name: 'AXA Assurances Marcory', contactName: 'Yao Célestine', email: 'marcory@axa.ci', phone: '+225 27 21 45 42', address: 'Marcory Résidentiel face Pharmacie', category: 'Insure', outstandingDebt: 350000 }
-];
+const INITIAL_SUPPLIERS: Supplier[] = [];
 
-const INITIAL_SUPPLIER_INVOICES: SupplierInvoice[] = [
-  { id: 'FAC-FOUR-001', supplierId: 'FOUR-001', supplierName: 'Sodirep Engrenages Abidjan', invoiceNumber: 'SD-2026-4021', amount: 120000, dueDate: '2026-06-15', category: 'Maintenance Véhicule', status: 'paid', validationFlow: 'Terminé', justificatifUrl: 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=400&auto=format&fit=crop&q=60' },
-  { id: 'FAC-FOUR-002', supplierId: 'FOUR-002', supplierName: 'Shell Côte d\'Ivoire (Pétroci)', invoiceNumber: 'SH-9082', amount: 480000, dueDate: '2026-06-05', category: 'Carburant', status: 'approved', validationFlow: 'Directeur', justificatifUrl: 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe24?w=400&auto=format&fit=crop&q=60' },
-  { id: 'FAC-FOUR-003', supplierId: 'FOUR-004', supplierName: 'AXA Assurances Marcory', invoiceNumber: 'AX-8812', amount: 350000, dueDate: '2026-06-10', category: 'Assurances Flotte', status: 'pending_approval', validationFlow: 'Comptable', justificatifUrl: 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe25?w=400&auto=format&fit=crop&q=60' }
-];
+const INITIAL_SUPPLIER_INVOICES: SupplierInvoice[] = [];
 
 export default function ExpensesView() {
   const [activeTab, setActiveTab] = useState<'suppliers' | 'invoices' | 'expenses'>('expenses');
@@ -284,32 +275,38 @@ export default function ExpensesView() {
           <h3 className="text-xs font-black text-slate-850 uppercase tracking-widest">Registre des Entreprises & Prestataires</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {suppliers.map(sup => (
-              <div key={sup.id} className="p-4 rounded-xl border border-slate-200/75 hover:border-slate-350 transition flex flex-col justify-between gap-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-extrabold text-sm text-slate-850">{sup.name}</h4>
-                      <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-semibold mt-1 inline-block">{sup.id}</span>
-                    </div>
-                    <span className="text-[10.5px] bg-emerald-50 text-emerald-800 font-extrabold px-2 py-0.5 rounded border border-emerald-100/50">{sup.category}</span>
-                  </div>
-
-                  <div className="space-y-1 text-xs text-slate-500 leading-relaxed font-sans">
-                    <div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-slate-400" /> <span>{sup.email}</span></div>
-                    <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-slate-400" /> <span>{sup.phone}</span></div>
-                    <div className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-slate-400" /> <span>{sup.address}</span></div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-semibold">Solde payable :</span>
-                  <strong className={`font-black ${sup.outstandingDebt > 0 ? "text-amber-600" : "text-slate-400"}`}>
-                    {sup.outstandingDebt.toLocaleString()} FCFA
-                  </strong>
-                </div>
+            {suppliers.length === 0 ? (
+              <div className="col-span-2 p-8 text-center text-slate-400 font-sans font-semibold border border-dashed border-slate-200 rounded-xl">
+                Aucun prestataire ou fournisseur enregistré.
               </div>
-            ))}
+            ) : (
+              suppliers.map(sup => (
+                <div key={sup.id} className="p-4 rounded-xl border border-slate-200/75 hover:border-slate-350 transition flex flex-col justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-extrabold text-sm text-slate-850">{sup.name}</h4>
+                        <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-semibold mt-1 inline-block">{sup.id}</span>
+                      </div>
+                      <span className="text-[10.5px] bg-emerald-50 text-emerald-800 font-extrabold px-2 py-0.5 rounded border border-emerald-100/50">{sup.category}</span>
+                    </div>
+
+                    <div className="space-y-1 text-xs text-slate-500 leading-relaxed font-sans">
+                      <div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-slate-400" /> <span>{sup.email}</span></div>
+                      <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-slate-400" /> <span>{sup.phone}</span></div>
+                      <div className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-slate-400" /> <span>{sup.address}</span></div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-semibold">Solde payable :</span>
+                    <strong className={`font-black ${sup.outstandingDebt > 0 ? "text-amber-600" : "text-slate-400"}`}>
+                      {sup.outstandingDebt.toLocaleString()} FCFA
+                    </strong>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -334,54 +331,62 @@ export default function ExpensesView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 font-mono text-[11px] text-slate-650">
-                {supplierInvoices.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-50/50 transition">
-                    <td className="p-3 font-semibold text-slate-800">{inv.id}</td>
-                    <td className="p-3 text-indigo-750 font-bold">{inv.invoiceNumber}</td>
-                    <td className="p-3 font-sans font-bold text-slate-800">{inv.supplierName}</td>
-                    <td className="p-3 font-sans text-slate-500 font-medium">{inv.category}</td>
-                    <td className="p-3 font-black text-amber-700">{inv.amount.toLocaleString()} FCFA</td>
-                    <td className="p-3 font-sans text-slate-400 font-semibold">{inv.dueDate}</td>
-                    <td className="p-3 font-sans text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`h-2 w-2 rounded-full ${
-                          inv.status === 'draft' ? 'bg-slate-400' :
-                          inv.status === 'pending_approval' ? 'bg-rose-500' :
-                          inv.status === 'approved' ? 'bg-emerald-500 animate-pulse' :
-                          'bg-blue-600'
-                        }`} />
-                        <span className="font-bold text-slate-700">
-                          {inv.status === 'draft' ? 'Brouillon' :
-                           inv.status === 'pending_approval' ? 'Visa Comptable' :
-                           inv.status === 'approved' ? 'Visa Direction Sces' :
-                           'Acquitté'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-center flex items-center justify-center gap-1.5">
-                      {inv.justificatifUrl && (
-                        <button
-                          onClick={() => setActiveJustificatif(inv.justificatifUrl || null)}
-                          className="p-1 text-slate-400 hover:text-slate-800 border border-slate-200 hover:bg-slate-100 rounded transition cursor-pointer"
-                          title="Voir justificatif"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                      )}
-
-                      {inv.status !== 'paid' && (
-                        <button
-                          onClick={() => handleAdvanceValidation(inv.id)}
-                          className="px-2.5 py-1 bg-slate-900 hover:bg-emerald-600 text-white font-extrabold text-[10px] rounded transition active:scale-95 cursor-pointer"
-                        >
-                          {inv.status === 'draft' ? "Visa Compt." :
-                           inv.status === 'pending_approval' ? "Visa Dir." : 
-                           inv.status === 'approved' ? "Payer" : "Suivant"}
-                        </button>
-                      )}
+                {supplierInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-400 font-sans font-semibold">
+                      Aucune facture fournisseur ou échéance enregistrée.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  supplierInvoices.map((inv) => (
+                    <tr key={inv.id} className="hover:bg-slate-50/50 transition">
+                      <td className="p-3 font-semibold text-slate-800">{inv.id}</td>
+                      <td className="p-3 text-indigo-750 font-bold">{inv.invoiceNumber}</td>
+                      <td className="p-3 font-sans font-bold text-slate-800">{inv.supplierName}</td>
+                      <td className="p-3 font-sans text-slate-500 font-medium">{inv.category}</td>
+                      <td className="p-3 font-black text-amber-700">{inv.amount.toLocaleString()} FCFA</td>
+                      <td className="p-3 font-sans text-slate-400 font-semibold">{inv.dueDate}</td>
+                      <td className="p-3 font-sans text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`h-2 w-2 rounded-full ${
+                            inv.status === 'draft' ? 'bg-slate-400' :
+                            inv.status === 'pending_approval' ? 'bg-rose-500' :
+                            inv.status === 'approved' ? 'bg-emerald-500 animate-pulse' :
+                            'bg-blue-600'
+                          }`} />
+                          <span className="font-bold text-slate-700">
+                            {inv.status === 'draft' ? 'Brouillon' :
+                             inv.status === 'pending_approval' ? 'Visa Comptable' :
+                             inv.status === 'approved' ? 'Visa Direction Sces' :
+                             'Acquitté'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center flex items-center justify-center gap-1.5">
+                        {inv.justificatifUrl && (
+                          <button
+                            onClick={() => setActiveJustificatif(inv.justificatifUrl || null)}
+                            className="p-1 text-slate-400 hover:text-slate-800 border border-slate-200 hover:bg-slate-100 rounded transition cursor-pointer"
+                            title="Voir justificatif"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        )}
+
+                        {inv.status !== 'paid' && (
+                          <button
+                            onClick={() => handleAdvanceValidation(inv.id)}
+                            className="px-2.5 py-1 bg-slate-900 hover:bg-emerald-600 text-white font-extrabold text-[10px] rounded transition active:scale-95 cursor-pointer"
+                          >
+                            {inv.status === 'draft' ? "Visa Compt." :
+                             inv.status === 'pending_approval' ? "Visa Dir." : 
+                             inv.status === 'approved' ? "Payer" : "Suivant"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -406,30 +411,32 @@ export default function ExpensesView() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-sans text-xs select-none">
-            {[
-              { title: 'Carburant Flotte', icon: Fuel, count: '3 camions ravitaillés', val: '480 000 FCFA', desc: 'Shell Zone de Yopougon - Bons officiels.', active: true },
-              { title: 'Réparation Camions', icon: Wrench, count: '1 vidange intégrale', val: '120 000 FCFA', desc: 'Remplacement pignon d\'engrenage boîte Sodirep.', active: true },
-              { title: 'Abonnements Connectique', icon: CreditCard, count: 'Orange Fibre', val: '45 000 FCFA', desc: 'Abonnement internet très haut débit du siège AKPBF.', active: true }
-            ].map((exp, x) => (
-              <div key={x} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 relative group">
-                <div className="flex justify-between items-center">
-                  <div className="p-2 bg-emerald-50 text-emerald-700 rounded-lg">
-                    <exp.icon className="h-5 w-5" />
-                  </div>
-                  <strong className="text-emerald-700 font-black text-sm">{exp.val}</strong>
-                </div>
-
-                <div className="space-y-1">
-                  <h4 className="font-extrabold text-slate-800 text-xs">{exp.title}</h4>
-                  <p className="text-[11px] text-slate-500 font-normal leading-normal">{exp.desc}</p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200/60 flex justify-between items-center text-[10.5px]">
-                  <span className="text-slate-400 font-semibold">{exp.count}</span>
-                  <span className="text-emerald-600 bg-emerald-100/60 px-1.5 py-0.5 rounded-full font-bold">✓ Validé</span>
-                </div>
+            {supplierInvoices.filter(inv => inv.status === 'paid').length === 0 ? (
+              <div className="col-span-3 p-8 text-center text-slate-400 font-sans font-semibold border border-dashed border-slate-200 rounded-xl animate-fade-in">
+                Aucune note de frais ou dépense directe enregistrée.
               </div>
-            ))}
+            ) : (
+              supplierInvoices.filter(inv => inv.status === 'paid').map((inv) => (
+                <div key={inv.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 relative group">
+                  <div className="flex justify-between items-center text-left">
+                    <div className="p-2 bg-emerald-50 text-emerald-700 rounded-lg">
+                      <Fuel className="h-5 w-5" />
+                    </div>
+                    <strong className="text-emerald-700 font-black text-sm">{inv.amount.toLocaleString()} FCFA</strong>
+                  </div>
+
+                  <div className="space-y-1 text-left">
+                    <h4 className="font-extrabold text-slate-800 text-xs">{inv.category}</h4>
+                    <p className="text-[11px] text-slate-500 font-normal leading-normal">{inv.supplierName} - Facture ref {inv.invoiceNumber}</p>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60 flex justify-between items-center text-[10.5px]">
+                    <span className="text-slate-400 font-semibold">Échéance {inv.dueDate}</span>
+                    <span className="text-emerald-600 bg-emerald-100/60 px-1.5 py-0.5 rounded-full font-bold">✓ Validé & Payé</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

@@ -80,11 +80,11 @@ const NEIGHBORHOODS_BOUNDS = [
 ];
 
 const COMPANY_SECTOR_SUFFIXES = [
-  'SARL', 'SA', 'Etablissement Salubrité', 'Commerce Général', 'Groupe Scolaire', 'Clinique d\'Assainissement', 'Boulangerie Côte d\'Ivoire', 'Supermarché Express'
+  'SARL', 'SA', 'Etablissement Salubrité', 'Commerce Général', 'Groupe Scolaire', 'Clinique d\'Assainissement', 'Boulangerie du Faso', 'Supermarché Express'
 ];
 
 const ASSOCIATION_PREFIXES = [
-  'ONG Salubrité Verte', 'Fédération Gabarit Abidjan', 'Collectif Citoyen Propre', 'Union des Artisans de Salubrités', 'Association des Riverains du Quartier'
+  'ONG Salubrité Verte', 'Fédération Gabarit Ouagadougou', 'Collectif Citoyen Propre', 'Union des Artisans de Salubrités', 'Association des Riverains du Quartier'
 ];
 
 // Helper to format numeric IDs matching AKPBF-000001

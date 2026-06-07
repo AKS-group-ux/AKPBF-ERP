@@ -72,8 +72,8 @@ export default function EmplacementsView({
     setFormLabel('');
     setFormType('Maison');
     setFormAddress('');
-    setFormNeighborhood(isClientMode ? currentLoggedClient!.neighborhood : 'Cocody');
-    setFormGps('5.3500, -4.0020');
+    setFormNeighborhood(isClientMode ? currentLoggedClient!.neighborhood : 'Karpala');
+    setFormGps('12.3714, -1.5197');
     setFormWasteType('Ménagers');
     setFormVolume('240L');
     setFormFrequency('2 fois par semaine');
@@ -99,17 +99,15 @@ export default function EmplacementsView({
     setIsLocating(true);
     setTimeout(() => {
       const neighborhoodsCoords: { [key: string]: [number, number] } = {
-        'Cocody': [5.3571, -4.0083],
-        'Plateau': [5.3211, -4.0189],
-        'Marcory': [5.3094, -3.9928],
-        'Treichville': [5.3023, -4.0121],
-        'Yopougon': [5.3415, -4.0725],
-        'Abobo': [5.4120, -4.0210],
-        'Koumassi': [5.2950, -3.9740],
-        'Adjamé': [5.3680, -4.0250]
+        'Karpala': [12.3082, -1.4880],
+        'Somgandé': [12.4042, -1.4871],
+        'Gounghin': [12.3615, -1.5540],
+        'Pissy': [12.3382, -1.5714],
+        'Ouaga 2000': [12.3150, -1.5300],
+        'Tampouy': [12.4110, -1.5550]
       };
       
-      const center = neighborhoodsCoords[formNeighborhood] || [5.3480, -4.0100];
+      const center = neighborhoodsCoords[formNeighborhood] || [12.3714, -1.5197];
       const latNoise = (Math.random() - 0.5) * 0.015;
       const lngNoise = (Math.random() - 0.5) * 0.015;
       const accurateLat = (center[0] + latNoise).toFixed(5);
@@ -195,7 +193,7 @@ export default function EmplacementsView({
   const uniqueNeighborhoods = useMemo(() => {
     const list = emplacements.map(e => e.neighborhood);
     // Include user default ones as well
-    const defaultList = ['Cocody', 'Plateau', 'Marcory', 'Treichville', 'Yopougon', 'Abobo', 'Koumassi', 'Adjamé'];
+    const defaultList = ['Karpala', 'Somgandé', 'Gounghin', 'Pissy', 'Ouaga 2000', 'Tampouy'];
     return Array.from(new Set([...list, ...defaultList])).sort();
   }, [emplacements]);
 
@@ -229,7 +227,7 @@ export default function EmplacementsView({
           <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
             {isClientMode 
               ? `Gérez les différents sites liés à votre abonnement citoyen : résidences, commerces, maquis, ou restaurants.`
-              : 'Supervisez, référencez et géolocalisez tous les points d\'enlèvement actifs rattachés aux fiches abonnés d\'Abidjan.'}
+              : 'Supervisez, référencez et géolocalisez tous les points d\'enlèvement actifs rattachés aux fiches abonnés de Ouagadougou.'}
           </p>
         </div>
 
@@ -489,7 +487,7 @@ export default function EmplacementsView({
                     required
                     value={formAddress}
                     onChange={(e) => setFormAddress(e.target.value)}
-                    placeholder="Ex: Rue 12, Face Église St Jacques"
+                    placeholder="Ex: Secteur 15, Face Coris Bank"
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-950 dark:text-slate-100 rounded-xl p-2.5 text-xs font-semibold outline-none focus:border-emerald-500"
                   />
                 </div>
@@ -501,14 +499,12 @@ export default function EmplacementsView({
                     onChange={(e) => setFormNeighborhood(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-100 rounded-xl p-2.5 text-xs font-semibold outline-none focus:border-emerald-500"
                   >
-                    <option value="Cocody">Cocody</option>
-                    <option value="Plateau">Plateau</option>
-                    <option value="Marcory">Marcory</option>
-                    <option value="Treichville">Treichville</option>
-                    <option value="Yopougon">Yopougon</option>
-                    <option value="Abobo">Abobo</option>
-                    <option value="Koumassi">Koumassi</option>
-                    <option value="Adjamé">Adjamé</option>
+                    <option value="Karpala">Karpala</option>
+                    <option value="Somgandé">Somgandé</option>
+                    <option value="Gounghin">Gounghin</option>
+                    <option value="Pissy">Pissy</option>
+                    <option value="Ouaga 2000">Ouaga 2000</option>
+                    <option value="Tampouy">Tampouy</option>
                   </select>
                 </div>
               </div>

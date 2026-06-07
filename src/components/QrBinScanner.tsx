@@ -115,7 +115,7 @@ export default function QrBinScanner({
     const isGranted = await requestPermission('camera');
     if (!isGranted) {
       setWebcamError(
-        "⚠️ L'accès à la caméra a été explicitement bloqué ou refusé par l'utilisateur. Le mode SIMULATEUR interactif muni de codes d'Abidjan reste pleinement actif."
+        "⚠️ L'accès à la caméra a été explicitement bloqué ou refusé par l'utilisateur. Le mode SIMULATEUR interactif muni de codes de Ouagadougou reste pleinement actif."
       );
       return;
     }
@@ -253,14 +253,14 @@ export default function QrBinScanner({
         contractRef: `CNT-2026-${activeSubDetails.id.replace('AKPBF-', '').replace('SUB-', '')}`,
         planName: planLabel,
         agentName: inspectorName,
-        vehiclePlate: 'CI-225-B42',
+        vehiclePlate: 'BF-226-B42',
         status: 'À l\'instant (Confirmé QR)',
         comments: `Collecte régulière validée par RFID / Scanner QR. Conteneur: ${selectedScannedBin.capacity}. Poids estimé: 14.5 kg.`,
         // Future passages extensibility
         photoBeforeUrl: 'https://images.unsplash.com/photo-1591193686104-fddba4d0e4d8?w=500&auto=format&fit=crop&q=60',
         photoAfterUrl: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=500&auto=format&fit=crop&q=60',
-        gpsLatitude: 5.3489 + (Math.random() - 0.5) * 0.02,
-        gpsLongitude: -3.9995 + (Math.random() - 0.5) * 0.02,
+        gpsLatitude: 12.3711 + (Math.random() - 0.5) * 0.02,
+        gpsLongitude: -1.5312 + (Math.random() - 0.5) * 0.02,
         clientSignature: `E-SIG-STAMP-${Math.floor(100000 + Math.random() * 900000)}`,
         qrCodeVal: selectedScannedBin.qrCode
       };
@@ -404,7 +404,7 @@ export default function QrBinScanner({
 
             {/* Bottom HUD indicators */}
             <div className="absolute bottom-3 inset-x-3 flex justify-between items-center text-[9px] font-mono font-bold bg-black/40 p-2 rounded-xl border border-white/10 z-20 text-slate-400">
-              <span>LAT : +5.34156 | LNG : -3.98751</span>
+              <span>LAT : +12.37110 | LNG : -1.53120</span>
               <span>PROXIMITÉ : <span className="text-emerald-400">SLA VALIDE</span></span>
             </div>
           </div>

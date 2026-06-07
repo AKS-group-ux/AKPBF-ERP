@@ -260,7 +260,7 @@ export default function UsersManagementView() {
   };
 
   const handleDeleteUser = async (id: string, name: string) => {
-    if (!confirm(`Voulez-vous vraiment supprimer définitivement l'utilisateur "${name}" du portail d'Abidjan ?`)) {
+    if (!confirm(`Voulez-vous vraiment supprimer définitivement l'utilisateur "${name}" du portail de Ouagadougou ?`)) {
       return;
     }
     setError(null);

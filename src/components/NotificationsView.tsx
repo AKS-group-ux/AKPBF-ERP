@@ -571,7 +571,7 @@ export default function NotificationsView() {
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                     )}
                   </h4>
-                  <span className="text-[7.5px] text-slate-400 block font-semibold">Service SMS Automatique Cocody</span>
+                  <span className="text-[7.5px] text-slate-400 block font-semibold">Service SMS Automatique Ouagadougou</span>
                 </div>
               </div>
 

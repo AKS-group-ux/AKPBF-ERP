@@ -39,9 +39,9 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
   // Form states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('+225 ');
+  const [phone, setPhone] = useState('+226 ');
   const [address, setAddress] = useState('');
-  const [neighborhood, setNeighborhood] = useState('Cocody');
+  const [neighborhood, setNeighborhood] = useState('Karpala');
   const [planId, setPlanId] = useState(plans[0]?.id || 'plan-standard-mensuel');
   const [binType, setBinType] = useState<'Standard 240L' | 'Bac Grand 360L' | 'Conteneur 1100L'>('Standard 240L');
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -180,9 +180,9 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
         registerMapRef.current = null;
       }
 
-      // Default to Cocody/Abidjan core or selected
-      const initLat = selectedCoords?.lat || 5.3489;
-      const initLng = selectedCoords?.lng || -3.9995;
+      // Default to Karpala/Ouagadougou core or selected
+      const initLat = selectedCoords?.lat || 12.3082;
+      const initLng = selectedCoords?.lng || -1.4880;
 
       const mapInstance = L.map('register-selector-map', {
         zoomControl: true,
@@ -276,8 +276,9 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
         unpaidDays: 0
       };
 
-      // Add to main state
-      await onAddSubscriber(newSub);
+      // Add to main state and get high fidelity database record
+      const serverSub = await onAddSubscriber(newSub);
+      const actualId = serverSub?.id || generatedId;
 
       // Log notification entry
       if (onAddNotificationLogs) {
@@ -286,14 +287,14 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
           recipientName: name.trim(),
           recipientContact: phone.trim(),
           type: 'sms',
-          templateName: 'Bienvenue d\'Abidjan',
-          content: `Félicitations ${name}! Votre inscription municipale AKPBF sous la formule ${selectedPlan.name} est validée. ID client provisoire: ${generatedId}. Point GPS : ${newSub.lat.toFixed(5)}, ${newSub.lng.toFixed(5)}.`,
+          templateName: 'Bienvenue',
+          content: `Félicitations ${name}! Votre inscription municipale AKPBF sous la formule ${selectedPlan.name} est validée. ID Client : ${actualId}. Point GPS : ${newSub.lat.toFixed(5)}, ${newSub.lng.toFixed(5)}.`,
           sentAt: new Date().toISOString(),
           status: 'sent'
         });
       }
 
-      setRegisteredId(generatedId);
+      setRegisteredId(actualId);
       setLoading(false);
     } catch (err: any) {
       setError(err?.message || "Une erreur technique est survenue durant l'enregistrement de votre abonnement.");
@@ -407,7 +408,7 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Telephone */}
                 <div className="space-y-1.5">
-                  <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Téléphone d'Abidjan (+225)</label>
+                  <label className="text-[10.5px] font-black uppercase text-slate-400 tracking-wider">Téléphone du Burkina Faso (+226)</label>
                   <div className="relative">
                     <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     <input 
@@ -415,7 +416,7 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
                       required
                       value={phone}
                       onChange={(e) => { setPhone(e.target.value); setError(null); }}
-                      placeholder="+225 07 48 29 10 22"
+                      placeholder="+226 01 02 03 04"
                       className="w-full bg-slate-950/80 border border-slate-800 text-slate-100 placeholder-slate-650 focus:border-emerald-500 rounded-xl pl-10 pr-4 py-3 text-xs font-semibold outline-none transition"
                     />
                   </div>
@@ -431,12 +432,12 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
                       onChange={(e) => setNeighborhood(e.target.value)}
                       className="w-full bg-slate-950/80 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-xl pl-10 pr-10 py-3 text-xs font-semibold outline-none cursor-pointer transition appearance-none animate-none"
                     >
-                      <option value="Cocody">Cocody</option>
-                      <option value="Plateau">Plateau</option>
-                      <option value="Marcory">Marcory</option>
-                      <option value="Yopougon">Yopougon</option>
-                      <option value="Abobo">Abobo</option>
-                      <option value="Treichville">Treichville</option>
+                      <option value="Karpala">Karpala</option>
+                      <option value="Somgandé">Somgandé</option>
+                      <option value="Gounghin">Gounghin</option>
+                      <option value="Pissy">Pissy</option>
+                      <option value="Ouaga 2000">Ouaga 2000</option>
+                      <option value="Tampouy">Tampouy</option>
                     </select>
                     <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                   </div>

@@ -118,109 +118,81 @@ export const AuthController = {
               return;
             }
           } else {
-          // Customer login by email
-          const clientSub = subscribers.find((s: any) => s.email?.toLowerCase() === canonicalEmail);
-          if (clientSub) {
-            if (password === 'Test@2026' || password === clientSub.id) {
-              tokenUser = {
-                id: clientSub.id,
-                name: clientSub.name,
-                email: clientSub.email,
-                role: 'CLIENT',
-                phone: clientSub.phone,
-                subscriberId: clientSub.id
-              };
-            } else {
-              res.status(401).json({ error: 'Mot de passe du Portail Citoyen incorrect (utilisez "Test@2026").' });
-              return;
-            }
-          } else {
-            // Check if customer email exists in the PostgreSQL database via Prisma
-            try {
-              const prisma = getPrismaClient();
-              let dbCustomer = await prisma.customer.findFirst({
-                where: {
-                  email: { equals: canonicalEmail, mode: 'insensitive' }
-                }
-              });
-
-              // Fallback to InMemoryDb if Postgres is empty/unseeded
-              if (!dbCustomer) {
-                const inMemoryDb = InMemoryDb.getInstance();
-                dbCustomer = inMemoryDb.collections.customer?.find(
-                  (c: any) => c.email?.trim().toLowerCase() === canonicalEmail
-                );
-              }
-
-              if (dbCustomer) {
-                const idStr = dbCustomer.subscriberId || dbCustomer.id;
-                if (password === 'Test@2026' || password === idStr) {
-                  tokenUser = {
-                    id: idStr,
-                    name: dbCustomer.name,
-                    email: dbCustomer.email,
-                    role: 'CLIENT',
-                    phone: dbCustomer.phone,
-                    subscriberId: idStr
-                  };
-                } else {
-                  res.status(401).json({ error: 'Mot de passe du Portail Citoyen incorrect (utilisez "Test@2026").' });
-                  return;
-                }
-              }
-            } catch (dbErr) {
-              console.error('Prisma customer lookup by email failed:', dbErr);
-            }
-          }
-        }
-      }
-    }
-
-      // 2. Authenticate with ID
-      else if (authMethod === 'id' && subscriberId) {
-        const canonId = subscriberId.trim().toUpperCase();
-        const clientSub = subscribers.find((s: any) => s.id?.toUpperCase() === canonId || s.id?.toUpperCase().includes(canonId));
-        if (clientSub) {
-          tokenUser = {
-            id: clientSub.id,
-            name: clientSub.name,
-            email: clientSub.email,
-            role: 'CLIENT',
-            phone: clientSub.phone,
-            subscriberId: clientSub.id
-          };
-        } else {
-          // Check database via Prisma
+          // Customer login by email - Strictly checking real data in PostgreSQL database via Prisma
           try {
             const prisma = getPrismaClient();
             let dbCustomer = await prisma.customer.findFirst({
               where: {
-                subscriberId: { equals: subscriberId.trim(), mode: 'insensitive' }
+                email: { equals: canonicalEmail, mode: 'insensitive' }
               }
             });
 
-            // Fallback to InMemoryDb if Postgres is empty/unseeded
+            // Fallback to InMemoryDb only if Postgres is empty/unseeded
             if (!dbCustomer) {
               const inMemoryDb = InMemoryDb.getInstance();
               dbCustomer = inMemoryDb.collections.customer?.find(
-                (c: any) => c.subscriberId?.trim().toUpperCase() === canonId || c.id?.toUpperCase() === canonId
+                (c: any) => c.email?.trim().toLowerCase() === canonicalEmail
               );
             }
 
             if (dbCustomer) {
               const idStr = dbCustomer.subscriberId || dbCustomer.id;
-              tokenUser = {
-                id: idStr,
-                name: dbCustomer.name,
-                email: dbCustomer.email,
-                role: 'CLIENT',
-                phone: dbCustomer.phone,
-                subscriberId: idStr
-              };
+              if (password === 'Test@2026' || password === idStr || password === dbCustomer.id) {
+                tokenUser = {
+                  id: idStr,
+                  name: dbCustomer.name,
+                  email: dbCustomer.email,
+                  role: 'CLIENT',
+                  phone: dbCustomer.phone,
+                  subscriberId: idStr
+                };
+              } else {
+                res.status(401).json({ error: 'Mot de passe du Portail Citoyen incorrect (utilisez "Test@2026").' });
+                return;
+              }
             }
           } catch (dbErr) {
-            console.error('Prisma lookup by subscriberId failed:', dbErr);
+            console.error('Prisma customer lookup by email failed:', dbErr);
           }
+        }
+      }
+    }
+
+      // 2. Authenticate with ID - Strictly query database using Prisma
+      else if (authMethod === 'id' && subscriberId) {
+        const canonId = subscriberId.trim().toUpperCase();
+        try {
+          const prisma = getPrismaClient();
+          let dbCustomer = await prisma.customer.findFirst({
+            where: {
+              OR: [
+                { subscriberId: { equals: subscriberId.trim(), mode: 'insensitive' } },
+                { id: { equals: subscriberId.trim() } }
+              ]
+            }
+          });
+
+          // Fallback to InMemoryDb only if Postgres is empty/unseeded
+          if (!dbCustomer) {
+            const inMemoryDb = InMemoryDb.getInstance();
+            dbCustomer = inMemoryDb.collections.customer?.find(
+              (c: any) => c.subscriberId?.trim().toUpperCase() === canonId || c.id?.toUpperCase() === canonId
+            );
+          }
+
+          if (dbCustomer) {
+            const idStr = dbCustomer.subscriberId || dbCustomer.id;
+            tokenUser = {
+              id: idStr,
+              name: dbCustomer.name,
+              email: dbCustomer.email,
+              role: 'CLIENT',
+              phone: dbCustomer.phone,
+              subscriberId: idStr
+            };
+          }
+        } catch (dbErr) {
+          console.error('Prisma lookup by subscriberId failed:', dbErr);
         }
       }
 

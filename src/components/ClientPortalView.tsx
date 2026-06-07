@@ -348,7 +348,7 @@ export default function ClientPortalView({
 
     setClaimsList([newC, ...claimsList]);
     setNewClaimDesc('');
-    alert('Votre réclamation a été transmise au service d\'hygiène communal de la mairie d\'Abidjan.');
+    alert('Votre réclamation a été transmise au service d\'hygiène communal de la mairie de Ouagadougou.');
   };
 
   // Save profile info
@@ -499,9 +499,9 @@ export default function ClientPortalView({
                 <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="space-y-2 relative z-10">
                   <span className="text-emerald-400 text-[10px] font-black uppercase tracking-widest font-mono">PORTAIL CITOYEN DE L'ASSAINISSEMENT</span>
-                  <h3 className="text-xl md:text-2xl font-black tracking-tight leading-none">Akwaba, {loggedClient.name} !</h3>
+                  <h3 className="text-xl md:text-2xl font-black tracking-tight leading-none">Bonjour, {loggedClient.name} !</h3>
                   <p className="text-slate-400 text-xs font-medium max-w-xl">
-                    Suivez vos livraisons de bacs, vos contributions de salubrité, visualisez votre contrat d'adhésion officielle et téléchargez vos justificatifs fiscaux d'assainissement d'Abidjan.
+                    Suivez vos livraisons de bacs, vos contributions de salubrité, visualisez votre contrat d'adhésion officielle et téléchargez vos justificatifs fiscaux d'assainissement de Ouagadougou.
                   </p>
                 </div>
               </div>
@@ -596,7 +596,7 @@ export default function ClientPortalView({
                       <div className="w-1.5 h-12 bg-emerald-500 rounded-full shrink-0" />
                       <div className="space-y-0.5">
                         <div className="font-bold text-slate-800">Bac vidé entièrement</div>
-                        <div className="text-[11px] text-slate-500">Secteur d'Abidjan : {loggedClient.neighborhood} • Benne d'Assainissement</div>
+                        <div className="text-[11px] text-slate-500">Secteur de Ouagadougou : {loggedClient.neighborhood} • Benne d'Assainissement</div>
                         <div className="text-[10px] text-indigo-600 font-bold font-mono">20 Mai 2026 à 07:29</div>
                       </div>
                     </div>
@@ -605,7 +605,7 @@ export default function ClientPortalView({
                       <div className="w-1.5 h-12 bg-emerald-500 rounded-full shrink-0" />
                       <div className="space-y-0.5">
                         <div className="font-bold text-slate-700">Bac vidé entièrement</div>
-                        <div className="text-[11px] text-slate-500">Secteur d'Abidjan : {loggedClient.neighborhood} • Benne d'Assainissement</div>
+                        <div className="text-[11px] text-slate-500">Secteur de Ouagadougou : {loggedClient.neighborhood} • Benne d'Assainissement</div>
                         <div className="text-[10px] text-indigo-600 font-bold font-mono">16 Mai 2026 à 08:05</div>
                       </div>
                     </div>
@@ -754,7 +754,7 @@ export default function ClientPortalView({
                         Signature Électronique Prévue
                       </h5>
                       <p className="leading-normal font-medium text-[11px]">
-                        Grâce au certificat immuable de la mairie d'Abidjan, validez d'un clic votre engagement pour passer d'En attente à Actif.
+                        Grâce au certificat immuable de la mairie de Ouagadougou, validez d'un clic votre engagement pour passer d'En attente à Actif.
                       </p>
                     </div>
                   </div>
@@ -990,7 +990,7 @@ export default function ClientPortalView({
                       value={newClaimDesc}
                       onChange={(e) => setNewClaimDesc(e.target.value)}
                       rows={4}
-                      placeholder="Détaillez le problème rencontré (ex: le camion a sauté Cocody Ouest le jeudi 21...)"
+                      placeholder="Détaillez le problème rencontré (ex: le camion a sauté Karpala Ouest le jeudi 21...)"
                       className="w-full bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500 p-3 rounded-xl font-medium"
                     ></textarea>
                   </div>
@@ -1046,7 +1046,7 @@ export default function ClientPortalView({
             <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-xs max-w-xl mx-auto space-y-6">
               <div>
                 <h3 className="text-md font-black text-slate-800 tracking-tight">Vos Identifiants d'Abonnés</h3>
-                <p className="text-xs text-slate-500 font-medium font-mono">ID de Citoyen Abidjan : {loggedClient.id}</p>
+                <p className="text-xs text-slate-500 font-medium font-mono">ID de Citoyen Ouagadougou : {loggedClient.id}</p>
               </div>
 
               <form onSubmit={handleSaveProfile} className="space-y-4 text-xs font-medium">
@@ -1122,7 +1122,7 @@ export default function ClientPortalView({
             </h3>
             
             <p className="text-[11px] text-slate-500 mb-4 font-medium leading-relaxed">
-              En signant ce contrat, vous déclarez accepter de manière inconditionnelle les Conditions Générales de Salubrité d'enlèvement urbain d'Abidjan.
+              En signant ce contrat, vous déclarez accepter de manière inconditionnelle les Conditions Générales de Salubrité d'enlèvement urbain de Ouagadougou.
             </p>
 
             <form onSubmit={handleElectronicSignatureSubmit} className="space-y-4 text-xs font-medium text-left">
@@ -1167,7 +1167,7 @@ export default function ClientPortalView({
               <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl space-y-1">
                 <span className="text-[9.5px] font-black text-emerald-800 uppercase block tracking-wider font-mono">Considérations Juridiques :</span>
                 <span className="text-[10.5px] text-emerald-750 block leading-normal leading-relaxed">
-                  L'inscription de votre nom et son enregistrement confèrent à cette transaction une valeur d'authentification valide auprès des tribunaux civils d'Abidjan.
+                  L'inscription de votre nom et son enregistrement confèrent à cette transaction une valeur d'authentification valide auprès des tribunaux civils de Ouagadougou.
                 </span>
               </div>
 
@@ -1337,7 +1337,7 @@ export default function ClientPortalView({
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-emerald-550" />
-                <h4 className="font-extrabold text-slate-700 text-[10px] uppercase font-mono tracking-wider">Aperçu du Certificat PDF Généré (Mairie d'Abidjan)</h4>
+                <h4 className="font-extrabold text-slate-700 text-[10px] uppercase font-mono tracking-wider">Aperçu du Certificat PDF Généré (Mairie de Ouagadougou)</h4>
               </div>
               
               <div className="flex gap-2">
@@ -1387,8 +1387,8 @@ export default function ClientPortalView({
                       <div className="bg-emerald-650 text-white font-serif font-black text-sm p-1.5 rounded-lg tracking-wider">AKPBF</div>
                       <span className="font-serif font-extrabold text-sm tracking-tight text-slate-950">AKPBF ASSAINISSEMENT</span>
                     </div>
-                    <p className="text-[9px] text-slate-500 font-medium font-mono">République de Côte d'Ivoire • Union - Discipline - Travail</p>
-                    <p className="text-[8.5px] text-slate-400">Direction de la Salubrité • Boulevard Cadre, Abidjan</p>
+                    <p className="text-[9px] text-slate-500 font-medium font-mono">République du Burkina Faso • Unité - Progrès - Justice</p>
+                    <p className="text-[8.5px] text-slate-400">Direction de la Salubrité • Boulevard Cadre, Ouagadougou</p>
                   </div>
                   <div className="text-right text-[10px] space-y-1">
                     <div className="font-black text-rose-600 font-mono">N° : {activePdfDoc.data.id || activePdfDoc.data.contractNumber}</div>
@@ -1497,7 +1497,7 @@ export default function ClientPortalView({
                       <p className="font-mono font-bold text-emerald-750 block truncate text-[10px]">
                         {activePdfDoc.data.electronicSignature}
                       </p>
-                      <span className="text-[9px] text-slate-500">Ce reçu électronique certifié atteste que l'abonné s'est acquitté de l'ensemble de ses redevances d'assainissement d'Abidjan pour la période concernée.</span>
+                      <span className="text-[9px] text-slate-500">Ce reçu électronique certifié atteste que l'abonné s'est acquitté de l'ensemble de ses redevances d'assainissement de Ouagadougou pour la période concernée.</span>
                     </div>
                   </>
                 )}

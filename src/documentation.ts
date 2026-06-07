@@ -60,8 +60,8 @@ export const DB_TABLES = [
     description: 'Zones de collecte municipales délimitant juridiquement les arrondissements (SIG PostGIS).',
     columns: [
       { name: 'zone_id [PK]', type: 'UUID', desc: 'Identifiant unique de la zone. Auto-généré par gen_random_uuid().' },
-      { name: 'name', type: 'VARCHAR(100) UNIQUE NOT NULL', desc: 'Libellé de l\'arrondissement ou quartier (ex: Cocody-Nord, Yopougon-Est, Marcory-Zone4).' },
-      { name: 'commune', type: 'VARCHAR(100) NOT NULL', desc: 'Département ou commune d\'Abidjan.' },
+      { name: 'name', type: 'VARCHAR(100) UNIQUE NOT NULL', desc: 'Libellé de l\'arrondissement ou quartier (ex: Karpala, Somgandé, Gounghin, Pissy).' },
+      { name: 'commune', type: 'VARCHAR(100) NOT NULL', desc: 'Département ou arrondissement de Ouagadougou.' },
       { name: 'geom_polygon', type: 'GEOMETRY(Polygon, 4326) NOT NULL', desc: 'Polygone PostGIS délimitant le tracé géographique. Indexé avec un index spatial GIST.' },
       { name: 'created_at', type: 'TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP', desc: 'Date d\'import de la zone administrative.' }
     ]

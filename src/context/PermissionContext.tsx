@@ -41,7 +41,7 @@ const PERMISSION_METADATA: Record<PermissionResource, PermissionDetails> = {
     name: 'Microphone & VoIP',
     icon: Mic,
     description: 'Accéder au micro de votre appareil.',
-    rationale: 'Utilisé pour enregistrer des notes vocales de terrain par nos agents ou pour lancer des appels audio d\'assistance d\'urgence avec le centre technique d\'Abidjan.'
+    rationale: 'Utilisé pour enregistrer des notes vocales de terrain par nos agents ou pour lancer des appels audio d\'assistance d\'urgence avec le centre technique de Ouagadougou.'
   },
   geolocation: {
     id: 'geolocation',
@@ -305,7 +305,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       setAndSavePermissionState(resource, 'granted');
       showFeedbackMessage(
         'Autorisation Simulée Activable',
-        `Permission "${PERMISSION_METADATA[resource].name}" enregistrée avec succès. (Mode Sandbox de simulation d'Abidjan actif sur l'iFrame Cloud Run).`,
+        `Permission "${PERMISSION_METADATA[resource].name}" enregistrée avec succès. (Mode Sandbox de simulation de Ouagadougou actif sur l'iFrame Cloud Run).`,
         'success'
       );
       resolver.resolve(true);
@@ -352,7 +352,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 
             {/* Operational Disclaimers */}
             <p className="text-[10px] text-slate-500 italic text-center leading-normal">
-              Rapport de conformité des données d'Abidjan : Vos données et capteurs physiques ne quittent jamais notre infrastructure locale sécurisée d'assainissement AKPBF.
+              Rapport de conformité des données de Ouagadougou : Vos données et capteurs physiques ne quittent jamais notre infrastructure locale sécurisée d'assainissement AKPBF.
             </p>
 
             {/* Interaction Buttons */}

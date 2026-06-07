@@ -1,99 +1,125 @@
-/* github-theme.css - Official GitHub Primer variables */
+/* github-theme.css - Official Design System Tokens */
 
 :root {
-  /* Colors - Light Theme */
-  --bg-canvas: #f6f8fa;
-  --bg-primary: #ffffff;
-  --bg-secondary: #f6f8fa;
-  --bg-tertiary: #fafbfc;
-  --bg-overlay: #ffffff;
+  /* Design Tokens - Light Theme */
+  --background: #f6f8fa;
+  --surface: #ffffff;
+  --surface-secondary: #f6f8fa;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --border: #e5e7eb;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  /* Aliases for compatibility */
+  --bg-canvas: var(--background);
+  --bg-primary: var(--surface);
+  --bg-secondary: var(--surface-secondary);
+  --bg-tertiary: #f9fafb;
+  --bg-overlay: var(--surface);
   
-  --fg-primary: #1f2328;
-  --fg-secondary: #57606a;
-  --fg-tertiary: #6e7781;
+  --fg-primary: var(--text-primary);
+  --fg-secondary: var(--text-secondary);
+  --fg-tertiary: #9ca3af;
   --fg-on-emphasis: #ffffff;
   
-  --border-primary: #d0d7de;
-  --border-secondary: #d0d7de;
-  --border-muted: #e1e4e8;
+  --border-primary: var(--border);
+  --border-secondary: var(--border);
+  --border-muted: #f3f4f6;
   
-  --accent-fg: #0969da;
-  --accent-bg: #ddf4ff;
-  --accent-emphasis: #0969da;
+  --accent-fg: var(--primary);
+  --accent-bg: #eef2ff;
+  --accent-emphasis: var(--primary);
   
-  --danger-fg: #cf222e;
-  --danger-bg: #ffebe9;
-  --success-fg: #1a7f37;
-  --success-bg: #dafbe1;
-  --attention-fg: #9a6700;
-  --attention-bg: #fff5b1;
+  --danger-fg: var(--danger);
+  --danger-bg: #fef2f2;
+  --success-fg: var(--success);
+  --success-bg: #ecfdf5;
+  --attention-fg: var(--warning);
+  --attention-bg: #fffbeb;
 
   /* Global Color Design System - Light Mode */
-  --color-success-fg: #047857; /* Vert moderne foncé */
-  --color-success-bg: #ecfdf5; /* Vert très léger */
-  --color-error-fg: #b91c1c; /* Rouge moderne foncé */
-  --color-error-bg: #fef2f2; /* Rouge très léger */
-  --color-warning-fg: #c2410c; /* Orange moderne foncé */
-  --color-warning-bg: #fff7ed; /* Orange très léger */
-  --color-info-fg: #1d4ed8; /* Bleu moderne foncé */
-  --color-info-bg: #eff6ff; /* Bleu très léger */
-  --color-primary-fg: #4f46e5; /* Couleur principale */
-  --color-primary-bg: #eef2ff; /* Fond principal */
-  --color-secondary-fg: #374151; /* Couleur secondaire */
-  --color-secondary-bg: #f3f4f6; /* Fond secondaire */
+  --color-success-fg: var(--success); 
+  --color-success-bg: #ecfdf5; 
+  --color-error-fg: var(--danger); 
+  --color-error-bg: #fef2f2; 
+  --color-warning-fg: var(--warning); 
+  --color-warning-bg: #fff7ed; 
+  --color-info-fg: #1d4ed8; 
+  --color-info-bg: #eff6ff; 
+  --color-primary-fg: var(--primary); 
+  --color-primary-bg: #eef2ff; 
+  --color-secondary-fg: var(--text-secondary); 
+  --color-secondary-bg: #f3f4f6; 
 
-  /* Typography scale - GitHub base 14px */
+  /* Typography scale */
   --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-family-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
 
-  --font-size-base: 14px;
-  --font-size-small: 12px;
-  --font-size-large: 16px;
-  --font-size-h1: 32px;
-  --font-size-h2: 24px;
-  --font-size-h3: 20px;
-  --font-size-h4: 16px;
+  --font-size-base: 15px; /* Slightly increased for better readability */
+  --font-size-small: 13px;
+  --font-size-large: 17px;
+  --font-size-h1: 34px;
+  --font-size-h2: 26px;
+  --font-size-h3: 22px;
+  --font-size-h4: 18px;
 }
 
 [data-theme="dark"] {
-  /* Colors - Dark Theme */
-  --bg-canvas: #0d1117;
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #010409;
-  --bg-overlay: #161b22;
+  /* Design Tokens - Dark Theme */
+  --background: #090d16;
+  --surface: #111827;
+  --surface-secondary: #1f2937;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --border: #374151;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  /* Aliases for compatibility */
+  --bg-canvas: var(--background);
+  --bg-primary: var(--surface);
+  --bg-secondary: var(--surface-secondary);
+  --bg-tertiary: #020617;
+  --bg-overlay: var(--surface);
   
-  --fg-primary: #e6edf3;
-  --fg-secondary: #7d8590;
-  --fg-tertiary: #484f58;
+  --fg-primary: var(--text-primary);
+  --fg-secondary: var(--text-secondary);
+  --fg-tertiary: #4b5563;
   --fg-on-emphasis: #ffffff;
   
-  --border-primary: #30363d;
-  --border-secondary: #21262d;
-  --border-muted: #21262d;
+  --border-primary: var(--border);
+  --border-secondary: var(--border);
+  --border-muted: #111827;
   
-  --accent-fg: #2f81f7;
-  --accent-bg: #1f6feb;
-  --accent-emphasis: #1f6feb;
+  --accent-fg: var(--primary);
+  --accent-bg: rgba(99, 102, 241, 0.15);
+  --accent-emphasis: var(--primary);
   
-  --danger-fg: #f85149;
-  --danger-bg: #f851491a;
-  --success-fg: #3fb950;
-  --success-bg: #3fb9501a;
-  --attention-fg: #d29922;
-  --attention-bg: #d299221a;
+  --danger-fg: var(--danger);
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --success-fg: var(--success);
+  --success-bg: rgba(16, 185, 129, 0.15);
+  --attention-fg: var(--warning);
+  --attention-bg: rgba(245, 158, 11, 0.15);
 
   /* Global Color Design System - Dark Mode */
-  --color-success-fg: #3fb950; /* Vert moderne lumineux */
-  --color-success-bg: rgba(63, 185, 80, 0.15); /* Vert transparent */
-  --color-error-fg: #f85149; /* Rouge moderne lumineux */
-  --color-error-bg: rgba(248, 81, 73, 0.15); /* Rouge transparent */
-  --color-warning-fg: #fb923c; /* Orange moderne lumineux */
-  --color-warning-bg: rgba(251, 146, 60, 0.15); /* Orange transparent */
-  --color-info-fg: #58a6ff; /* Bleu moderne lumineux */
-  --color-info-bg: rgba(88, 166, 255, 0.15); /* Bleu transparent */
-  --color-primary-fg: #818cf8; /* Violet/indigo lumineux */
-  --color-primary-bg: rgba(129, 140, 248, 0.15); /* Indigo transparent */
-  --color-secondary-fg: #c9d1d9; /* Gris clair */
-  --color-secondary-bg: rgba(240, 246, 252, 0.1); /* Gris transparent */
+  --color-success-fg: var(--success); 
+  --color-success-bg: rgba(16, 185, 129, 0.15); 
+  --color-error-fg: var(--danger); 
+  --color-error-bg: rgba(239, 68, 68, 0.15); 
+  --color-warning-fg: var(--warning); 
+  --color-warning-bg: rgba(245, 158, 11, 0.15); 
+  --color-info-fg: #58a6ff; 
+  --color-info-bg: rgba(88, 166, 255, 0.15); 
+  --color-primary-fg: var(--primary); 
+  --color-primary-bg: rgba(99, 102, 241, 0.15); 
+  --color-secondary-fg: #c9d1d9; 
+  --color-secondary-bg: rgba(240, 246, 252, 0.1); 
 }

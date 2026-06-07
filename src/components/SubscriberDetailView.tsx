@@ -56,6 +56,8 @@ interface SubscriberDetailViewProps {
     method: 'Orange Money' | 'Wave' | 'Carte Bancaire' | 'Espèces',
     agentName: string
   ) => void;
+  onAddInvoices?: (newInvs: Invoice[]) => void;
+  onRemoveInvoices?: (invIds: string[]) => void;
 }
 
 export default function SubscriberDetailView({
@@ -72,7 +74,9 @@ export default function SubscriberDetailView({
   userRole,
   sessionUser,
   onUpdateSubscriber,
-  onProcessBulkPayment
+  onProcessBulkPayment,
+  onAddInvoices,
+  onRemoveInvoices
 }: SubscriberDetailViewProps) {
   // Find subscriber profile
   const sub = useMemo(() => {
@@ -140,10 +144,7 @@ export default function SubscriberDetailView({
   }, [receipts, sub]);
 
   // Local interactive complaints lists state (representing "Réclamations, Signalements, Demandes de Service")
-  const [complaints, setComplaints] = useState([
-    { id: 'RC-2026-904', type: 'Réclamation', category: 'Collecte omise', desc: 'Le camion n\'est pas passé devant le pavillon le mardi requis.', date: '2026-05-28', status: 'En attente', priority: 'Haute', response: '' },
-    { id: 'RC-2026-812', type: 'Signalement', category: 'Bac cassé', desc: 'Couvercle fissuré lors du chargement par les agents.', date: '2026-05-15', status: 'Résolu', priority: 'Moyenne', response: 'Nouveau bac Standard 240L livré par le superviseur logistique.' }
-  ]);
+  const [complaints, setComplaints] = useState<any[]>([]);
 
   const [newComplaintType, setNewComplaintType] = useState('Réclamation');
   const [newComplaintCat, setNewComplaintCat] = useState('Collecte omise');
@@ -226,7 +227,7 @@ export default function SubscriberDetailView({
     // Supplement with static entries for realistic tracking if empty
     if (clientSpecific.length === 0) {
       return [
-        { id: 'AUD-3001', action: 'creation', description: 'Création initiale du compte citoyen d\'Abidjan.', timestamp: sub.startDate || '2026-05-10T08:00:00Z', operator: 'Alkaïda Benjamin (Admin)' },
+        { id: 'AUD-3001', action: 'creation', description: 'Création initiale du compte citoyen de Ouagadougou.', timestamp: sub.startDate || '2026-05-10T08:00:00Z', operator: 'Alkaïda Benjamin (Admin)' },
         { id: 'AUD-3002', action: 'renewal', description: 'Vérification réglementaire de solvabilité effectuée.', timestamp: sub.startDate || '2026-05-10T11:00:00Z', operator: 'Système Automatique' },
         ...(sub.status === 'active' ? [{ id: 'AUD-3003', action: 'state_change', description: 'Activation réglementaire de l\'abonnement de voirie.', timestamp: sub.startDate || '2026-05-10T12:00:00Z', operator: 'Gérard Gnakoury (Logistique)' }] : [])
       ];
@@ -244,6 +245,11 @@ export default function SubscriberDetailView({
   const [selectedMonthsForPay, setSelectedMonthsForPay] = useState<string[]>([]);
   const [bulkPayMethod, setBulkPayMethod] = useState<'Orange Money' | 'Wave' | 'Carte Bancaire' | 'Espèces'>('Orange Money');
   const [lastBulkReceipt, setLastBulkReceipt] = useState<any | null>(null);
+
+  // States for manual test invoice generation
+  const [testMonth, setTestMonth] = useState('Janvier');
+  const [testStatus, setTestStatus] = useState<'overdue' | 'pending'>('overdue');
+  const [testError, setTestError] = useState('');
 
   // Map 12 months for visual tracking
   const monthsData = useMemo(() => {
@@ -286,13 +292,7 @@ export default function SubscriberDetailView({
           status = 'pending';
         }
       } else {
-        if (m.index < 6) {
-          status = 'overdue'; // unpaid arrears
-        } else if (m.index === 6) {
-          status = 'pending'; // ongoing month
-        } else {
-          status = 'upcoming'; // future month
-        }
+        status = 'upcoming';
       }
 
       return {
@@ -404,7 +404,7 @@ export default function SubscriberDetailView({
       doc.text(`ID Client Forfait : ${citizen.id}`, 15, 84);
       doc.setFont("helvetica", "normal");
       doc.text(`Téléphone : ${citizen.phone}`, 15, 90);
-      doc.text(`Zone / Quartier : ${citizen.neighborhood} - Abidjan`, 15, 96);
+      doc.text(`Zone / Quartier : ${citizen.neighborhood} - Ouagadougou`, 15, 96);
       doc.text(`Adresse Géographique : ${citizen.address}`, 15, 102);
 
       // Separator
@@ -448,7 +448,7 @@ export default function SubscriberDetailView({
       doc.setTextColor(148, 163, 184);
       doc.setFontSize(8);
       doc.setFont("helvetica", "italic");
-      doc.text("Ce titre certifie la consignation légitime des contributions de voirie d'Abidjan.", 15, 202);
+      doc.text("Ce titre certifie la consignation légitime des contributions de voirie de Ouagadougou.", 15, 202);
       doc.text("Validé et signé numériquement par AKPBF S.A.", 15, 207);
 
       doc.setFillColor(248, 250, 252);
@@ -460,7 +460,7 @@ export default function SubscriberDetailView({
       doc.setDrawColor(71, 85, 105);
       doc.setLineWidth(0.2);
       doc.line(133, 226, 190, 226);
-      doc.text("Sceau Digital Mairie d'Abidjan", 135, 245);
+      doc.text("Sceau Digital Mairie de Ouagadougou", 135, 245);
 
       doc.save(`Recu_AKP_${receipt.id}.pdf`);
     } catch (e) {
@@ -472,7 +472,7 @@ export default function SubscriberDetailView({
   const handleSendWhatsAppReceipt = (receipt: PaymentReceipt, citizen: Subscriber, paidMonths: string[]) => {
     const message = `Bonjour *${citizen.name}*,
 
-Mairie d'Abidjan - Reçu de Voirie AKPBF :
+Mairie de Ouagadougou - Reçu de Voirie AKPBF :
 Votre paiement de *${receipt.amountPaid.toLocaleString()} FCFA* pour la redevance municipale de *${paidMonths.length} mois* (${paidMonths.join(', ')}) a été encaissé avec succès via *${receipt.paymentMethod}*.
 
 *Récapitulatif :*
@@ -482,7 +482,7 @@ Votre paiement de *${receipt.amountPaid.toLocaleString()} FCFA* pour la redevanc
 - Agent de Recouvrement : ${sessionUser?.name || 'Service de Voirie Municipale'}
 
 Votre service d'assainissement municipal reste pleinement actif. Merci pour votre civisme !
-_Sceau digital municipal d'Abidjan_`;
+_Sceau digital municipal de Ouagadougou_`;
 
     const encoded = encodeURIComponent(message);
     const rawPh = citizen.phone.replace(/[\s\-\+]/g, '');
@@ -595,7 +595,7 @@ _Sceau digital municipal d'Abidjan_`;
               </div>
               <div className="grid grid-cols-3 py-1">
                 <span className="text-slate-400 font-bold col-span-1 uppercase text-[10px]">Secteur</span>
-                <span className="text-zinc-600 font-extrabold col-span-2 text-right">Abidjan Nord-Est</span>
+                <span className="text-zinc-600 font-extrabold col-span-2 text-right">Ouagadougou Nord-Est</span>
               </div>
               <div className="grid grid-cols-3 py-1">
                 <span className="text-slate-400 font-bold col-span-1 uppercase text-[10px]">Zone</span>
@@ -678,7 +678,7 @@ _Sceau digital municipal d'Abidjan_`;
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">
-                  Validé et scellé via l’adresse IP d'Abidjan sous l'empreinte cryptographique blockchain locale AKP-STAMP.
+                  Validé et scellé via l’adresse IP de Ouagadougou sous l'empreinte cryptographique blockchain locale AKP-STAMP.
                 </p>
               </div>
             </div>
@@ -765,7 +765,7 @@ _Sceau digital municipal d'Abidjan_`;
                 className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-3.5 py-2 rounded-xl font-bold cursor-pointer transition flex items-center gap-1.5"
               >
                 <Clock className="h-3.5 w-3.5" />
-                <span>Payer tous les arriérés d'Abidjan</span>
+                <span>Payer tous les arriérés</span>
               </button>
               <button
                 type="button"
@@ -784,6 +784,117 @@ _Sceau digital municipal d'Abidjan_`;
                   Désélectionner tout
                 </button>
               )}
+            </div>
+
+            {/* Console de Simulation & Tests */}
+            <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/85 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-850 pb-2.5">
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-black uppercase text-indigo-400 tracking-wider flex items-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5 text-indigo-400 animate-pulse" />
+                    Console de Simulation & Tests
+                  </h4>
+                  <p className="text-[10px] text-slate-400">Générez manuellement des impayés et des dettes sur l'abonné pour tester instantanément.</p>
+                </div>
+                
+                {/* Clean up button for this subscriber */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onRemoveInvoices) {
+                      const subInvs = invoices.filter(i => i.subscriberId === sub.id).map(i => i.id);
+                      if (subInvs.length > 0) {
+                        onRemoveInvoices(subInvs);
+                      }
+                      setTestError('');
+                    }
+                  }}
+                  className="self-start sm:self-center text-[9.5px] font-bold text-rose-450 hover:text-rose-450 bg-rose-955/40 hover:bg-rose-900/40 px-2.5 py-1 rounded-md border border-rose-900/50 transition cursor-pointer flex items-center gap-1"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  <span>Vider les factures de l'abonné</span>
+                </button>
+              </div>
+
+              {testError && (
+                <div className="bg-rose-950/40 border border-rose-900/50 text-rose-300 text-[10px] p-2 rounded-lg flex items-center gap-1.5 font-bold">
+                  <ShieldAlert className="h-3.5 w-3.5 text-rose-450 shrink-0" />
+                  <span>{testError}</span>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-4 text-xs">
+                <div className="flex flex-col gap-1 min-w-[120px]">
+                  <span className="text-[9px] font-bold uppercase text-slate-500 font-sans tracking-wider">Mois d'Arriéré</span>
+                  <select
+                    value={testMonth}
+                    onChange={(e) => {
+                      setTestMonth(e.target.value);
+                      setTestError('');
+                    }}
+                    className="bg-slate-900 border border-slate-800 text-slate-250 p-2 rounded-xl text-xs cursor-pointer focus:outline-none focus:border-indigo-500"
+                  >
+                    {['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'].map(m => (
+                      <option key={m} value={m}>{m} 2026</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1 min-w-[130px]">
+                  <span className="text-[9px] font-bold uppercase text-slate-500 font-sans tracking-wider">Statut de la Dette</span>
+                  <select
+                    value={testStatus}
+                    onChange={(e) => {
+                      setTestStatus(e.target.value as any);
+                      setTestError('');
+                    }}
+                    className="bg-slate-900 border border-slate-800 text-slate-250 p-2 rounded-xl text-xs cursor-pointer focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="overdue">✕ En Retard (Impayé)</option>
+                    <option value="pending">🕒 En Attente (À échoir)</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold uppercase text-slate-500 font-sans tracking-wider">Montant</span>
+                  <div className="bg-slate-900 border border-slate-800 text-emerald-400 p-2 rounded-xl text-xs font-mono font-black">
+                    {(plan ? plan.price : 2500).toLocaleString()} FCFA
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const periodStr = `${testMonth} 2026`;
+                    // Check if invoice already exists
+                    const exists = invoices.some(i => i.subscriberId === sub.id && i.period === periodStr);
+                    if (exists) {
+                      setTestError(`Une facture existe déjà pour la période ${periodStr}.`);
+                      return;
+                    }
+
+                    const newInv = {
+                      id: `FAC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+                      subscriberId: sub.id,
+                      subscriberName: sub.name,
+                      amount: plan ? plan.price : 2500,
+                      dueDate: '2026-06-10',
+                      issueDate: '2026-05-22',
+                      status: testStatus,
+                      period: periodStr
+                    };
+
+                    if (onAddInvoices) {
+                      onAddInvoices([newInv]);
+                      setTestError('');
+                    }
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs tracking-wide transition active:scale-95 cursor-pointer flex items-center gap-1.5 sm:mt-auto sm:ml-auto"
+                >
+                  <CheckCircle className="h-4.5 w-4.5" />
+                  <span>Générer Facture de Test</span>
+                </button>
+              </div>
             </div>
 
             {/* The 12-Month Calendar Grid */}
@@ -897,7 +1008,7 @@ _Sceau digital municipal d'Abidjan_`;
                 {/* Computational HUD */}
                 <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto justify-end">
                   
-                  {/* Select Payment channels available in Abidjan */}
+                  {/* Select Payment channels available in Burkina Faso */}
                   <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1 w-full md:w-auto">
                     <span className="text-[9px] font-black uppercase text-slate-400 shrink-0">Mode encaissement :</span>
                     <select
@@ -906,7 +1017,7 @@ _Sceau digital municipal d'Abidjan_`;
                       className="bg-transparent text-xs font-extrabold text-slate-200 outline-none cursor-pointer py-1"
                     >
                       <option value="Orange Money" className="bg-slate-900">Orange Money</option>
-                      <option value="Wave" className="bg-slate-900">Wave CI</option>
+                      <option value="Wave" className="bg-slate-900">Moov Money</option>
                       <option value="Carte Bancaire" className="bg-slate-900">Carte Visa</option>
                       <option value="Espèces" className="bg-slate-900">Espèces (Régie Terrain)</option>
                     </select>

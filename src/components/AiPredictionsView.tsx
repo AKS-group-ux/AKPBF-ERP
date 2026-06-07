@@ -123,7 +123,7 @@ export default function AiPredictionsView({
   const [chatHistory, setChatHistory] = useState<Array<{ sender: 'user' | 'ai'; text: string; time: string; live?: boolean }>>([
     {
       sender: 'ai',
-      text: "Bonjour ! Je suis l'Assistant Intelligent AKPBF-Brain. J'analyse en continu le comportement de vos clients d'assainissement, les trajectoires de facturation, l'état physique du parc de poubelles et les tournées GPS d'Abidjan. Comment puis-je vous aider aujourd'hui ?\n\n### Questions recommandées :\n* *Quel est le risque global d'impayé ce mois-ci ?*\n* *Quels clients de Cocody devrions-nous passer sur la formule supérieure ?*\n* *Comment optimiser la consommation de carburant de la tournée d'aujourd'hui ?*",
+      text: "Bonjour ! Je suis l'Assistant Intelligent AKPBF-Brain. J'analyse en continu le comportement de vos clients d'assainissement, les trajectoires de facturation, l'état physique du parc de poubelles et les tournées GPS de Ouagadougou. Comment puis-je vous aider aujourd'hui ?\n\n### Questions recommandées :\n* *Quel est le risque global d'impayé ce mois-ci ?*\n* *Quels clients de Karpala devrions-nous passer sur la formule supérieure ?*\n* *Comment optimiser la consommation de carburant de la tournée d'aujourd'hui ?*",
       time: '09:30',
       live: false
     }
@@ -241,8 +241,8 @@ export default function AiPredictionsView({
   // Geographic High Potential Zones
   const highPotentialZones = useMemo(() => {
     return [
-      { name: 'Cocody-Riviera 3 (Zone Université)', rating: 'Critique', potentialCount: 840, densityIndex: 'Élevé 92%', averageIncome: 'Élevé', status: 'Cible Prioritaire' },
-      { name: 'Marcory-Zone 4C (Professionnels & Restos)', rating: 'Excellent', potentialCount: 320, densityIndex: 'Moyen 75%', averageIncome: 'Très Élevé', status: 'Grande Marge' },
+      { name: 'Karpala Secteur 15 (Zone Université)', rating: 'Critique', potentialCount: 840, densityIndex: 'Élevé 92%', averageIncome: 'Élevé', status: 'Cible Prioritaire' },
+      { name: 'Somgandé Zone Industrielle (Professionnels & Restos)', rating: 'Excellent', potentialCount: 320, densityIndex: 'Moyen 75%', averageIncome: 'Très Élevé', status: 'Grande Marge' },
       { name: 'Yopougon-Niangon (Foyers Sociaux)', rating: 'Modéré', potentialCount: 1450, densityIndex: 'Très Élevé 98%', averageIncome: 'Moyen', status: 'Volume de Masse' },
       { name: 'Plateau (Déchets Bureaux)', rating: 'Excellent', potentialCount: 150, densityIndex: 'Faible 34%', averageIncome: 'Corporation', status: 'B2B Élite' }
     ];
@@ -450,7 +450,7 @@ export default function AiPredictionsView({
                 {[
                   { text: 'Anomalies de collectes détectées', prompt: 'Montre-moi les anomalies et débordements de poubelles signalés ce matin.' },
                   { text: 'Score d\'impayés par arr.', prompt: 'Quel est le risque global d\'impayé par arrondissement ?' },
-                  { text: 'Algorithme d\'upsell conseillé', prompt: 'Quels clients de Cocody devrions-nous passer sur la formule supérieure ?' },
+                  { text: 'Algorithme d\'upsell conseillé', prompt: 'Quels clients de Karpala devrions-nous passer sur la formule supérieure ?' },
                   { text: 'Rendement énergétique camions', prompt: 'Comment optimiser la consommation de carburant de la tournée d\'aujourd\'hui ?' }
                 ].map((th, i) => (
                   <button
@@ -600,7 +600,7 @@ export default function AiPredictionsView({
               </div>
 
               <div className="p-3.5 bg-slate-50 rounded-xl text-xs space-y-1 border border-slate-150 leading-relaxed text-slate-600 font-semibold">
-                <strong>Analyse de variance :</strong> L'augmentation projetée prend en compte le plan d'upsell automatique ciblé et l'assainissement commercial à Cocody qui compense les coûts d'acquisition initiaux des bacs.
+                <strong>Analyse de variance :</strong> L'augmentation projetée prend en compte le plan d'upsell automatique ciblé et l'assainissement commercial à Karpala qui compense les coûts d'acquisition initiaux des bacs.
               </div>
             </div>
 
@@ -670,7 +670,7 @@ export default function AiPredictionsView({
                   <Compass className="h-4.5 w-4.5" />
                   Simulateur Mathématique du TSP / VRP de Voirie
                 </h3>
-                <p className="text-[11px] text-zinc-400 mt-0.5 font-semibold">Optimisation spatiale séquentielle pour Cocody et Yopougon</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5 font-semibold">Optimisation spatiale séquentielle pour Karpala et Somgandé</p>
               </div>
 
               <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded font-black font-mono">
@@ -697,7 +697,7 @@ export default function AiPredictionsView({
               </svg>
 
               <div className="absolute bottom-3 left-3 bg-black/80 border border-zinc-800 p-3 text-[10px] rounded-lg text-zinc-350 space-y-1 font-mono leading-relaxed">
-                <div>🏁 Départ : **Garage Voirie Cocody**</div>
+                <div>🏁 Départ : **Garage Voirie Somgandé**</div>
                 <div>📍 Équipage actif : **Camion #COL-402**</div>
                 <div className="text-emerald-400 font-bold">🚀 Trajet optimal séquencé par l'IA</div>
               </div>
@@ -727,14 +727,14 @@ export default function AiPredictionsView({
           <div className="lg:col-span-4 bg-white border border-slate-150 rounded-2xl p-5 shadow-xs space-y-4">
             <div>
               <h3 className="font-extrabold text-slate-800 text-sm">Détecteur Intelligent d'Anomalies</h3>
-              <p className="text-xs text-slate-400">Alertes temps-réel générées par les capteurs d'Abidjan</p>
+              <p className="text-xs text-slate-400">Alertes temps-réel générées par les capteurs de Ouagadougou</p>
             </div>
 
             <div className="space-y-3">
               {[
-                { type: 'warning', title: 'Ravitaillement raté', desc: 'Le camion a sauté la poubelle RFID #BAC-225-1002 (Koffi Jean-Jacques).', time: 'Il y a 14min' },
+                { type: 'warning', title: 'Ravitaillement raté', desc: 'Le camion a sauté la poubelle RFID #BAC-225-1002 (Famille Sawadogo).', time: 'Il y a 14min' },
                 { type: 'critical', title: 'Bac d\'ordure brisé', desc: 'Détérioration critique signalée sur le capteur LID de SUB-8842 (Diallo).', time: 'Il y a 1h' },
-                { type: 'info', title: 'Vitesse excessive', desc: 'Excès de vitesse de l\'équipage #AGT-002 sur la voie rapide de Cocody.', time: 'Il y a 2h' }
+                { type: 'info', title: 'Vitesse excessive', desc: 'Excès de vitesse de l\'équipage #AGT-002 sur la voie rapide de Somgandé.', time: 'Il y a 2h' }
               ].map((an, idx) => (
                 <div 
                   key={idx} 

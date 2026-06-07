@@ -43,19 +43,9 @@ interface LeaveRequest {
   status: 'pending' | 'approved' | 'rejected';
 }
 
-const INITIAL_EMPLOYEES: Employee[] = [
-  { id: 'EMP-001', name: 'Kouamé N\'Guessan', phone: '+225 07 45 42 10', role: 'Chauffeur', contractType: 'CDI', baseSalaryFcfa: 250000, bonusFcfa: 45000, hiredDate: '2023-01-15', status: 'active', performanceRating: 4.8 },
-  { id: 'EMP-002', name: 'Coulibaly Moussa', phone: '+225 05 02 11 87', role: 'Chauffeur', contractType: 'CDI', baseSalaryFcfa: 250000, bonusFcfa: 30000, hiredDate: '2023-06-10', status: 'active', performanceRating: 4.5 },
-  { id: 'EMP-003', name: 'Sidibé Oumar', phone: '+225 01 11 44 90', role: 'Éboueur', contractType: 'CDD', baseSalaryFcfa: 150000, bonusFcfa: 22000, hiredDate: '2024-02-01', status: 'active', performanceRating: 4.9 },
-  { id: 'EMP-004', name: 'Koffi Blaise Christian', phone: '+225 07 88 12 00', role: 'Éboueur', contractType: 'Journalier', baseSalaryFcfa: 120000, bonusFcfa: 15000, hiredDate: '2025-05-01', status: 'active', performanceRating: 4.2 },
-  { id: 'EMP-005', name: 'Sangaré Alassane', phone: '+225 27 21 00 11', role: 'Comptable', contractType: 'CDI', baseSalaryFcfa: 450000, bonusFcfa: 50000, hiredDate: '2022-09-01', status: 'active', performanceRating: 4.7 },
-  { id: 'EMP-006', name: 'Bamba Sidiki', phone: '+225 05 92 84 91', role: 'Superviseur', contractType: 'CDI', baseSalaryFcfa: 350000, bonusFcfa: 38000, hiredDate: '2024-01-10', status: 'active', performanceRating: 4.6 }
-];
+const INITIAL_EMPLOYEES: Employee[] = [];
 
-const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [
-  { id: 'CG-901', employeeId: 'EMP-004', employeeName: 'Koffi Blaise Christian', leaveType: 'Congé annuel', startDate: '2026-06-01', endDate: '2026-06-15', status: 'approved' },
-  { id: 'CG-902', employeeId: 'EMP-002', employeeName: 'Coulibaly Moussa', leaveType: 'Maladie', startDate: '2026-05-24', endDate: '2026-05-28', status: 'pending' }
-];
+const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [];
 
 export default function HrView() {
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
@@ -279,44 +269,50 @@ export default function HrView() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredEmployees.map(emp => (
-              <div key={emp.id} className="p-4 rounded-xl border border-slate-200 hover:border-slate-350 transition flex flex-col justify-between gap-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-extrabold text-slate-850 text-sm">{emp.name}</h4>
-                      <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded-md mt-1 inline-block font-mono">{emp.id} • {emp.contractType}</span>
-                    </div>
-                    <span className={`text-[10.5px] font-black uppercase px-2 py-0.5 rounded border ${
-                      emp.status === 'active' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' :
-                      emp.status === 'on_leave' ? 'bg-amber-50 text-amber-800 border-amber-100' :
-                      'bg-rose-50 text-rose-800 border-rose-100'
-                    }`}>
-                      {emp.status === 'active' ? 'En Poste' : emp.status === 'on_leave' ? 'En Congé' : 'Suspendu'}
-                    </span>
-                  </div>
-
-                  <div className="text-xs space-y-1 text-slate-500">
-                    <div>Poste affecté : <strong className="text-slate-700">{emp.role}</strong></div>
-                    <div>Contact d'urgence : <strong>{emp.phone}</strong></div>
-                    <div>Embauché le : <strong>{emp.hiredDate}</strong></div>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-105 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1">
-                    <span className="text-amber-500 font-bold">★</span>
-                    <span className="font-sans font-bold text-slate-700">{emp.performanceRating} Performance</span>
-                  </div>
-                  <button
-                    onClick={() => setSelectedPayslipEmployee(emp)}
-                    className="text-xs font-bold text-emerald-700 hover:text-emerald-900 border border-emerald-250 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-md transition"
-                  >
-                    Filtre Paie
-                  </button>
-                </div>
+            {filteredEmployees.length === 0 ? (
+              <div className="col-span-2 p-8 text-center text-slate-400 font-sans font-semibold border border-dashed border-slate-200 rounded-xl">
+                Aucun collaborateur enregistré dans l'effectif global.
               </div>
-            ))}
+            ) : (
+              filteredEmployees.map(emp => (
+                <div key={emp.id} className="p-4 rounded-xl border border-slate-200 hover:border-slate-350 transition flex flex-col justify-between gap-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-extrabold text-slate-850 text-sm">{emp.name}</h4>
+                        <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded-md mt-1 inline-block font-mono">{emp.id} • {emp.contractType}</span>
+                      </div>
+                      <span className={`text-[10.5px] font-black uppercase px-2 py-0.5 rounded border ${
+                        emp.status === 'active' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' :
+                        emp.status === 'on_leave' ? 'bg-amber-50 text-amber-800 border-amber-100' :
+                        'bg-rose-50 text-rose-800 border-rose-100'
+                      }`}>
+                        {emp.status === 'active' ? 'En Poste' : emp.status === 'on_leave' ? 'En Congé' : 'Suspendu'}
+                      </span>
+                    </div>
+
+                    <div className="text-xs space-y-1 text-slate-500">
+                      <div>Poste affecté : <strong className="text-slate-700">{emp.role}</strong></div>
+                      <div>Contact d'urgence : <strong>{emp.phone}</strong></div>
+                      <div>Embauché le : <strong>{emp.hiredDate}</strong></div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-105 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1">
+                      <span className="text-amber-500 font-bold">★</span>
+                      <span className="font-sans font-bold text-slate-700">{emp.performanceRating} Performance</span>
+                    </div>
+                    <button
+                      onClick={() => setSelectedPayslipEmployee(emp)}
+                      className="text-xs font-bold text-emerald-700 hover:text-emerald-900 border border-emerald-250 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-md transition"
+                    >
+                      Filtre Paie
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -341,29 +337,37 @@ export default function HrView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 font-mono text-[11px] text-slate-650">
-                {employees.map(emp => {
-                  const cnpsCutOff = emp.baseSalaryFcfa * 0.047;
-                  const netToReceive = (emp.baseSalaryFcfa + emp.bonusFcfa) - cnpsCutOff;
-                  return (
-                    <tr key={emp.id} className="hover:bg-slate-50/45 transition">
-                      <td className="p-3 font-semibold text-slate-800">{emp.id}</td>
-                      <td className="p-3 font-sans font-bold text-slate-900">{emp.name}</td>
-                      <td className="p-3 font-sans text-slate-500 font-medium">{emp.role}</td>
-                      <td className="p-3 text-right font-bold text-slate-800">{emp.baseSalaryFcfa.toLocaleString()}</td>
-                      <td className="p-3 text-right font-bold text-emerald-700">+{emp.bonusFcfa.toLocaleString()}</td>
-                      <td className="p-3 text-right font-bold text-rose-700">-{cnpsCutOff.toLocaleString()}</td>
-                      <td className="p-3 text-right font-black text-indigo-900">{netToReceive.toLocaleString()} FCFA</td>
-                      <td className="p-3 text-center">
-                        <button
-                          onClick={() => setSelectedPayslipEmployee(emp)}
-                          className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] rounded cursor-pointer"
-                        >
-                          Bulletin
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {employees.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-400 font-sans font-semibold">
+                      Aucun collaborateur disponible pour générer de fiche de paie.
+                    </td>
+                  </tr>
+                ) : (
+                  employees.map(emp => {
+                    const cnpsCutOff = emp.baseSalaryFcfa * 0.047;
+                    const netToReceive = (emp.baseSalaryFcfa + emp.bonusFcfa) - cnpsCutOff;
+                    return (
+                      <tr key={emp.id} className="hover:bg-slate-50/45 transition">
+                        <td className="p-3 font-semibold text-slate-800">{emp.id}</td>
+                        <td className="p-3 font-sans font-bold text-slate-900">{emp.name}</td>
+                        <td className="p-3 font-sans text-slate-500 font-medium">{emp.role}</td>
+                        <td className="p-3 text-right font-bold text-slate-800">{emp.baseSalaryFcfa.toLocaleString()}</td>
+                        <td className="p-3 text-right font-bold text-emerald-700">+{emp.bonusFcfa.toLocaleString()}</td>
+                        <td className="p-3 text-right font-bold text-rose-700">-{cnpsCutOff.toLocaleString()}</td>
+                        <td className="p-3 text-right font-black text-indigo-900">{netToReceive.toLocaleString()} FCFA</td>
+                        <td className="p-3 text-center">
+                          <button
+                            onClick={() => setSelectedPayslipEmployee(emp)}
+                            className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] rounded cursor-pointer"
+                          >
+                            Bulletin
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -376,48 +380,54 @@ export default function HrView() {
           <h3 className="text-xs font-black text-zinc-850 uppercase tracking-widest">Registre des Absences d’Équipes</h3>
 
           <div className="space-y-3">
-            {leaveRequests.map(req => (
-              <div key={req.id} className={`p-4 border rounded-xl flex items-center justify-between gap-4 transition ${
-                req.status === 'approved' ? 'bg-emerald-50/50 border-emerald-250' : 'bg-white border-slate-200'
-              }`}>
-                <div className="space-y-1 font-sans text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-indigo-750 font-bold">{req.id}</span>
-                    <strong className="text-slate-850">{req.employeeName}</strong>
-                  </div>
-                  <div className="text-slate-550">
-                    Genre d'absence : <strong className="text-slate-700">{req.leaveType}</strong> • Période : <span>{req.startDate} au {req.endDate}</span>
-                  </div>
-                  {req.status === 'approved' && (
-                    <span className="text-[9.5px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-black">✓ Accordé par la Direction</span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {req.status === 'pending' ? (
-                    <>
-                      <button
-                        onClick={() => handleApproveLeave(req.id)}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded cursor-pointer"
-                      >
-                        Valider
-                      </button>
-                      <button
-                        onClick={() => setLeaveRequests(prev => prev.map(l => l.id === req.id ? { ...l, status: 'rejected' as const } : l))}
-                        className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] font-black rounded cursor-pointer"
-                      >
-                        Refuser
-                      </button>
-                    </>
-                  ) : (
-                    <div className="p-1 px-2.5 bg-emerald-105 text-emerald-750 text-[10px] font-extrabold rounded-md flex items-center gap-1">
-                      <UserCheck className="h-3.5 w-3.5" />
-                      <span>Remplacé</span>
-                    </div>
-                  )}
-                </div>
+            {leaveRequests.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 font-sans font-semibold border border-dashed border-slate-200 rounded-xl animate-fade-in">
+                Aucune absence ou demande de congé en cours d'instruction.
               </div>
-            ))}
+            ) : (
+              leaveRequests.map(req => (
+                <div key={req.id} className={`p-4 border rounded-xl flex items-center justify-between gap-4 transition ${
+                  req.status === 'approved' ? 'bg-emerald-50/50 border-emerald-250' : 'bg-white border-slate-200'
+                }`}>
+                  <div className="space-y-1 font-sans text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] text-indigo-750 font-bold">{req.id}</span>
+                      <strong className="text-slate-850">{req.employeeName}</strong>
+                    </div>
+                    <div className="text-slate-550">
+                      Genre d'absence : <strong className="text-slate-700">{req.leaveType}</strong> • Période : <span>{req.startDate} au {req.endDate}</span>
+                    </div>
+                    {req.status === 'approved' && (
+                      <span className="text-[9.5px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-black">✓ Accordé par la Direction</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {req.status === 'pending' ? (
+                      <>
+                        <button
+                          onClick={() => handleApproveLeave(req.id)}
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded cursor-pointer"
+                        >
+                          Valider
+                        </button>
+                        <button
+                          onClick={() => setLeaveRequests(prev => prev.map(l => l.id === req.id ? { ...l, status: 'rejected' as const } : l))}
+                          className="px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-[10px] font-black rounded cursor-pointer"
+                        >
+                          Refuser
+                        </button>
+                      </>
+                    ) : (
+                      <div className="p-1 px-2.5 bg-emerald-105 text-emerald-750 text-[10px] font-extrabold rounded-md flex items-center gap-1">
+                        <UserCheck className="h-3.5 w-3.5" />
+                        <span>Remplacé</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -532,7 +542,7 @@ export default function HrView() {
             <div className="p-6 space-y-4 text-xs font-mono text-left">
               <div className="text-center font-sans space-y-1 pb-4 border-b border-dashed border-slate-200">
                 <h3 className="font-black text-slate-805 text-md">AKPBF WASTE SERVICE LTD.</h3>
-                <span className="text-[10px] text-slate-400 block font-semibold">Abidjan - Côte d'Ivoire</span>
+                <span className="text-[10px] text-slate-400 block font-semibold">Ouagadougou - Burkina Faso</span>
                 <span className="text-[11px] bg-slate-100 px-2 py-0.5 rounded font-black mt-2 inline-block">Mois : Mai 2026</span>
               </div>
 

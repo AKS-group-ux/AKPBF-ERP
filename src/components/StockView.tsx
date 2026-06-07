@@ -41,22 +41,9 @@ interface Movement {
   reason: string;
 }
 
-const INITIAL_PRODUCTS: Product[] = [
-  { id: 'STK-001', name: 'Bac Vert Standard 240L (Roulant)', category: 'Poubelles', quantityInStock: 85, minAlertQty: 10, unitPriceFcfa: 12500, unitOfMeasure: 'Unité' },
-  { id: 'STK-002', name: 'Bac Noir Grand 360L (Renforcé)', category: 'Poubelles', quantityInStock: 45, minAlertQty: 10, unitPriceFcfa: 18500, unitOfMeasure: 'Unité' },
-  { id: 'STK-003', name: 'Sacs Poubelle Épais 50L (Biodégradable)', category: 'Sacs', quantityInStock: 8, minAlertQty: 25, unitPriceFcfa: 4500, unitOfMeasure: 'Rouleau' },
-  { id: 'STK-004', name: 'Gants de protection renforcés (latex/Kevlar)', category: 'Équipements Équipe', quantityInStock: 60, minAlertQty: 15, unitPriceFcfa: 2500, unitOfMeasure: 'Unité' },
-  { id: 'STK-005', name: 'Bottes de sécurité haute étanchéité', category: 'Équipements Équipe', quantityInStock: 7, minAlertQty: 10, unitPriceFcfa: 7500, unitOfMeasure: 'Unité' },
-  { id: 'STK-006', name: 'Plaquettes de frein Camions Renault', category: 'Pièces Camions', quantityInStock: 12, minAlertQty: 4, unitPriceFcfa: 45000, unitOfMeasure: 'Kit' },
-  { id: 'STK-007', name: 'Papier thermique tickets guichet caisse', category: 'Consommables', quantityInStock: 150, minAlertQty: 30, unitPriceFcfa: 450, unitOfMeasure: 'Unité' }
-];
+const INITIAL_PRODUCTS: Product[] = [];
 
-const INITIAL_MOVEMENTS: Movement[] = [
-  { id: 'MV-101', date: '2026-05-20', productId: 'STK-001', productName: 'Bac Vert Standard 240L (Roulant)', type: 'OUT', quantity: 15, authorizedBy: 'Directeur Log.', reason: 'Distribution abonnés Cocody' },
-  { id: 'MV-102', date: '2026-05-18', productId: 'STK-003', productName: 'Sacs Poubelle Épais 50L (Biodégradable)', type: 'OUT', quantity: 50, authorizedBy: 'Manager Terrain', reason: 'Livraisons d\'abonnements pro Yopougon' },
-  { id: 'MV-103', date: '2026-05-15', productId: 'STK-006', productName: 'Plaquettes de frein Camions Renault', type: 'IN', quantity: 6, authorizedBy: 'Mécano Chef', reason: 'Abonnement d\'urgence Sodirep Sce' },
-  { id: 'MV-104', date: '2026-05-10', productId: 'STK-005', productName: 'Bottes de sécurité haute étanchéité', type: 'OUT', quantity: 12, authorizedBy: 'Responsable RH', reason: 'Équipement nouvelle recrue éboueur' }
-];
+const INITIAL_MOVEMENTS: Movement[] = [];
 
 export default function StockView() {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -325,25 +312,33 @@ export default function StockView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 font-mono text-[11px] text-zinc-650">
-                    {filteredProducts.map((p) => {
-                      const isLow = p.quantityInStock <= p.minAlertQty;
-                      return (
-                        <tr key={p.id} className="hover:bg-slate-50/40 transition">
-                          <td className="p-3 font-semibold text-slate-800">{p.id}</td>
-                          <td className="p-3 font-sans font-bold text-slate-900 leading-tight" colSpan={1}>{p.name}</td>
-                          <td className="p-3 font-sans text-slate-500 whitespace-nowrap"><span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px]">{p.category}</span></td>
-                          <td className="p-3 text-right font-black text-slate-850">{p.quantityInStock} {p.unitOfMeasure}</td>
-                          <td className="p-3 text-right font-black text-emerald-800">{p.unitPriceFcfa.toLocaleString()} FCFA</td>
-                          <td className="p-3 text-right pr-4 font-sans text-xs">
-                            {isLow ? (
-                              <span className="bg-rose-50 border border-rose-200 text-rose-700 px-1.5 py-0.5 rounded-md font-bold inline-block animate-pulse">⚠️ Réapprov. d'Urgence</span>
-                            ) : (
-                              <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md font-bold inline-block">Sain (OK)</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {filteredProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-slate-400 font-sans font-semibold">
+                          Aucun matériel ou article enregistré en stock.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredProducts.map((p) => {
+                        const isLow = p.quantityInStock <= p.minAlertQty;
+                        return (
+                          <tr key={p.id} className="hover:bg-slate-50/40 transition">
+                            <td className="p-3 font-semibold text-slate-800">{p.id}</td>
+                            <td className="p-3 font-sans font-bold text-slate-900 leading-tight" colSpan={1}>{p.name}</td>
+                            <td className="p-3 font-sans text-slate-500 whitespace-nowrap"><span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px]">{p.category}</span></td>
+                            <td className="p-3 text-right font-black text-slate-850">{p.quantityInStock} {p.unitOfMeasure}</td>
+                            <td className="p-3 text-right font-black text-emerald-800">{p.unitPriceFcfa.toLocaleString()} FCFA</td>
+                            <td className="p-3 text-right pr-4 font-sans text-xs">
+                              {isLow ? (
+                                <span className="bg-rose-50 border border-rose-200 text-rose-700 px-1.5 py-0.5 rounded-[5px] font-bold inline-block animate-pulse">⚠️ Réapprov. d'Urgence</span>
+                              ) : (
+                                <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-[5px] font-bold inline-block">Sain (OK)</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -364,25 +359,33 @@ export default function StockView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 font-mono text-[11px] text-zinc-650">
-                  {movements.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50/40">
-                      <td className="p-3 font-semibold text-slate-800">{m.id}</td>
-                      <td className="p-3 font-sans font-medium text-slate-400">{m.date}</td>
-                      <td className="p-3 font-sans font-bold text-slate-850">{m.productName}</td>
-                      <td className="p-3 font-sans">
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase inline-block ${
-                          m.type === 'IN' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'
-                        }`}>
-                          {m.type === 'IN' ? 'ENTRÉE (+)' : 'SORTIE (-)'}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right font-black text-slate-800">{m.quantity}</td>
-                      <td className="p-3 pl-6 font-sans text-slate-500 font-medium">
-                        <div>{m.reason}</div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">Auteur: {m.authorizedBy}</div>
+                  {movements.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-400 font-sans font-semibold">
+                        Aucun mouvement de stock enregistré.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    movements.map((m) => (
+                      <tr key={m.id} className="hover:bg-slate-50/40">
+                        <td className="p-3 font-semibold text-slate-800">{m.id}</td>
+                        <td className="p-3 font-sans font-medium text-slate-400">{m.date}</td>
+                        <td className="p-3 font-sans font-bold text-slate-850">{m.productName}</td>
+                        <td className="p-3 font-sans">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase inline-block ${
+                            m.type === 'IN' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'
+                          }`}>
+                            {m.type === 'IN' ? 'ENTRÉE (+)' : 'SORTIE (-)'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right font-black text-slate-800">{m.quantity}</td>
+                        <td className="p-3 pl-6 font-sans text-slate-500 font-medium">
+                          <div>{m.reason}</div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">Auteur: {m.authorizedBy}</div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

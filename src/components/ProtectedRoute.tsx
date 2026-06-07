@@ -34,7 +34,7 @@ export default function ProtectedRoute({ children, allowedRoles, fallbackView }:
           </div>
           <h2 className="text-lg font-black text-white">Session expirée ou non autorisée</h2>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Pour des raisons de conformité et de protection des données abonnés d'Abidjan, vous devez vous authentifier de manière immuable avant de consulter ce volet ERP.
+            Pour des raisons de conformité et de protection des données abonnés de Ouagadougou, vous devez vous authentifier de manière immuable avant de consulter ce volet ERP.
           </p>
           <button
             type="button"

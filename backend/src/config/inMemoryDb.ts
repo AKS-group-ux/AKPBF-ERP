@@ -277,14 +277,16 @@ export class InMemoryDb {
       return {
         ...record,
         customer: this.collections.customer.find(c => c.id === record.customerId),
-        subscription: this.collections.subscription.find(s => s.id === record.subscriptionId)
+        subscription: this.collections.subscription.find(s => s.id === record.subscriptionId),
+        payments: (this.collections.payment || []).filter(p => p.invoiceId === record.id)
       };
     }
 
     if (name === 'bin') {
       return {
         ...record,
-        customer: this.collections.customer.find(c => c.id === record.customerId)
+        customer: this.collections.customer.find(c => c.id === record.customerId),
+        collections: (this.collections.collection || []).filter(co => co.binId === record.id)
       };
     }
 
@@ -317,6 +319,26 @@ export class InMemoryDb {
         for (const [key, filter] of Object.entries(args.where)) {
           if (filter === undefined) continue;
 
+          if (key === 'OR' && Array.isArray(filter)) {
+            const orConditions = filter as any[];
+            const matchesOr = orConditions.some(condition => {
+              for (const [subCol, subVal] of Object.entries(condition)) {
+                const actualVal = item[subCol];
+                if (subVal && typeof subVal === 'object' && !(subVal instanceof Date) && !(subVal instanceof MockDecimal)) {
+                  const sAny = subVal as any;
+                  if ('equals' in sAny) {
+                    if (String(actualVal).toLowerCase() === String(sAny.equals).toLowerCase()) return true;
+                  }
+                } else {
+                  if (String(actualVal).toLowerCase() === String(subVal).toLowerCase()) return true;
+                }
+              }
+              return false;
+            });
+            if (!matchesOr) return false;
+            continue;
+          }
+
           // Handle simple object (equals/in etc.) or direct value match
           if (filter && typeof filter === 'object' && !(filter instanceof Date) && !(filter instanceof MockDecimal)) {
             const fAny = filter as any;
@@ -324,6 +346,10 @@ export class InMemoryDb {
               const val = String(item[key]).toLowerCase();
               const expected = String(fAny.equals).toLowerCase();
               if (val !== expected) return false;
+            } else if ('contains' in fAny) {
+              const val = String(item[key]).toLowerCase();
+              const expected = String(fAny.contains).toLowerCase();
+              if (!val.includes(expected)) return false;
             } else if ('in' in fAny && Array.isArray(fAny.in)) {
               if (!fAny.in.map((x: any) => String(x).toLowerCase()).includes(String(item[key]).toLowerCase())) {
                 return false;

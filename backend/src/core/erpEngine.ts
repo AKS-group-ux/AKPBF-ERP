@@ -19,6 +19,8 @@ export interface ClientDomainModel {
   planId: string;
   binType: 'Standard 240L' | 'Bac Grand 360L' | 'Conteneur 1100L';
   status?: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
+  lat?: number;
+  lng?: number;
 }
 
 export interface PaymentDomainModel {
@@ -46,14 +48,139 @@ export interface CollectionDomainModel {
 export class ErpEngine {
   
   /**
-   * Rules Engine: Validations before database writes (strict email and phone checks)
+   * Helper to inspect if operator ID is a valid existing User UUID.
+   * If it is a generic placeholder or doesn't exist, we fallback to null to respect FK constraint.
    */
-  private static async validateCustomerRules(email: string, phone: string, excludeCustomerId?: string) {
-    const prisma = getPrismaClient();
-    const canonEmail = email.trim().toLowerCase();
-    const cleanPhone = phone.trim();
+  private static async resolveUserId(prisma: any, operatorId: string | null | undefined): Promise<string | null> {
+    if (!operatorId) return null;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(operatorId);
+    if (!isUuid) return null;
+    try {
+      const userExists = await prisma.user.findUnique({
+        where: { id: operatorId }
+      });
+      return userExists ? operatorId : null;
+    } catch {
+      return null;
+    }
+  }
 
-    // 1. Email unique check
+  /**
+   * High fidelity mapper to turn a database Customer model into the frontend Subscriber model structure
+   */
+  public static mapCustomerToSubscriber(c: any, defaultPlanId: string = "") {
+    const sub = c.subscriptions?.[0];
+    
+    let parsedNeighborhood = "Cocody";
+    if (c.address) {
+      const parts = c.address.split(',');
+      const firstPart = parts[0].trim();
+      const allowedNeighborhoods = ['cocody', 'plateau', 'marchory', 'yopougon', 'abobo', 'treichville'];
+      if (allowedNeighborhoods.includes(firstPart.toLowerCase())) {
+        parsedNeighborhood = firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase();
+      } else {
+        const addrLower = c.address.toLowerCase();
+        if (addrLower.includes('cocody')) parsedNeighborhood = 'Cocody';
+        else if (addrLower.includes('plateau')) parsedNeighborhood = 'Plateau';
+        else if (addrLower.includes('marcory')) parsedNeighborhood = 'Marcory';
+        else if (addrLower.includes('yopougon')) parsedNeighborhood = 'Yopougon';
+        else if (addrLower.includes('abobo')) parsedNeighborhood = 'Abobo';
+        else if (addrLower.includes('treichville')) parsedNeighborhood = 'Treichville';
+        else {
+          parsedNeighborhood = firstPart;
+        }
+      }
+    }
+
+    return {
+      id: c.subscriberId || c.id,
+      name: c.name,
+      email: c.email || "",
+      phone: c.phone,
+      address: c.address || "",
+      neighborhood: parsedNeighborhood,
+      lat: c.latitude || 5.3489,
+      lng: c.longitude || -3.9995,
+      planId: sub ? sub.planId : defaultPlanId,
+      status: (c.status.toLowerCase() === 'active' ? 'active' : c.status.toLowerCase()) as any,
+      binType: (c.bins?.[0]?.capacity === 360 ? 'Bac Grand 360L' : c.bins?.[0]?.capacity === 1100 ? 'Conteneur 1100L' : 'Standard 240L') as any,
+      lastCollectionDate: 'Aujourd\'hui',
+      currentBinLevel: c.bins?.[0]?.fillLevel || 0,
+      paymentStatus: (c.invoices?.some((i: any) => i.status === 'UNPAID') ? 'unpaid' : 'paid') as any,
+      startDate: sub?.startDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+      endDate: sub?.endDate?.toISOString().split('T')[0] || new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split('T')[0],
+      collectionsRealized: 4,
+      unpaidDays: 0
+    };
+  }
+  
+  /**
+   * Rules Engine: Validations before database writes (strict email, phone, and plan checks)
+   */
+  private static async validateCustomerRules(email: string, phone: string, planId: string, excludeCustomerId?: string) {
+    const prisma = getPrismaClient();
+
+    console.log(`[VALIDATION] Validation des données de l'abonné - Email : ${email}, Téléphone : ${phone}, Plan : ${planId}`);
+
+    // A. Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      console.error(`[VALIDATION-ERROR] Format d'email invalide: ${email}`);
+      throw new Error(`Format d'email invalide : '${email}'.`);
+    }
+
+    // B. Burkina Faso phone validation (+226 or 8/10 digits mobile)
+    const cleanPh = phone.replace(/[\s\-\+\(\)]/g, '');
+    let isBurkinaPhone = false;
+    if (cleanPh.startsWith('226')) {
+      isBurkinaPhone = cleanPh.length === 11 || cleanPh.length === 13; // 226 followed by 8 or 10 digits
+    } else {
+      isBurkinaPhone = cleanPh.length === 8 || cleanPh.length === 10; // Exactly 8 or 10 digits
+    }
+
+    if (!isBurkinaPhone) {
+      console.error(`[VALIDATION-ERROR] Format de téléphone Burkina Faso invalide: ${phone}`);
+      throw new Error(`Le numéro de téléphone '${phone}' ne respecte pas le format réglementaire (Burkina Faso). Il doit comporter 8 ou 10 chiffres (local) ou commencer par +226.`);
+    }
+
+    // C. Validation abonnement choisi (planId)
+    if (!planId) {
+      console.error(`[VALIDATION-ERROR] Aucun forfait d'abonnement sélectionné.`);
+      throw new Error(`Un forfait d'abonnement valide doit être sélectionné.`);
+    }
+
+    const isPlanUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(planId);
+    let planExists = false;
+    
+    if (isPlanUuid) {
+      const plan = await prisma.subscriptionPlan.findUnique({
+        where: { id: planId }
+      });
+      if (plan) planExists = true;
+    } else if (['plan_eco', 'plan_standard', 'plan_premium', 'plan_standard_mensuel', 'plan_eco_mensuel', 'plan-standard-mensuel', 'plan-eco-mensuel', 'plan-rapid-mensuel'].includes(planId)) {
+      // Allow known hardcoded demo formats for frontend presets and fallback
+      planExists = true;
+    } else {
+      // See if we can find any plan in the database to fallback or use as standard
+      const planByName = await prisma.subscriptionPlan.findFirst({
+        where: { name: { contains: planId, mode: 'insensitive' } }
+      });
+      if (planByName) planExists = true;
+    }
+
+    if (!planExists) {
+      const fallbackPlanCount = await prisma.subscriptionPlan.count();
+      if (fallbackPlanCount === 0) {
+        console.warn(`[VALIDATION-WARNING] Aucun plan de souscription trouvé en base de données, validation ignorée.`);
+      } else {
+        console.error(`[VALIDATION-ERROR] Le forfait d'abonnement sélectionné n'existe pas: ${planId}`);
+        throw new Error(`Le forfait d'abonnement sélectionné n'existe pas dans le catalogue AKPBF.`);
+      }
+    }
+
+    const canonEmail = email.trim().toLowerCase();
+
+    // D. Email unique check
     const duplicateEmail = await prisma.customer.findFirst({
       where: {
         email: { equals: canonEmail, mode: 'insensitive' },
@@ -62,20 +189,24 @@ export class ErpEngine {
     });
 
     if (duplicateEmail) {
+      console.error(`[VALIDATION-ERROR] Conflit d'email : '${email}' est déjà utilisé.`);
       throw new Error(`Règle d'intégrité violée : L'adresse email '${email}' est déjà enregistrée.`);
     }
 
-    // 2. Phone unique check
+    // E. Phone unique check
     const duplicatePhone = await prisma.customer.findFirst({
       where: {
-        phone: cleanPhone,
+        phone: cleanPh,
         ...(excludeCustomerId ? { id: { not: excludeCustomerId } } : {})
       }
     });
 
     if (duplicatePhone) {
+      console.error(`[VALIDATION-ERROR] Conflit de téléphone : '${phone}' est déjà utilisé.`);
       throw new Error(`Règle d'intégrité violée : Le numéro de téléphone '${phone}' est déjà utilisé.`);
     }
+
+    console.log(`[VALIDATION-SUCCESS] Validations complètes passées avec succès.`);
   }
 
   /**
@@ -85,66 +216,53 @@ export class ErpEngine {
   public static async onboardClient(client: ClientDomainModel, meta: { operatorId: string; operatorName: string; ipAddress: string }) {
     const prisma = getPrismaClient();
 
+    console.log(`[ERP-ONBOARDING] Réception requête de création nouvel abonné. Nom: ${client.name}, Email: ${client.email}, Téléphone: ${client.phone}`);
+
     // Check if customer email or phone already exists in the system to avoid duplicate crashes
     const canonEmail = client.email.trim().toLowerCase();
     const cleanPhone = client.phone.trim();
 
-    const existingCustomer = await prisma.customer.findFirst({
-      where: {
-        OR: [
-          { email: { equals: canonEmail, mode: 'insensitive' } },
-          { phone: cleanPhone }
-        ]
-      },
-      include: {
-        subscriptions: true
-      }
+    const existingEmailCustomer = await prisma.customer.findFirst({
+      where: { email: { equals: canonEmail, mode: 'insensitive' } }
     });
+    if (existingEmailCustomer) {
+      console.error(`[VALIDATION-ERROR] L'adresse email '${canonEmail}' est déjà enregistrée.`);
+      throw new Error(`L'adresse email '${client.email}' est déjà enregistrée dans le système.`);
+    }
 
-    if (existingCustomer) {
-      console.log(`[RESILIENCE] Onboarding subscriber with existing phone/email: ${cleanPhone} / ${canonEmail}. Reusing and updating existing customer: ${existingCustomer.id}`);
-      
-      const subscriberId = existingCustomer.subscriberId || `ABJ-${Math.floor(100000 + Math.random() * 900000)}`;
-      
-      // Gracefully update search index info
-      const updatedCustomer = await prisma.customer.update({
-        where: { id: existingCustomer.id },
-        data: {
-          name: client.name,
-          email: canonEmail,
-          phone: cleanPhone,
-          address: client.address || existingCustomer.address,
-          status: 'ACTIVE'
-        }
-      });
-
-      // Dispatch welcome email asynchronously and gracefully (non-blocking)
-      try {
-        const { EmailService } = await import('../services/emailService');
-        await EmailService.sendWelcomeEmail(canonEmail, client.name, 'CLIENT', updatedCustomer.id);
-        console.log(`[ERP-ONBOARDING] Welcome email queued for existing subscriber.`);
-      } catch (welcomeErr) {
-        console.error('[ERP-ONBOARDING-EMAIL-ERROR] Non-blocking failure to send onboarding welcome email:', welcomeErr);
-      }
-
-      return {
-        id: updatedCustomer.id,
-        name: updatedCustomer.name,
-        email: updatedCustomer.email,
-        phone: updatedCustomer.phone,
-        subscriberId: subscriberId,
-        status: 'ACTIVE'
-      };
+    const existingPhoneCustomer = await prisma.customer.findFirst({
+      where: { phone: cleanPhone }
+    });
+    if (existingPhoneCustomer) {
+      console.error(`[VALIDATION-ERROR] Le numéro de téléphone '${cleanPhone}' est déjà utilisé.`);
+      throw new Error(`Le numéro de téléphone '${client.phone}' est déjà utilisé par un autre abonné.`);
     }
 
     // 1. Run validation policies
-    await this.validateCustomerRules(client.email, client.phone);
+    await this.validateCustomerRules(client.email, client.phone, client.planId);
+
+    console.log(`[ERP-ONBOARDING] Etape de validation franchie avec succès. Commencement de la transaction SQL d'enregistrement.`);
 
     // 2. Execute strict single transactional workflow to avoid dirty states
     return await prisma.$transaction(async (tx) => {
       
-      // Determine final subscriber sequence key
-      const subscriberId = `ABJ-${Math.floor(100000 + Math.random() * 900000)}`;
+      // Determine final subscriber sequence key with strict database-backed uniqueness verification loop
+      let subscriberId = "";
+      let isUnique = false;
+      let attempts = 0;
+      while (!isUnique && attempts < 100) {
+        const randomDigits = Math.floor(100000 + Math.random() * 900000);
+        subscriberId = `ABJ-${randomDigits}`;
+        const existingSub = await tx.customer.findFirst({
+          where: { subscriberId }
+        });
+        if (!existingSub) {
+          isUnique = true;
+        }
+        attempts++;
+      }
+
+      console.log(`[ERP-ONBOARDING-TX] Numéro d'abonné unique généré : ${subscriberId}`);
 
       // A. Create the real physical customer in PostgreSQL
       const customer = await tx.customer.create({
@@ -155,9 +273,13 @@ export class ErpEngine {
           address: client.address,
           subscriberId: subscriberId,
           status: client.status || 'ACTIVE',
-          balance: 0.0
+          balance: 0.0,
+          latitude: client.lat,
+          longitude: client.lng
         }
       });
+
+      console.log(`[ERP-ONBOARDING-TX] Enregistrement client inséré : ID ${customer.id}`);
 
       // B. Setup active contract reference
       const contractId = `CNT-2026-${subscriberId.replace('ABJ-', '')}`;
@@ -186,18 +308,42 @@ export class ErpEngine {
         create: { key: 'AKPBF_ERP_CONTRACTS', value: JSON.stringify(contractsList), desc: 'Liste des contrats de salubrité' }
       });
 
-      // C. Setup real modular Subscription
-      const defaultPlan = await tx.subscriptionPlan.findFirst({
-        where: { id: client.planId }
-      }) || await tx.subscriptionPlan.findFirst();
+      console.log(`[ERP-ONBOARDING-TX] Contrat de salubrité répertorié : ${contractId}`);
+
+      // C. Setup real modular Subscription with robust plan match
+      const defaultPlan = await tx.subscriptionPlan.findFirst();
+      let matchedPlan = defaultPlan;
+      
+      const isPlanUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(client.planId || "");
+      if (isPlanUuid) {
+        matchedPlan = await tx.subscriptionPlan.findFirst({
+          where: { id: client.planId }
+        }) || defaultPlan;
+      } else if (client.planId && client.planId.includes('plan_')) {
+        // Fallback matching for demo plans via name checks (e.g. 'plan_premium_5000' matches contains 'premium')
+        const planKeyword = client.planId.replace('plan_', '').split('_')[0]; // matches standard/premium/entreprise
+        const matchedDemoPlan = await tx.subscriptionPlan.findFirst({
+          where: {
+            name: {
+              contains: planKeyword,
+              mode: 'insensitive'
+            }
+          }
+        });
+        if (matchedDemoPlan) {
+          matchedPlan = matchedDemoPlan;
+        }
+      }
 
       const subscription = await tx.subscription.create({
         data: {
           customerId: customer.id,
-          planId: client.planId || defaultPlan?.id || "",
+          planId: matchedPlan?.id || "",
           status: 'ACTIVE'
         }
       });
+
+      console.log(`[ERP-ONBOARDING-TX] Souscription d'abonnement rattachée : Plan ${matchedPlan?.name || "Standard"}`);
 
       // D. Provision IoT Bin with RFID sequence
       const binCapacity = client.binType === 'Bac Grand 360L' ? 360.0 : client.binType === 'Conteneur 1100L' ? 1100.0 : 240.0;
@@ -211,15 +357,20 @@ export class ErpEngine {
         }
       });
 
+      console.log(`[ERP-ONBOARDING-TX] Bac d'assainissement IoT associé.`);
+
       // E. Write ERP general audit log entry
+      const resolvedUserId = await ErpEngine.resolveUserId(tx, meta.operatorId);
       const auditLog = await tx.auditLog.create({
         data: {
-          userId: meta.operatorId,
+          userId: resolvedUserId,
           action: 'CREATE_CLIENT',
           ipAddress: meta.ipAddress,
           details: `Validation du client ${client.name} (ID: ${subscriberId}). Contrat cadre ${contractId} signé numériquement et stocké.`
         }
       });
+
+      console.log(`[ERP-ONBOARDING-TX] Log d'audit inséré en bdd.`);
 
       // F. Send Onboarding email/SMS notification
       const welcomeContent = `Cher(e) ${client.name},\n\nBienvenue chez AKPBF. Votre contrat n° ${contractId} est maintenant actif pour la zone ${client.address}.\nUn contenant de type ${client.binType} muni d'une puce RFID-GPS a été rattaché à votre compte.\n\nMerci de contribuer à la salubrité d'Abidjan !`;
@@ -283,12 +434,27 @@ export class ErpEngine {
         create: { key: 'AKPBF_ERP_NOTIF_LOGS', value: JSON.stringify(currentNotifsList), desc: 'Notification list' }
       });
 
+      // Retreive full customer with loaded fields to map beautifully back
+      const fullyCreatedCustomerResult = await tx.customer.findUnique({
+        where: { id: customer.id },
+        include: {
+          subscriptions: true,
+          bins: true,
+          invoices: true
+        }
+      });
+
+      const subscriberMapped = ErpEngine.mapCustomerToSubscriber(fullyCreatedCustomerResult, matchedPlan?.id || "");
+
+      console.log(`[ERP-ONBOARDING-TX-SUCCESS] Enregistrement d'abonné fully persisted et dispatché avec succès. ID: ${subscriberId}`);
+
       return {
         success: true,
         customerId: customer.id,
         subscriberId: subscriberId,
         contractId: contractId,
-        subscriptionId: subscription.id
+        subscriptionId: subscription.id,
+        subscriber: subscriberMapped
       };
     });
   }
@@ -330,14 +496,17 @@ export class ErpEngine {
           email: updatedFields.email ? updatedFields.email.trim().toLowerCase() : existing.email,
           phone: updatedFields.phone ? updatedFields.phone.trim() : existing.phone,
           address: updatedFields.address !== undefined ? updatedFields.address : existing.address,
-          status: updatedFields.status || existing.status
+          status: updatedFields.status || existing.status,
+          latitude: updatedFields.lat !== undefined ? updatedFields.lat : existing.latitude,
+          longitude: updatedFields.lng !== undefined ? updatedFields.lng : existing.longitude,
         }
       });
 
       // Write audit log
+      const resolvedUserId = await ErpEngine.resolveUserId(tx, meta.operatorId);
       await tx.auditLog.create({
         data: {
-          userId: meta.operatorId,
+          userId: resolvedUserId,
           action: 'UPDATE_CLIENT',
           ipAddress: meta.ipAddress,
           details: `Mise à jour des coordonnées de l'abonné ${updatedModel.name} (${updatedModel.subscriberId}).`
@@ -524,9 +693,10 @@ export class ErpEngine {
       });
 
       // 6. Enforce security log & physical audits
+      const resolvedUserId = await ErpEngine.resolveUserId(tx, meta.operatorId);
       await tx.auditLog.create({
         data: {
-          userId: meta.operatorId,
+          userId: resolvedUserId,
           action: 'CREATE_PAYMENT',
           ipAddress: meta.ipAddress,
           details: `Enregistrement du versement de ${payment.amountPaid.toLocaleString()} FCFA (Reçu ${nextReceiptNo}) par ${payment.operatorName} pour l'abonné ${customer!.name}.`
@@ -651,9 +821,10 @@ export class ErpEngine {
         }
       }
 
+      const resolvedUserId = await ErpEngine.resolveUserId(tx, meta.operatorId);
       await tx.auditLog.create({
         data: {
-          userId: meta.operatorId,
+          userId: resolvedUserId,
           action: 'BILLING_CYCLE',
           ipAddress: meta.ipAddress,
           details: `Exécution du cycle de facturation pour ${invoicesGeneratedCount} abonnés d'Abidjan d'un montant total de ${totalBilledVal.toLocaleString()} FCFA.`
@@ -708,9 +879,10 @@ export class ErpEngine {
       });
 
       // 4. Log audit log
+      const resolvedUserId = await ErpEngine.resolveUserId(tx, meta.operatorId);
       await tx.auditLog.create({
         data: {
-          userId: meta.operatorId,
+          userId: resolvedUserId,
           action: 'SUSPEND_CLIENT',
           ipAddress: meta.ipAddress,
           details: `Suspension de salubrité de l'abonné ${customer.name} (Raison : ${reason}).`
@@ -816,9 +988,10 @@ export class ErpEngine {
       });
 
       // Audit tracking Log
+      const resolvedUserId = await ErpEngine.resolveUserId(tx, meta.operatorId);
       await tx.auditLog.create({
         data: {
-          userId: meta.operatorId,
+          userId: resolvedUserId,
           action: 'LOG_COLLECTION',
           ipAddress: meta.ipAddress,
           details: `Collecte enregistrée par puce RFID pour le bac ${bin.qrCode}. Poids levé : ${col.weight || 0}kg. Statut: ${col.status}.`

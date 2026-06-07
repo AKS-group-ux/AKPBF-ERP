@@ -134,13 +134,13 @@ export default function GpsMapView({
     {
       id: "GL-PRF-2026-00431",
       subId: "AKPBF-000001",
-      subName: "Famille Koffi",
-      neighborhood: "Cocody",
+      subName: "Famille Sawadogo",
+      neighborhood: "Karpala",
       agentId: "AGT-001",
-      agentName: "Konan Yao",
+      agentName: "Kaboré Moussa",
       timestamp: "22 Mai 2026 08:31",
-      lat: 5.35240,
-      lng: -3.98750,
+      lat: 12.30820,
+      lng: -1.48800,
       precision: 1.8,
       hash: "8fa297cb73dfcfb8f54ef4009e51c863aab1e8790cb901cbd77ffabcedf1120a",
       weightCollected: 45
@@ -148,13 +148,13 @@ export default function GpsMapView({
     {
       id: "GL-PRF-2026-00432",
       subId: "AKPBF-000004",
-      subName: "Boulangerie Centrale Marcory",
-      neighborhood: "Marcory",
+      subName: "Boulangerie Centrale Gounghin",
+      neighborhood: "Gounghin",
       agentId: "AGT-002",
-      agentName: "Soro Mamadou",
+      agentName: "Touré Bakary",
       timestamp: "22 Mai 2026 09:12",
-      lat: 5.29520,
-      lng: -3.97810,
+      lat: 12.36150,
+      lng: -1.55400,
       precision: 2.3,
       hash: "3ba221bb55dacfb3f53af2008e15c862eed3a411bbcc048dd80145df0012bc0b",
       weightCollected: 120
@@ -167,10 +167,10 @@ export default function GpsMapView({
   const [truckCoordinates, setTruckCoordinates] = useState<{ [key: string]: { lat: number; lng: number } }>({});
 
   const sectorCoordinates: { [key: string]: { lat: number; lng: number } } = {
-    'Cocody': { lat: 5.3524, lng: -3.9875 },
-    'Plateau': { lat: 5.3211, lng: -4.0198 },
-    'Marcory': { lat: 5.2952, lng: -3.9781 },
-    'Yopougon': { lat: 5.3344, lng: -4.0851 }
+    'Karpala': { lat: 12.3082, lng: -1.4880 },
+    'Somgandé': { lat: 12.4042, lng: -1.4871 },
+    'Gounghin': { lat: 12.3615, lng: -1.5540 },
+    'Pissy': { lat: 12.3382, lng: -1.5714 }
   };
 
   // Wait for dynamic Leaflet loading onto window object
@@ -191,8 +191,8 @@ export default function GpsMapView({
     const initialFuel: { [key: string]: number } = {};
 
     agents.forEach(a => {
-      const sector = a.id === 'AGT-001' ? 'Cocody' : a.id === 'AGT-002' ? 'Plateau' : 'Marcory';
-      const base = sectorCoordinates[sector] || { lat: 5.3524, lng: -3.9875 };
+      const sector = a.id === 'AGT-001' ? 'Karpala' : a.id === 'AGT-002' ? 'Somgandé' : 'Gounghin';
+      const base = sectorCoordinates[sector] || { lat: 12.3082, lng: -1.4880 };
       initialCoords[a.id] = { 
         lat: base.lat + (Math.random() - 0.5) * 0.015,
         lng: base.lng + (Math.random() - 0.5) * 0.015 
@@ -275,7 +275,7 @@ export default function GpsMapView({
       zoomControl: true,
       maxZoom: 18,
       minZoom: 10
-    }).setView([5.3524, -3.9875], 11.5); // Focus on Abidjan
+    }).setView([12.3714, -1.5197], 11.5); // Focus on Ouagadougou
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors | SIG AKPBF'
@@ -414,25 +414,25 @@ export default function GpsMapView({
       setSearchResults(data);
 
       if (data.length === 0) {
-        setSearchFeedback("❌ Aucun emplacement trouvé pour cette adresse à Abidjan.");
+        setSearchFeedback("❌ Aucun emplacement trouvé pour cette adresse à Ouagadougou.");
       } else {
         setSearchFeedback(`✅ ${data.length} adresses correspondantes trouvées.`);
       }
     } catch (err: any) {
       console.error("Nominatim search failed", err);
       // Fallback simulating server output if network issues occur under strict iframes
-      setSearchFeedback("⚠️ Serveur Nominatim API indisponible en mode sécurisé. Remplissage par coordonnées Cocody SIG.");
+      setSearchFeedback("⚠️ Serveur Nominatim API indisponible en mode sécurisé. Remplissage par coordonnées Karpala SIG.");
       const simulatedResults = [
         {
-          display_name: `${searchQuery}, Cocody, Abidjan, Côte d'Ivoire`,
-          lat: "5.35242",
-          lon: "-3.98755",
+          display_name: `${searchQuery}, Karpala, Ouagadougou, Burkina Faso`,
+          lat: "12.30822",
+          lon: "-1.48805",
           class: "place"
         },
         {
-          display_name: `${searchQuery}, Marcory Alios, Abidjan, Côte d'Ivoire`,
-          lat: "5.29515",
-          lon: "-3.97812",
+          display_name: `${searchQuery}, Somgandé, Ouagadougou, Burkina Faso`,
+          lat: "12.40425",
+          lon: "-1.48712",
           class: "place"
         }
       ];
@@ -508,8 +508,8 @@ export default function GpsMapView({
     const L = (window as any).L;
     if (!L) return;
 
-    // Base Depot is Cocody Hôtel de Ville
-    const baseDepot = { lat: 5.3524, lng: -3.9875 };
+    // Base Depot is Somgandé Municipal Depot
+    const baseDepot = { lat: 12.3714, lng: -1.5197 };
 
     // Customers to visit: Any customer whose bin level is >= 50%
     const urgentCustomers = filteredSubscribers.filter(s => s.currentBinLevel >= 50);
@@ -605,7 +605,7 @@ export default function GpsMapView({
     const target = filteredSubscribers.find(s => s.currentBinLevel >= 50) || filteredSubscribers[0];
     
     if (!target) {
-      alert("Aucun client disponible à Abidjan pour simuler la preuve de collecte.");
+      alert("Aucun client disponible à Ouagadougou pour simuler la preuve de collecte.");
       return;
     }
 
@@ -718,22 +718,22 @@ export default function GpsMapView({
           {/* Geolocation target selector */}
           <div className="bg-white rounded-3xl p-5 border border-slate-200/85 space-y-4 shadow-xs">
             <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-400 pb-2 border-b border-slate-150">
-              Secteurs & Capteurs Abidjan
+              Secteurs & Capteurs Ouagadougou
             </h3>
             
-            <div className="space-y-3">
+            <div className="space-y-3 font-medium">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase block pl-0.5">Filtre territorial</label>
                 <select 
                   value={selectedSector}
                   onChange={(e) => setSelectedSector(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 p-2.5 text-xs font-bold rounded-xl cursor-pointer mt-1 focus:ring-1 focus:ring-indigo-500"
+                  className="w-full bg-slate-55 border border-slate-200 p-2 text-slate-700 text-xs rounded-lg mt-1 focus:outline-none cursor-pointer"
                 >
-                  <option value="All">Tout Abidjan (SIG Global)</option>
-                  <option value="Cocody">Cocody (Régional)</option>
-                  <option value="Plateau">Plateau (Bâtiments)</option>
-                  <option value="Marcory">Marcory (Zone Sud)</option>
-                  <option value="Yopougon">Yopougon (Populaire)</option>
+                  <option value="All">Tout Ouagadougou (SIG Global)</option>
+                  <option value="Karpala">Karpala (Résidentiel)</option>
+                  <option value="Somgandé">Somgandé (Industriel)</option>
+                  <option value="Gounghin">Gounghin (Commercial)</option>
+                  <option value="Pissy">Pissy (Populaire)</option>
                 </select>
               </div>
 
@@ -877,7 +877,7 @@ export default function GpsMapView({
                     <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-450" />
                     <input 
                       type="text" 
-                      placeholder="Rechercher une adresse à Abidjan (ex: Cocody, Marcory Alios, Boulevard Lagunaire)..."
+                      placeholder="Rechercher une adresse à Ouagadougou (ex: Karpala, Somgandé, Gounghin, Avenue de la Nation)..."
                       className="w-full bg-slate-55 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-semibold focus:outline-none focus:border-indigo-500"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -1012,7 +1012,7 @@ export default function GpsMapView({
                     <h4 className="font-extrabold text-xs uppercase text-indigo-800 pb-2 border-b border-indigo-100 tracking-wider">Metrique de la feuille</h4>
                     
                     <div className="space-y-3 font-semibold text-xs text-slate-650">
-                      <div>🏢 Base de départ : <span className="text-slate-900 block font-bold">Cocody Hôtel de Ville (Depot)</span></div>
+                      <div>🏢 Base de départ : <span className="text-slate-900 block font-bold">Dépôt Municipal de Ouagadougou (Depot)</span></div>
                       <div>🛑 Nombre d'escales calculées : <span className="font-mono text-indigo-700 font-extrabold block text-sm">{optimizedRoute.length} clients critiques</span></div>
                       <div>⚙️ Distance estimée optimisée : <span className="font-mono text-emerald-700 font-black block text-sm">{totalOptimizedDist} Km</span></div>
                       <div>⌛ Temps de parcours estimé : <span className="text-slate-900 block font-bold font-mono">~ {Math.floor(optimizedRoute.length * 15 + totalOptimizedDist * 4)} Minutes</span></div>
@@ -1089,7 +1089,7 @@ export default function GpsMapView({
                   <Compass className="h-10 w-10 text-slate-400 mx-auto animate-spin" />
                   <strong className="text-slate-700 max-w-sm block mx-auto">Lancez le calcul de tournée</strong>
                   <p className="text-xs text-slate-500 max-w-md mx-auto">
-                    Le moteur SQL analysera les coordonnées GPS de tous les clients d'Abidjan pour optimiser le trajet en limitant les détours inutiles.
+                    Le moteur SQL analysera les coordonnées GPS de tous les clients de Ouagadougou pour optimiser le trajet en limitant les détours inutiles.
                   </p>
                 </div>
               )}
@@ -1127,8 +1127,8 @@ export default function GpsMapView({
                   {simulationStep === 'GPS_DISPATCH' && (
                     <p className="text-yellow-405">
                       • [COMMAND] Localisation du bac saturé le plus proche...<br/>
-                      • [GPS] Client ciblé: Famille Koffi (Cocody SIG d'Abidjan). <br/>
-                      • [FLEET] Envoi des instructions géo-localisées au camion AGT-001 (Konan Yao). <br/>
+                      • [GPS] Client ciblé: Famille Sawadogo (Karpala SIG de Ouagadougou). <br/>
+                      • [FLEET] Envoi des instructions géo-localisées au camion AGT-001 (Kaboré Moussa). <br/>
                       • [TELEMETRY] Déplacement du camion en cours... 📡
                     </p>
                   )}
@@ -1136,8 +1136,8 @@ export default function GpsMapView({
                   {simulationStep === 'PROXIMITY_CHECK' && (
                     <p className="text-indigo-400">
                       • [DGPS] Rapprochement avec le terminal satellite du domicile de l'abonné...<br/>
-                      • [GEOFENCING] Coordonnées Cible: 5.35240 Lat | -3.98750 Lng <br/>
-                      • [GEOFENCING] Coordonnées Camion: 5.35241 Lat | -3.98749 Lng <br/>
+                      • [GEOFENCING] Coordonnées Cible: 12.30820 Lat | -1.48800 Lng <br/>
+                      • [GEOFENCING] Coordonnées Camion: 12.30821 Lat | -1.48799 Lng <br/>
                       • [CALCUL] Delta spatial: 1.25 Mètres d'écart calculé par l'antenne radio...
                     </p>
                   )}

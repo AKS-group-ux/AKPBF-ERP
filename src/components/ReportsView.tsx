@@ -63,7 +63,7 @@ export default function ReportsView({
 
   // Recovery Rate per sector
   const sectorRecoveryRate = useMemo(() => {
-    const sectors = ['Cocody', 'Plateau', 'Marcory', 'Yopougon'];
+    const sectors = ['Karpala', 'Somgandé', 'Gounghin', 'Pissy'];
     return sectors.map(sec => {
       const secInvoices = invoices.filter(i => {
         const sub = subscribers.find(s => s.id === i.subscriberId);

@@ -387,7 +387,7 @@ export default function ArchitectHub() {
                           <div key={item} className="p-2.5 border-b border-slate-100 flex justify-between items-center text-slate-650">
                             <span className="w-1/4 font-mono text-brand-primary">#ABO-225-00{item}</span>
                             <span className="w-1/4 font-bold">Koffi Kouamé</span>
-                            <span className="w-1/4 text-slate-400">Cocody-Angré</span>
+                            <span className="w-1/4 text-slate-400">Karpala Secteur 15</span>
                             <span className="w-1/4 flex items-center gap-1">
                               <span className="w-1.5 h-1.5 bg-brand-accent rounded-full" />
                               <span>20% (Standard)</span>
@@ -509,7 +509,7 @@ export default function ArchitectHub() {
                         <div className="p-3 bg-slate-50 border border-slate-150 rounded-xl space-y-2 col-span-1 text-left">
                           <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Équipage actif</span>
                           <strong className="text-slate-800 block text-xs">Camion #COL-402</strong>
-                          <span className="text-[10px] text-brand-primary font-bold">Tournée Cocody</span>
+                          <span className="text-[10px] text-brand-primary font-bold">Tournée Karpala</span>
                         </div>
                         {/* Progressive steps */}
                         <div className="p-3 border border-slate-150 rounded-xl col-span-2 space-y-2 text-left">
@@ -560,7 +560,7 @@ export default function ArchitectHub() {
                     <div className="w-full bg-white rounded-xl border border-slate-200/70 shadow-sm overflow-hidden flex flex-col h-[280px]">
                       {/* Map top controller */}
                       <div className="bg-slate-50 p-2 flex justify-between items-center border-b border-slate-150 text-[10px]">
-                        <span className="font-bold text-slate-700">SIG PostGIS Interactive Projection (Cocody)</span>
+                        <span className="font-bold text-slate-700">SIG PostGIS Interactive Projection (Karpala)</span>
                         <div className="flex gap-2">
                           <span className="px-1.5 py-0.5 rounded bg-brand-primary text-white font-bold text-[8px]">EPSG:4326</span>
                         </div>
@@ -612,7 +612,7 @@ export default function ArchitectHub() {
                         <div className="p-3 bg-slate-50 border border-slate-150 rounded-xl space-y-1 text-left">
                           <span className="text-[8px] text-slate-400 block uppercase font-bold tracking-wider">Foyers Servis</span>
                           <span className="text-sm font-black text-slate-800">98.5% Taux Service</span>
-                          <span className="text-[8px] text-brand-primary font-bold block">Cocody/Yopougon/Marcory</span>
+                          <span className="text-[8px] text-brand-primary font-bold block">Karpala/Somgandé/Gounghin</span>
                         </div>
                       </div>
                     </div>
@@ -701,7 +701,7 @@ export default function ArchitectHub() {
                           <span>Composants UI</span>
                         </div>
                         <ul className="list-disc pl-5 space-y-1 text-slate-600 text-[11.5px]">
-                          <li>Sélecteur d'arrondissement déroulant pour Cocody, Yopougon, Marcory.</li>
+                          <li>Sélecteur d'arrondissement déroulant pour Karpala, Somgandé, Gounghin, Pissy.</li>
                           <li>Bouton d'appel à l'action contrasté <code>bg-brand-primary hover:bg-brand-primary/90</code> de création rapide de client.</li>
                           <li>Pilules de taux de remplissage en couleur d'accent vert ou orange pour déceler le trop-plein en un coup d'œil.</li>
                         </ul>
@@ -909,7 +909,7 @@ export default function ArchitectHub() {
                           <span>Structure Visuelle & Grille</span>
                         </div>
                         <p className="text-slate-600 text-[11px]">
-                          L'interface est structurée en <strong>canevas plein écran (Notion inspired)</strong> et contrôles de projection géodésique superposés. Un quadrillage mathématique restitue le positionnement PostGIS de Cocody en Afrique équatoriale.
+                          L'interface est structurée en <strong>canevas plein écran (Notion inspired)</strong> et contrôles de projection géodésique superposés. Un quadrillage mathématique restitue le positionnement PostGIS de Ouagadougou en Afrique de l'Ouest.
                         </p>
 
                         <div className="flex items-center gap-1.5 font-bold text-slate-800 border-b border-slate-100 pb-1 w-fit pt-2">

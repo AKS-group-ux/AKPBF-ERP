@@ -49,7 +49,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <div className="space-y-2">
               <h1 className="text-xl font-black text-white">Incident d'Affichage ERP AKPBF</h1>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Une exception de rendu graphique a été interceptée par le bouclier React. Les bases de données d'Abidjan et les revenus comptables ne sont pas altérés.
+                Une exception de rendu graphique a été interceptée par le bouclier React. Les bases de données de Ouagadougou et les revenus comptables ne sont pas altérés.
               </p>
             </div>
 

@@ -2,8 +2,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Fira Code", "Cascadia Code", monospace;
   --color-brand-primary: var(--accent-emphasis);
   --color-brand-accent: var(--accent-fg);
   --color-brand-light: var(--bg-canvas);
@@ -11,11 +11,11 @@
 
 /* Base font sizes & scaling rules */
 html {
-  font-size: var(--font-size-base); /* GitHub standard baseline is 14px */
+  font-size: var(--font-size-base); /* Raised base scaling for readability */
   background-color: var(--bg-canvas);
   color: var(--fg-primary);
   font-family: var(--font-family-sans);
-  line-height: 1.5;
+  line-height: 1.6;
   transition: background-color 0.2s ease, color 0.15s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -28,27 +28,28 @@ body {
   font-size: 1rem;
 }
 
-/* Homogeneous Layout Elements mimicking GitHub Primer */
+/* Homogeneous Layout Elements */
 body, #root, .app {
   background-color: var(--bg-canvas) !important;
   color: var(--fg-primary) !important;
 }
 
-/* Modals, Cards and Dialog panels like GitHub Box */
+/* Modals, Cards, and Dialog panels - Direct Token Support */
 .card, .bg-white, [class*="bg-white"], .bg-slate-900, [class*="bg-slate-900"] {
   background-color: var(--bg-primary) !important;
   color: var(--fg-primary) !important;
   border-color: var(--border-primary) !important;
 }
 
-/* Layout headers, sidebars or secondary blocks */
-.bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100, .bg-neutral-50 {
+/* Layout headers, sidebars, or secondary blocks */
+.bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100, .bg-neutral-50, .bg-neutral-100 {
   background-color: var(--bg-secondary) !important;
   color: var(--fg-primary) !important;
+  border-color: var(--border-primary) !important;
 }
 
 /* Side gutters or tertiary blocks */
-.bg-slate-950, .bg-gray-950, .bg-neutral-900 {
+.bg-slate-950, .bg-gray-950, .bg-neutral-900, .bg-neutral-950 {
   background-color: var(--bg-tertiary) !important;
 }
 
@@ -56,139 +57,183 @@ body, #root, .app {
 h1, h2, h3, h4, h5, h6 {
   color: var(--fg-primary) !important;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 
-/* Text gray scale alignments */
-.text-slate-900, .text-slate-800, .text-slate-700, .text-gray-900, .text-gray-800 {
+/* Gray scale text override for complete contrast safety */
+.text-slate-950, .text-slate-900, .text-slate-850, .text-slate-800, .text-slate-700, .text-slate-650, .text-slate-600,
+.text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-650, .text-gray-600,
+.text-neutral-950, .text-neutral-900, .text-neutral-800, .text-neutral-700, .text-neutral-600 {
   color: var(--fg-primary) !important;
 }
 
-.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400 {
+.text-slate-500, .text-slate-450, .text-slate-400, .text-gray-500, .text-gray-400,
+.text-neutral-500, .text-neutral-400 {
   color: var(--fg-secondary) !important;
 }
 
-.text-slate-300, .text-gray-300 {
+.text-slate-300, .text-slate-200, .text-gray-300, .text-gray-200,
+.text-neutral-300, .text-neutral-200 {
   color: var(--fg-tertiary) !important;
 }
 
-/* Form and Fields - Strict GitHub styling */
+/* Form inputs - Unified ERP Standard Height & Interaction Styling */
 input, select, textarea {
   background-color: var(--bg-primary) !important;
   color: var(--fg-primary) !important;
   border: 1px solid var(--border-primary) !important;
-  border-radius: 6px;
-  padding: 5px 12px;
-  font-size: var(--font-size-base);
-  box-shadow: inset 0 1px 0 rgba(208, 215, 222, 0.2);
-  min-height: 38px; /* GitHub standard size */
+  border-radius: 8px !important;
+  padding: 8px 14px !important;
+  font-size: var(--font-size-base) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  min-height: 42px !important;
+  transition: all 0.15s ease-in-out !important;
 }
 
 input:focus, select:focus, textarea:focus {
   outline: none !important;
-  border-color: var(--accent-fg) !important;
-  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.3) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35) !important;
 }
 
-/* Precise layout fix to ensure absolute icons and input text never overlap */
+input::placeholder, textarea::placeholder {
+  color: var(--fg-secondary) !important;
+  opacity: 0.75 !important;
+}
+
+/* Precise layout patch to solve absolute icon overlapping entering text */
 .relative > svg.absolute + input,
 .relative > .absolute + input,
 .relative > svg + input {
-  padding-left: 3.25rem !important;
+  padding-left: 3rem !important;
 }
 
-/* Labels on forms matches Primer's medium-bold size */
+/* Labels on forms matches modern ERP structures */
 label {
   color: var(--fg-primary) !important;
-  font-weight: 500 !important;
-  font-size: var(--font-size-base) !important;
-  margin-bottom: 4px;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  margin-bottom: 6px !important;
+  display: inline-block !important;
 }
 
-/* Table styling with standard GitHub border headers */
+/* Complete Responsive and Accessible Table Standard */
+.table-responsive {
+  width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  border-radius: 12px;
+  border: 1px solid var(--border-primary);
+  margin-bottom: 1rem;
+}
+
 table {
   border-collapse: collapse !important;
   width: 100% !important;
+  overflow: hidden !important;
 }
 
 th {
   background-color: var(--bg-secondary) !important;
   color: var(--fg-primary) !important;
-  font-weight: 600 !important;
-  font-size: var(--font-size-small) !important;
-  border: 1px solid var(--border-primary) !important;
-  padding: 8px 12px !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  border-bottom: 2px solid var(--border-primary) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding: 12px 16px !important;
   text-align: left !important;
 }
 
 td {
-  border: 1px solid var(--border-muted) !important;
-  padding: 8px 12px !important;
+  border-bottom: 1px solid var(--border-muted) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding: 12px 16px !important;
   background-color: var(--bg-primary) !important;
   color: var(--fg-primary) !important;
   font-size: var(--font-size-base) !important;
 }
 
+/* Table interactions */
 tr:nth-child(even) td {
-  background-color: var(--bg-secondary) !important; /* Alternating zebra strips */
+  background-color: var(--bg-secondary) !important; /* Alternating smooth zebra striping */
 }
 
 tr:hover td {
-  background-color: var(--bg-tertiary) !important; /* Hover highlight interaction */
+  background-color: var(--accent-bg) !important; /* Soft, theme-aware hover overlay */
 }
 
-/* Interactive Elements - Links and Buttons */
+/* Accessible Interactive Elements */
 a {
   color: var(--accent-fg) !important;
   text-decoration: none;
+  font-weight: 550;
 }
 
 a:hover {
   text-decoration: underline;
+  color: var(--primary-hover) !important;
 }
 
-/* Standard Secondary GitHub button styling */
-.btn-secondary, button:not(.bg-emerald-600):not(.bg-emerald-700):not(.bg-red-650):not(.bg-red-600):not(.bg-amber-500):not(.bg-brand-primary):not(.bg-blue-600) {
+/* Interactive focus boundaries */
+a:focus, button:focus {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px;
+}
+
+/* Buttons Defaulting rules */
+.btn-secondary, button:not(.bg-emerald-600):not(.bg-emerald-700):not(.bg-red-650):not(.bg-red-600):not(.bg-amber-500):not(.bg-brand-primary):not(.bg-blue-600):not(.bg-indigo-600):not(.bg-slate-900):not(.bg-slate-950) {
   background-color: var(--bg-secondary) !important;
   color: var(--fg-primary) !important;
   border: 1px solid var(--border-primary) !important;
-  box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04) !important;
-  border-radius: 6px !important;
-  font-weight: 500 !important;
-  transition: background-color 0.1s ease, border-color 0.1s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 8px 16px !important;
+  transition: all 0.15s ease-out !important;
+  cursor: pointer;
 }
 
-.btn-secondary:hover, button:not(.bg-emerald-600):not(.bg-emerald-700):not(.bg-red-650):not(.bg-red-600):not(.bg-amber-500):not(.bg-brand-primary):not(.bg-blue-600):hover {
+.btn-secondary:hover, button:not(.bg-emerald-600):not(.bg-emerald-700):not(.bg-red-650):not(.bg-red-600):not(.bg-amber-500):not(.bg-brand-primary):not(.bg-blue-600):not(.bg-indigo-600):not(.bg-slate-900):not(.bg-slate-950):hover {
   background-color: var(--border-muted) !important;
   border-color: var(--border-primary) !important;
 }
 
-/* Success and Alert elements styled functionally */
-.text-emerald-600, .text-green-600 {
+/* Global status badges & state elements */
+.text-emerald-600, .text-green-600, .text-emerald-700 {
   color: var(--success-fg) !important;
 }
 
-.bg-emerald-50, .bg-green-50 {
+.bg-emerald-50, .bg-green-50, .bg-emerald-100 {
   background-color: var(--success-bg) !important;
-  border: 1px solid var(--success-fg) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+  color: var(--success-fg) !important;
 }
 
 .text-red-600, .text-rose-600 {
   color: var(--danger-fg) !important;
 }
 
-.bg-red-50, .bg-rose-50 {
+.bg-red-50, .bg-rose-50, .bg-red-100 {
   background-color: var(--danger-bg) !important;
-  border: 1px solid var(--danger-fg) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+  color: var(--danger-fg) !important;
 }
 
 .text-amber-600, .text-yellow-600 {
   color: var(--attention-fg) !important;
 }
 
-.bg-amber-50, .bg-yellow-50 {
+.bg-amber-50, .bg-yellow-50, .bg-amber-100 {
   background-color: var(--attention-bg) !important;
-  border: 1px solid var(--attention-fg) !important;
+  border: 1px solid rgba(245, 158, 11, 0.2) !important;
+  color: var(--attention-fg) !important;
 }
 
 /* Scrollbars */
@@ -210,78 +255,45 @@ a:hover {
   background: var(--fg-tertiary);
 }
 
-/* Custom class for high-contrast price displays (pure black in light mode, pure white in dark mode) */
+/* High contrast pricing texts */
 .price-text, [class*="price-text"] {
-  color: #000000 !important;
-}
-[data-theme="dark"] .price-text, [data-theme="dark"] [class*="price-text"],
-.dark .price-text,
-.dark [class*="price-text"] {
-  color: #ffffff !important;
+  color: var(--text-primary) !important;
+  font-weight: 700;
 }
 
-/* DESIGN SYSTEM CLASS UTILITIES */
+/* State system helpers mapped fully to central tokens */
 .state-success {
   background-color: var(--color-success-bg) !important;
   color: var(--color-success-fg) !important;
-  border-color: var(--color-success-fg) !important;
+  border: 1px solid var(--color-success-fg) !important;
 }
 .state-error {
   background-color: var(--color-error-bg) !important;
   color: var(--color-error-fg) !important;
-  border-color: var(--color-error-fg) !important;
+  border: 1px solid var(--color-error-fg) !important;
 }
 .state-warning {
   background-color: var(--color-warning-bg) !important;
   color: var(--color-warning-fg) !important;
-  border-color: var(--color-warning-fg) !important;
+  border: 1px solid var(--color-warning-fg) !important;
 }
 .state-info {
   background-color: var(--color-info-bg) !important;
   color: var(--color-info-fg) !important;
-  border-color: var(--color-info-fg) !important;
+  border: 1px solid var(--color-info-fg) !important;
 }
 .state-primary {
   background-color: var(--color-primary-bg) !important;
   color: var(--color-primary-fg) !important;
-  border-color: var(--color-primary-fg) !important;
-}
-.state-secondary {
-  background-color: var(--color-secondary-bg) !important;
-  color: var(--color-secondary-fg) !important;
-  border-color: var(--color-secondary-fg) !important;
+  border: 1px solid var(--color-primary-fg) !important;
 }
 
-/* Individual Foreground / Background Utilities */
-.text-theme-success { color: var(--color-success-fg) !important; }
-.bg-theme-success { background-color: var(--color-success-bg) !important; }
-
-.text-theme-error { color: var(--color-error-fg) !important; }
-.bg-theme-error { background-color: var(--color-error-bg) !important; }
-
-.text-theme-warning { color: var(--color-warning-fg) !important; }
-.bg-theme-warning { background-color: var(--color-warning-bg) !important; }
-
-.text-theme-info { color: var(--color-info-fg) !important; }
-.bg-theme-info { background-color: var(--color-info-bg) !important; }
-
-.text-theme-primary { color: var(--color-primary-fg) !important; }
-.bg-theme-primary { background-color: var(--color-primary-bg) !important; }
-
-.text-theme-secondary { color: var(--color-secondary-fg) !important; }
-.bg-theme-secondary { background-color: var(--color-secondary-bg) !important; }
-
-/* Micro-interaction feedback for cards (Feedbacks tactiles au clic/survol) */
+/* Micro interaction feedback animations */
 .card-interactive {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 .card-interactive:hover {
   transform: translateY(-2px) scale(1.01);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
-  border-color: var(--color-primary-fg) !important;
+  border-color: var(--primary) !important;
 }
-.card-interactive:active {
-  transform: translateY(0px) scale(0.98);
-}
-
-

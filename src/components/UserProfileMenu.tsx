@@ -456,7 +456,7 @@ export default function UserProfileMenu({ user, onLogout, subscriberDetails }: U
                     onChange={(e) => setPrefLang(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-100 rounded-xl p-2.5 text-xs font-semibold outline-none"
                   >
-                    <option value="fr">Français (Abidjan, UEMOA)</option>
+                    <option value="fr">Français (Ouagadougou, UEMOA)</option>
                     <option value="en">English (International)</option>
                   </select>
                 </div>

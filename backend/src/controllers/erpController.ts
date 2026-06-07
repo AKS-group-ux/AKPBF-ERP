@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getPrismaClient } from '../config/database';
 import { ErpEngine } from '../core/erpEngine';
+import { SecurityUtils } from '../utils/security';
 import crypto from 'crypto';
 
 export const ErpController = {
@@ -49,13 +50,35 @@ export const ErpController = {
         .filter(c => !archivedIds.includes(c.id) && !archivedIds.includes(c.subscriberId || ''))
         .map(c => {
           const sub = c.subscriptions[0];
+          
+          let parsedNeighborhood = "Cocody";
+          if (c.address) {
+            const parts = c.address.split(',');
+            const firstPart = parts[0].trim();
+            const allowedNeighborhoods = ['cocody', 'plateau', 'marcory', 'yopougon', 'abobo', 'treichville'];
+            if (allowedNeighborhoods.includes(firstPart.toLowerCase())) {
+              parsedNeighborhood = firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase();
+            } else {
+              const addrLower = c.address.toLowerCase();
+              if (addrLower.includes('cocody')) parsedNeighborhood = 'Cocody';
+              else if (addrLower.includes('plateau')) parsedNeighborhood = 'Plateau';
+              else if (addrLower.includes('marcory')) parsedNeighborhood = 'Marcory';
+              else if (addrLower.includes('yopougon')) parsedNeighborhood = 'Yopougon';
+              else if (addrLower.includes('abobo')) parsedNeighborhood = 'Abobo';
+              else if (addrLower.includes('treichville')) parsedNeighborhood = 'Treichville';
+              else {
+                parsedNeighborhood = firstPart;
+              }
+            }
+          }
+
           return {
             id: c.subscriberId || c.id,
             name: c.name,
             email: c.email || "",
             phone: c.phone,
             address: c.address || "",
-            neighborhood: c.address ? c.address.split(',')[0] : "Cocody",
+            neighborhood: parsedNeighborhood,
             lat: c.latitude || 5.3489,
             lng: c.longitude || -3.9995,
             planId: sub ? sub.planId : (plans[0]?.id || ""),
@@ -161,33 +184,63 @@ export const ErpController = {
    */
   async addSubscriber(req: Request, res: Response): Promise<void> {
     try {
-      const { name, email, phone, address, planId, binType } = req.body;
+      console.log(`[API-ADD-SUBSCRIBER] Réception d'une demande de création d'abonné. Payload:`, JSON.stringify(req.body));
+      const { name, email, phone, address, planId, binType, neighborhood, lat, lng, latitude, longitude } = req.body;
 
       if (!name || !email || !phone) {
-        res.status(400).json({ error: "Le nom, l'email et le numéro de téléphone d'Abidjan sont obligatoires." });
+        console.warn(`[API-ADD-SUBSCRIBER-WARN] Champs obligatoires manquants.`);
+        res.status(400).json({ error: "Le nom, l'email et le numéro de téléphone du Burkina Faso sont obligatoires." });
         return;
       }
 
-      const operatorId = (req as any).tokenUser?.id || "00000000-0000-0000-0000-000000000000";
-      const operatorName = (req as any).tokenUser?.name || "Portail Client (Auto)";
+      let parsedUser = (req as any).tokenUser;
+      if (!parsedUser) {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (token) {
+          try {
+            const decoded = SecurityUtils.verifyToken(token);
+            if (decoded) {
+              parsedUser = decoded;
+            }
+          } catch (e) {
+            console.warn('[addSubscriber] Failed to verify optional token:', e);
+          }
+        }
+      }
+
+      const operatorId = parsedUser?.id || null;
+      const operatorName = parsedUser?.name || "Portail Client (Auto)";
       const ipAddress = req.ip || "127.0.0.1";
 
+      let finalAddress = address || "";
+      if (neighborhood && address && !address.toLowerCase().startsWith(neighborhood.toLowerCase())) {
+        finalAddress = `${neighborhood}, ${address}`;
+      }
+
+      const finalLat = lat !== undefined ? Number(lat) : latitude !== undefined ? Number(latitude) : undefined;
+      const finalLng = lng !== undefined ? Number(lng) : longitude !== undefined ? Number(longitude) : undefined;
+
+      console.log(`[API-ADD-SUBSCRIBER] Appel de ErpEngine.onboardClient pour ${name} (${email})`);
       const result = await ErpEngine.onboardClient({
         name,
         email,
         phone,
-        address: address || "",
+        address: finalAddress,
         planId: planId || "",
-        binType: binType || "Standard 240L"
+        binType: binType || "Standard 240L",
+        lat: finalLat,
+        lng: finalLng
       }, {
         operatorId,
         operatorName,
         ipAddress
       });
 
+      console.log(`[API-ADD-SUBSCRIBER-SUCCESS] Abonné créé avec succès dans PostgreSQL. Résultat:`, JSON.stringify(result));
       res.status(201).json(result);
     } catch (err: any) {
-      console.error('Failed to create new customer in database via ErpEngine:', err);
+      console.error('[API-ADD-SUBSCRIBER-ERROR] Erreur lors de la création de l\'abonné via ErpEngine:', err);
       res.status(400).json({ error: err.message || 'Erreur serveur lors de la création de l\'abonné.' });
     }
   },
@@ -198,17 +251,43 @@ export const ErpController = {
   async updateSubscriber(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params; // subscriberId or Uuid
-      const { name, email, phone, address, status } = req.body;
+      const { name, email, phone, address, status, neighborhood, lat, lng, latitude, longitude } = req.body;
 
-      const operatorId = (req as any).tokenUser?.id || "00000000-0000-0000-0000-000000000000";
+      let parsedUser = (req as any).tokenUser;
+      if (!parsedUser) {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (token) {
+          try {
+            const decoded = SecurityUtils.verifyToken(token);
+            if (decoded) {
+              parsedUser = decoded;
+            }
+          } catch (e) {
+            console.warn('[updateSubscriber] Failed to verify optional token:', e);
+          }
+        }
+      }
+
+      const operatorId = parsedUser?.id || null;
       const ipAddress = req.ip || "127.0.0.1";
+
+      let finalAddress = address !== undefined ? address : undefined;
+      if (neighborhood && address && !address.toLowerCase().startsWith(neighborhood.toLowerCase())) {
+        finalAddress = `${neighborhood}, ${address}`;
+      }
+
+      const finalLat = lat !== undefined ? Number(lat) : latitude !== undefined ? Number(latitude) : undefined;
+      const finalLng = lng !== undefined ? Number(lng) : longitude !== undefined ? Number(longitude) : undefined;
 
       const result = await ErpEngine.updateClient(id, {
         name,
         email,
         phone,
-        address,
-        status
+        address: finalAddress,
+        status,
+        lat: finalLat,
+        lng: finalLng
       }, {
         operatorId,
         ipAddress
@@ -255,9 +334,11 @@ export const ErpController = {
       });
 
       if (customer) {
-        const invoiceCount = customer.invoices.length;
-        const paymentCount = customer.invoices.reduce((sum, inv) => sum + inv.payments.length, 0);
-        const collectionCount = customer.bins.reduce((sum, bin) => sum + bin.collections.length, 0);
+        const invoices = customer.invoices || [];
+        const bins = customer.bins || [];
+        const invoiceCount = invoices.length;
+        const paymentCount = invoices.reduce((sum, inv) => sum + (inv?.payments || []).length, 0);
+        const collectionCount = bins.reduce((sum, bin) => sum + (bin?.collections || []).length, 0);
 
         if (invoiceCount > 0 || paymentCount > 0 || collectionCount > 0) {
           res.status(400).json({

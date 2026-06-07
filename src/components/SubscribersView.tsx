@@ -26,7 +26,7 @@ interface SubscribersViewProps {
   subscribers: Subscriber[];
   plans: SubscriptionPlan[];
   collectionProofs?: CollectionProof[];
-  onAddSubscriber: (newSub: Subscriber) => void;
+  onAddSubscriber: (newSub: Subscriber) => Promise<any>;
   onUpdateSubscriber: (updatedSub: Subscriber) => void;
   onDeleteSubscriber: (id: string) => void;
   onSelectSubscriber?: (id: string) => void;
@@ -53,7 +53,7 @@ export default function SubscribersView({
   const [newSubEmail, setNewSubEmail] = useState('');
   const [newSubPhone, setNewSubPhone] = useState('');
   const [newSubAddress, setNewSubAddress] = useState('');
-  const [newSubNeighborhood, setNewSubNeighborhood] = useState('Cocody');
+  const [newSubNeighborhood, setNewSubNeighborhood] = useState('Karpala');
   const [newSubPlanId, setNewSubPlanId] = useState('plan_eco');
   const [newSubBinType, setNewSubBinType] = useState<'Standard 240L' | 'Bac Grand 360L' | 'Conteneur 1100L'>('Standard 240L');
 
@@ -76,7 +76,7 @@ export default function SubscribersView({
   };
 
   // Neighborhood option list
-  const neighborhoods = ['All', 'Cocody', 'Plateau', 'Marcory', 'Yopougon'];
+  const neighborhoods = ['All', 'Karpala', 'Somgandé', 'Gounghin', 'Pissy', 'Ouaga 2000', 'Tampouy'];
 
   // Filter subscribers list
   const filteredSubscribers = subscribers.filter(sub => {
@@ -101,16 +101,20 @@ export default function SubscribersView({
       return;
     }
 
-    // Rough Abidjan coordinates bounding box
-    // Cocody: lat 5.35, lng -3.98
-    // Plateau: lat 5.32, lng -4.01
-    // Marcory: lat 5.29, lng -3.97
-    // Yopougon: lat 5.33, lng -4.08
-    let baseLat = 5.3524;
-    let baseLng = -3.9875;
-    if (newSubNeighborhood === 'Plateau') { baseLat = 5.3211; baseLng = -4.0198; }
-    else if (newSubNeighborhood === 'Marcory') { baseLat = 5.2952; baseLng = -3.9781; }
-    else if (newSubNeighborhood === 'Yopougon') { baseLat = 5.3344; baseLng = -4.0851; }
+    // Rough Ouagadougou coordinates bounding box
+    // Karpala: lat 12.3082, lng -1.4880
+    // Somgandé: lat 12.4042, lng -1.4871
+    // Gounghin: lat 12.3615, lng -1.5540
+    // Pissy: lat 12.3382, lng -1.5714
+    // Ouaga 2000: lat 12.3150, lng -1.5300
+    // Tampouy: lat 12.4110, lng -1.5550
+    let baseLat = 12.3082;
+    let baseLng = -1.4880;
+    if (newSubNeighborhood === 'Somgandé') { baseLat = 12.4042; baseLng = -1.4871; }
+    else if (newSubNeighborhood === 'Gounghin') { baseLat = 12.3615; baseLng = -1.5540; }
+    else if (newSubNeighborhood === 'Pissy') { baseLat = 12.3382; baseLng = -1.5714; }
+    else if (newSubNeighborhood === 'Ouaga 2000') { baseLat = 12.3150; baseLng = -1.5300; }
+    else if (newSubNeighborhood === 'Tampouy') { baseLat = 12.4110; baseLng = -1.5550; }
 
     // Add tiny randomized offset to make dots distinct on the map simulator
     const latOffset = (Math.random() - 0.5) * 0.02;
@@ -134,15 +138,24 @@ export default function SubscribersView({
     };
 
     try {
-      await onAddSubscriber(newSub);
+      setFormError('');
+      const serverCreatedSub = await onAddSubscriber(newSub);
       
       // Clear variables only after successful creation
       setNewSubName('');
       setNewSubEmail('');
       setNewSubPhone('');
       setNewSubAddress('');
-      setFormError('');
       setIsAddOpen(false);
+
+      // Instantly open the profile panel of the newly created subscriber in PostgreSQL
+      if (serverCreatedSub) {
+        setSelectedSub(serverCreatedSub);
+        setIsDetailsOpen(true);
+        if (onSelectSubscriber) {
+          onSelectSubscriber(serverCreatedSub.id);
+        }
+      }
     } catch (err: any) {
       setFormError(err.message || "Impossible de créer le client.");
     }
@@ -213,7 +226,7 @@ export default function SubscribersView({
               onChange={(e) => setSelectedNeighborhood(e.target.value)}
               className="bg-transparent text-xs text-slate-600 focus:outline-none font-medium cursor-pointer"
             >
-              <option value="All">Tout Abidjan</option>
+              <option value="All">Tout Ouagadougou</option>
               {neighborhoods.filter(n => n !== 'All').map(n => (
                 <option key={n} value={n}>{n}</option>
               ))}
@@ -393,7 +406,7 @@ export default function SubscribersView({
                     type="tel"
                     value={newSubPhone}
                     onChange={(e) => setNewSubPhone(e.target.value)}
-                    placeholder="Ex: +225 07 00 00 00 01"
+                    placeholder="Ex: +226 01 02 03 04"
                     className="w-full bg-slate-50 border border-slate-200 p-2 text-slate-700 text-sm rounded-lg focus:outline-none focus:border-indigo-500"
                     required
                   />
@@ -404,7 +417,7 @@ export default function SubscribersView({
                     type="email"
                     value={newSubEmail}
                     onChange={(e) => setNewSubEmail(e.target.value)}
-                    placeholder="Ex: m.koffi@email.ci"
+                    placeholder="Ex: m.ouedraogo@email.bf"
                     className="w-full bg-slate-50 border border-slate-200 p-2 text-slate-700 text-sm rounded-lg focus:outline-none focus:border-indigo-500"
                     required
                   />
@@ -413,16 +426,18 @@ export default function SubscribersView({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Quartier (Abidjan) *</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Quartier (Ouagadougou) *</label>
                   <select 
                     value={newSubNeighborhood}
                     onChange={(e) => setNewSubNeighborhood(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 p-2 text-slate-700 text-sm rounded-lg focus:outline-none focus:border-indigo-500 cursor-pointer"
                   >
-                    <option value="Cocody">Cocody</option>
-                    <option value="Plateau">Plateau</option>
-                    <option value="Marcory">Marcory</option>
-                    <option value="Yopougon">Yopougon</option>
+                    <option value="Karpala">Karpala</option>
+                    <option value="Somgandé">Somgandé</option>
+                    <option value="Gounghin">Gounghin</option>
+                    <option value="Pissy">Pissy</option>
+                    <option value="Ouaga 2000">Ouaga 2000</option>
+                    <option value="Tampouy">Tampouy</option>
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -514,7 +529,7 @@ export default function SubscribersView({
                   <h4 className="text-xl font-bold text-slate-800">{selectedSub.name}</h4>
                   <p className="text-slate-500 text-xs flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 text-indigo-500" />
-                    {selectedSub.address}, {selectedSub.neighborhood} (Abidjan)
+                    {selectedSub.address}, {selectedSub.neighborhood} (Ouagadougou)
                   </p>
                   <p className="text-slate-400 text-xs flex items-center gap-1 font-mono">
                     COORD: {selectedSub.lat.toFixed(5)}, {selectedSub.lng.toFixed(5)}

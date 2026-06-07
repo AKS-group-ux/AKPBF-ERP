@@ -95,7 +95,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
         return;
       }
       if (email.trim().toLowerCase() === 'locked@akpbf.com') {
-        setLoginError('Ce compte est verrouillé par la sécurité administrative d\'Abidjan.');
+        setLoginError('Ce compte est verrouillé par la sécurité administrative de Ouagadougou.');
         return;
       }
     } else if (authMethod === 'id') {
@@ -220,7 +220,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
     setTimeout(() => {
       setVerificationSent(false);
       setAuthMode('login');
-      alert(`Votre adresse e-mail a été authentifiée officiellement par le serveur de sécurité d'Abidjan ! Vous pouvez désormais vous connecter.`);
+      alert(`Votre adresse e-mail a été authentifiée officiellement par le serveur de sécurité de Ouagadougou ! Vous pouvez désormais vous connecter.`);
     }, 2000);
   };
 
@@ -290,7 +290,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
             AK
           </div>
           <h2 className="text-xl font-extrabold text-white tracking-tight">ERP Salubrité AKPBF</h2>
-          <p className="text-xs text-slate-400">Portail centralisé d'accès pour les services municipaux Côte d'Ivoire & Citoyens d'Abidjan</p>
+          <p className="text-xs text-slate-400">Portail centralisé d'accès pour les services municipaux du Burkina Faso & Citoyens de Ouagadougou</p>
         </div>
 
         {authMode === 'login' && (
@@ -586,7 +586,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
         {authMode === 'forgot' && (
           <div className="space-y-4 text-left animate-in duration-200 slide-in-from-right-3">
             <h3 className="font-extrabold text-white text-sm">Réinitialiser le Mot de Passe</h3>
-            <p className="text-[11.5px] text-slate-400 leading-relaxed">Saisissez l'adresse mail liée à votre compte administrative ou citoyen d'Abidjan. Nous transmettrons un lien de récupération sécurisé.</p>
+            <p className="text-[11.5px] text-slate-400 leading-relaxed">Saisissez l'adresse mail liée à votre compte administrative ou citoyen de Ouagadougou. Nous transmettrons un lien de récupération sécurisé.</p>
             
             {errorMsg && (
               <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs p-3 rounded-xl flex items-start gap-2 animate-in fade-in slide-in-from-top-1.5 duration-200">
@@ -611,7 +611,7 @@ export default function UnifiedAuth({ subscribers, onLogin }: UnifiedAuthProps) 
                   disabled={isLoading}
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  placeholder="Ex: citoyen@Abidjan.ci"
+                  placeholder="Ex: citoyen@ouaga.bf"
                   className="w-full bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-650 focus:border-emerald-500 rounded-xl pl-9 pr-3 py-3 text-xs font-semibold outline-none transition disabled:opacity-55"
                 />
               </div>

@@ -298,7 +298,7 @@ export default function QuickPaymentView({
       `*Mode de paiement :* ${rec.paymentMethod}\n` +
       `*Date :* ${rec.paymentDate}\n` +
       `*Solde Restant :* ${rec.remainingBalance.toLocaleString()} FCFA\n\n` +
-      `Merci pour votre contribution à l'hygiène de la cité d'Abidjan!`
+      `Merci pour votre contribution à l'hygiène de la cité de Ouagadougou!`
     );
     window.open(`https://api.whatsapp.com/send?text=${textMsg}`, '_blank');
   };
@@ -413,7 +413,7 @@ export default function QuickPaymentView({
                   className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-extrabold text-xs py-3 rounded-2xl transition cursor-pointer flex items-center justify-center gap-2"
                 >
                   <QrCode className="h-4.5 w-4.5 text-emerald-400" />
-                  {scanActive ? 'Numérisation du QR Code...' : 'Scanner le QR Code Abidjan'}
+                  {scanActive ? 'Numérisation du QR Code...' : 'Scanner le QR Code'}
                 </button>
               </div>
 
@@ -621,7 +621,7 @@ export default function QuickPaymentView({
                     <Lock className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                     <div>
                       <span>
-                        Opération sécurisée authentifiée d'Abidjan. Après validation, les factures ouvertes seront apurées, l'abonné sera réactivé, un reçu fiscal A4 sera généré et archivé, et une confirmation de log de notification sera éditée.
+                        Opération sécurisée authentifiée. Après validation, les factures ouvertes seront apurées, l'abonné sera réactivé, un reçu fiscal A4 sera généré et archivé, et une confirmation de log de notification sera éditée.
                       </span>
                     </div>
                   </div>
@@ -751,7 +751,7 @@ export default function QuickPaymentView({
                       <div className="p-3 bg-slate-50/40 dark:bg-slate-855 flex justify-between items-center">
                         <div>
                           <strong className="text-slate-800 dark:text-slate-250 font-bold block">Débit : {successResponse.journalEntry.debitAccount}</strong>
-                          <span className="text-[10px] text-slate-400 font-medium">Caisse municipale d'Abidjan active</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Caisse municipale de Ouagadougou active</span>
                         </div>
                         <span className="font-mono text-emerald-600 dark:text-emerald-400 font-black">+{successResponse.journalEntry.amount.toLocaleString()} FCFA</span>
                       </div>
