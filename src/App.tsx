@@ -31,7 +31,10 @@ import {
   Cpu,
   Mail,
   FileText,
-  Shield
+  Shield,
+  MessageSquare,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
 import { Subscriber, Invoice, CollectorAgent, Route, NotificationLog, SubscriptionPlan, SubscriptionHistoryLog, Contract, ContractTemplate, PaymentReceipt, Emplacement, CollectionProof } from './types';
@@ -66,6 +69,7 @@ import GpsMapView from './components/GpsMapView';
 import UnpaidDebtsView from './components/UnpaidDebtsView';
 import BinsManagementView from './components/BinsManagementView';
 import AiPredictionsView from './components/AiPredictionsView';
+import ComplaintsView from './components/ComplaintsView';
 import { BrowserRouter as Router, Routes, Route as RouterRoute, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import ClientPortalView from './components/ClientPortalView';
@@ -502,11 +506,29 @@ function AppContent() {
   // Core municipal database states including subscription plans
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [currentCity, setCurrentCity] = useState<string>('all');
   const [selectedSubDetailId, setSelectedSubDetailId] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [agents, setAgents] = useState<CollectorAgent[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [notifLogs, setNotifLogs] = useState<NotificationLog[]>([]);
+
+  // ERP dynamic sub-filters and sidebar accordions
+  const [subscriberFilterState, setSubscriberFilterState] = useState<string>('All');
+  const [billingFilterState, setBillingFilterState] = useState<string>('ALL');
+  const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
+    crm: true,
+    ventes: true,
+    abonnements: true,
+    facturation: true,
+    paiements: true,
+    comptabilite: true,
+    recouvrement: true,
+    collecte: true,
+    stock: true,
+    rapports: true,
+    parametres: true
+  });
 
   // Odoo Contracts and receipts states
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -1283,7 +1305,7 @@ function AppContent() {
     if (r === 'ADMINISTRATEUR') return true;
     
     if (r === 'COMPTABLE') {
-      return ['dashboard', 'billing', 'payments', 'unpaid_debts', 'reports', 'accounting', 'expenses', 'contracts', 'emails', 'quick_payment'].includes(tab);
+      return ['dashboard', 'billing', 'payments', 'unpaid_debts', 'reports', 'accounting', 'expenses', 'contracts', 'emails', 'quick_payment', 'complaints'].includes(tab);
     }
     
     if (r === 'CAISSIER') {
@@ -1291,7 +1313,7 @@ function AppContent() {
     }
     
     if (r === 'SUPERVISEUR') {
-      return ['dashboard', 'subscribers', 'bins', 'routes', 'gps', 'agents', 'notifications', 'fleet', 'contracts', 'emplacements', 'emails'].includes(tab);
+      return ['dashboard', 'subscribers', 'bins', 'routes', 'gps', 'agents', 'notifications', 'fleet', 'contracts', 'emplacements', 'emails', 'complaints'].includes(tab);
     }
     
     if (r === 'CHAUFFEUR') {
@@ -1303,7 +1325,7 @@ function AppContent() {
     }
 
     if (r === 'AGENT_RECOUVREMENT') {
-      return ['dashboard', 'subscribers', 'quick_payment', 'billing', 'payments', 'unpaid_debts'].includes(tab);
+      return ['dashboard', 'subscribers', 'quick_payment', 'billing', 'payments', 'unpaid_debts', 'complaints'].includes(tab);
     }
     
     return false;
@@ -1598,6 +1620,58 @@ function AppContent() {
       );
     };
 
+    const renderAccordionHeader = (
+      sectionKey: string,
+      label: string,
+      IconComponent: any
+    ) => {
+      const isExpanded = expandedSections[sectionKey];
+      return (
+        <button
+          type="button"
+          onClick={() => setExpandedSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }))}
+          className="w-full flex items-center justify-between px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-205 transition-all duration-150 select-none cursor-pointer mt-4 border-t border-slate-800/40 pt-3 first:border-0 first:mt-0 first:pt-0"
+        >
+          <div className="flex items-center gap-2.5">
+            <IconComponent className="h-4 w-4 text-emerald-500 shrink-0" />
+            <span className="font-mono tracking-widest text-[9.5px]">{label}</span>
+          </div>
+          <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-180 text-emerald-400' : ''}`} />
+        </button>
+      );
+    };
+
+    const renderSubmenuItem = (
+      label: string,
+      onClick: () => void,
+      isActive: boolean,
+      badge?: string | number
+    ) => {
+      return (
+        <button
+          type="button"
+          onClick={onClick}
+          className={`w-full flex items-center justify-between pl-8 pr-3.5 py-1.5 text-[11px] transition-all duration-200 group select-none cursor-pointer rounded-lg text-left ${
+            isActive 
+              ? 'text-white font-bold bg-slate-800/40 border-l-2 border-[#635BFF]' 
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/10'
+          }`}
+        >
+          <div className="flex items-center gap-2 relative z-10 min-w-0 pr-1">
+            <span className={`w-1 h-1 rounded-full shrink-0 ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600 group-hover:bg-slate-500'}`} />
+            <span className="font-medium tracking-wide truncate">{label}</span>
+          </div>
+          {badge !== undefined && (
+            <span className={`px-1.5 py-0.2 rounded-md text-[8.5px] font-black tracking-wide shrink-0 ${
+              isActive ? 'bg-slate-950 text-emerald-400' : 'bg-slate-850 text-slate-500'
+            }`}>
+              {badge}
+            </span>
+          )}
+        </button>
+      );
+    };
+
     return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col md:flex-row antialiased transition-colors duration-200">
       
@@ -1635,64 +1709,199 @@ function AppContent() {
 
       {/* SIDEBAR MAIN MENU NAVIGATION PANEL */}
       <aside className={`
-        fixed md:relative inset-y-0 left-0 z-40 bg-slate-900 border-r border-slate-800 text-slate-300 w-64 p-5 flex flex-col justify-between transition-transform duration-250 ease-in-out shrink-0 h-screen overflow-y-auto
+        fixed md:relative inset-y-0 left-0 z-40 bg-slate-900 border-r border-[#1e293b] text-slate-300 w-64 p-5 flex flex-col justify-between transition-transform duration-250 ease-in-out shrink-0 h-screen overflow-y-auto
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* Logo seal */}
-          <div className="flex items-center gap-2 pb-3.5 border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-2 pb-3 border-b border-slate-800 shrink-0">
             <div className="bg-emerald-500 text-white font-black text-xs p-1.5 rounded-lg font-mono">AKPBF</div>
             <div>
-              <h1 className="font-black text-white text-md tracking-tight">AKPBF Salubrité</h1>
-              <span className="text-[10px] text-emerald-400 font-bold block">LOGICIEL MUNICIPAL</span>
+              <h1 className="font-black text-white text-md tracking-tight">AKPBF ERP</h1>
+              <span className="text-[10px] text-emerald-400 font-bold block leading-none">SYSTEM DE GESTION INTEGRÉ</span>
             </div>
           </div>
 
           {/* Nav Items */}
-          <nav className="space-y-1 my-4 flex-1">
-            {canAccessTab('dashboard') && renderSidebarButton('dashboard', 'Tableau de Bord', LayoutDashboard, 'emerald')}
-            {canAccessTab('subscribers') && renderSidebarButton('subscribers', 'Gestion des Abonnés', Users, 'emerald', false, subscribers.length)}
-            {canAccessTab('emplacements') && renderSidebarButton('emplacements', 'Gestion des Emplacements', MapPin, 'amber', true, emplacements.length)}
-            {canAccessTab('contracts') && renderSidebarButton('contracts', 'Gestion des Contrats', FileText, 'emerald', false, contracts.length)}
-            {canAccessTab('bins') && renderSidebarButton('bins', 'Gestion des Poubelles', Camera, 'emerald')}
-            {canAccessTab('ai') && renderSidebarButton('ai', 'Prévisions IA & Assistant', Cpu, 'amber', true)}
-            {canAccessTab('plans') && renderSidebarButton('plans', 'Abonnements (Forfaits)', Layers, 'emerald', false, plans.length)}
-            {canAccessTab('quick_payment') && renderSidebarButton('quick_payment', 'Encaissement Rapide', Coins, 'emerald', true)}
-            {canAccessTab('billing') && renderSidebarButton('billing', 'Facturation - Caisse', Coins, 'emerald')}
-            {canAccessTab('payments') && renderSidebarButton('payments', 'Paiements & Trésorerie', CreditCard, 'emerald')}
-            {canAccessTab('unpaid_debts') && renderSidebarButton('unpaid_debts', 'Gestion des Impayés', AlertCircle, 'amber')}
-            {canAccessTab('routes') && renderSidebarButton('routes', 'Tournées (SIG)', Navigation, 'emerald', false, routes.length)}
-            {canAccessTab('gps') && renderSidebarButton('gps', 'Carte GPS Live', MapPin, 'emerald')}
-            {canAccessTab('reports') && renderSidebarButton('reports', 'Rapports & Stats', TrendingUp, 'emerald')}
-            {canAccessTab('agents') && renderSidebarButton('agents', 'Agents & Équipages', Award, 'emerald', false, agents.length)}
-            {canAccessTab('notifications') && renderSidebarButton('notifications', "Canaux d'Alerte SMS", Smartphone, 'emerald')}
-            {canAccessTab('emails') && renderSidebarButton('emails', 'Emails Professionnels', Mail, 'emerald')}
-
-            {(canAccessTab('accounting') || canAccessTab('expenses') || canAccessTab('stock') || canAccessTab('fleet') || canAccessTab('hr')) && (
-              <div className="pt-3 border-t border-slate-800 mt-3 block">
-                <span className="text-[9.5px] font-bold text-amber-500 uppercase tracking-widest block px-3.5 mb-2 font-mono">FINANCES & OPÉRATIONS</span>
-                
-                {canAccessTab('accounting') && renderSidebarButton('accounting', 'Comptabilité Générale', BookOpen, 'emerald')}
-                {canAccessTab('expenses') && renderSidebarButton('expenses', 'Dépenses & Achats', Coins, 'amber')}
-                {canAccessTab('stock') && renderSidebarButton('stock', 'Gestion de Stock', Layers, 'sky')}
-                {canAccessTab('fleet') && renderSidebarButton('fleet', 'Flotte & Véhicules', Award, 'amber')}
-                {canAccessTab('hr') && renderSidebarButton('hr', 'Ressources Humaines (RH)', Users, 'purple')}
+          <nav className="space-y-1 my-2 flex-1 scrollbar-thin">
+            {/* TABLEAU DE BORD DIRECT LINK */}
+            {canAccessTab('dashboard') && (
+              <div className="mb-2">
+                {renderSidebarButton('dashboard', '🏠 Tableau de Bord', LayoutDashboard, 'emerald')}
               </div>
             )}
 
-            {canAccessTab('users') && (
-              <div className="pt-3.5 border-t border-slate-800/80 mt-3.5 block">
-                <span className="text-[9.5px] font-extrabold text-indigo-400 uppercase tracking-widest block px-3.5 mb-2 font-mono flex items-center gap-1.5">
-                  <Shield className="h-3 w-3 text-indigo-500 animate-pulse" /> SÉCURITÉ ADMINISTRATIVE
-                </span>
-                {renderSidebarButton('users', 'Habilitations & Rôles', Shield, 'indigo')}
+            {/* CRM CATEGORY */}
+            {(canAccessTab('subscribers') || canAccessTab('complaints') || canAccessTab('expenses')) && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('crm', '👥 CRM', Users)}
+                {expandedSections.crm && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Prospects', () => { setActiveTab('subscribers'); setSubscriberFilterState('pending_validation'); setIsSidebarOpen(false); }, activeTab === 'subscribers' && subscriberFilterState === 'pending_validation')}
+                    {renderSubmenuItem('Clients / Abonnés', () => { setActiveTab('subscribers'); setSubscriberFilterState('all'); setIsSidebarOpen(false); }, activeTab === 'subscribers' && subscriberFilterState === 'all')}
+                    {renderSubmenuItem('Fournisseurs', () => { setActiveTab('expenses'); setIsSidebarOpen(false); }, activeTab === 'expenses')}
+                    {renderSubmenuItem('Contacts', () => { setActiveTab('subscribers'); setSubscriberFilterState('All'); setIsSidebarOpen(false); }, activeTab === 'subscribers' && subscriberFilterState === 'All')}
+                    {renderSubmenuItem('Réclamations & Tickets', () => { setActiveTab('complaints'); setIsSidebarOpen(false); }, activeTab === 'complaints', 3)}
+                  </div>
+                )}
               </div>
             )}
 
-            {canAccessTab('architect_hub') && (
-              <div className="pt-3 border-t border-slate-800 mt-3 block">
-                <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-widest block px-3 mb-2">Documentation</span>
-                {renderSidebarButton('architect_hub', "Portail de l'Architecte", Layers, 'emerald')}
+            {/* VENTES CATEGORY */}
+            {(canAccessTab('dashboard') || canAccessTab('contracts') || canAccessTab('payments')) && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('ventes', '💰 Ventes', Coins)}
+                {expandedSections.ventes && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Tableau de bord ventes', () => { setActiveTab('dashboard'); setIsSidebarOpen(false); }, activeTab === 'dashboard')}
+                    {renderSubmenuItem('Devis / Offres', () => { setActiveTab('contracts'); setIsSidebarOpen(false); }, activeTab === 'contracts' && contracts.length === 0)}
+                    {renderSubmenuItem('Commandes clients', () => { setActiveTab('contracts'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Contrats de service', () => { setActiveTab('contracts'); setIsSidebarOpen(false); }, activeTab === 'contracts', contracts.length)}
+                    {renderSubmenuItem('Historique commercial', () => { setActiveTab('payments'); setIsSidebarOpen(false); }, activeTab === 'payments')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ABONNEMENTS CATEGORY */}
+            {(canAccessTab('plans') || canAccessTab('subscribers') || canAccessTab('contracts')) && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('abonnements', '📋 Abonnements', Layers)}
+                {expandedSections.abonnements && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Plans tarifaires', () => { setActiveTab('plans'); setIsSidebarOpen(false); }, activeTab === 'plans', plans.length)}
+                    {renderSubmenuItem('Abonnements actifs', () => { setActiveTab('subscribers'); setSubscriberFilterState('active'); setIsSidebarOpen(false); }, activeTab === 'subscribers' && subscriberFilterState === 'active')}
+                    {renderSubmenuItem('Suspendus', () => { setActiveTab('subscribers'); setSubscriberFilterState('suspended'); setIsSidebarOpen(false); }, activeTab === 'subscribers' && subscriberFilterState === 'suspended')}
+                    {renderSubmenuItem('Expirés / Overdue', () => { setActiveTab('subscribers'); setSubscriberFilterState('expired'); setIsSidebarOpen(false); }, activeTab === 'subscribers' && subscriberFilterState === 'expired')}
+                    {renderSubmenuItem('Résiliés', () => { setActiveTab('subscribers'); setSubscriberFilterState('terminated'); setIsSidebarOpen(false); }, activeTab === 'subscribers' && subscriberFilterState === 'terminated')}
+                    {renderSubmenuItem('Renouvellements', () => { setActiveTab('contracts'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Historique', () => { setActiveTab('contracts'); setIsSidebarOpen(false); }, false)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* FACTURATION CATEGORY */}
+            {(canAccessTab('billing') || canAccessTab('expenses')) && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('facturation', '🧾 Facturation', FileText)}
+                {expandedSections.facturation && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Factures clients', () => { setActiveTab('billing'); setBillingFilterState('ALL'); setIsSidebarOpen(false); }, activeTab === 'billing' && billingFilterState === 'ALL')}
+                    {renderSubmenuItem('Factures fournisseurs', () => { setActiveTab('expenses'); setIsSidebarOpen(false); }, activeTab === 'expenses')}
+                    {renderSubmenuItem('Brouillons', () => { setActiveTab('billing'); setBillingFilterState('DRAFT'); setIsSidebarOpen(false); }, activeTab === 'billing' && billingFilterState === 'DRAFT')}
+                    {renderSubmenuItem('Validées', () => { setActiveTab('billing'); setBillingFilterState('VALIDATED'); setIsSidebarOpen(false); }, activeTab === 'billing' && billingFilterState === 'VALIDATED')}
+                    {renderSubmenuItem('En retard', () => { setActiveTab('billing'); setBillingFilterState('OVERDUE'); setIsSidebarOpen(false); }, activeTab === 'billing' && billingFilterState === 'OVERDUE')}
+                    {renderSubmenuItem('Annulées', () => { setActiveTab('billing'); setBillingFilterState('CANCELLED'); setIsSidebarOpen(false); }, activeTab === 'billing' && billingFilterState === 'CANCELLED')}
+                    {renderSubmenuItem('Génération automatique', () => { setActiveTab('billing'); setIsSidebarOpen(false); }, false)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PAIEMENTS CATEGORY */}
+            {(canAccessTab('payments') || canAccessTab('quick_payment') || canAccessTab('billing')) && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('paiements', '💵 Paiements', CreditCard)}
+                {expandedSections.paiements && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Encaissements', () => { setActiveTab('payments'); setIsSidebarOpen(false); }, activeTab === 'payments')}
+                    {renderSubmenuItem('Encaissement Rapide', () => { setActiveTab('quick_payment'); setIsSidebarOpen(false); }, activeTab === 'quick_payment')}
+                    {renderSubmenuItem('Décaissements', () => { setActiveTab('expenses'); setIsSidebarOpen(false); }, activeTab === 'expenses')}
+                    {renderSubmenuItem('Orange Money', () => { setActiveTab('payments'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Moov Money', () => { setActiveTab('payments'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Banque & Caisse', () => { setActiveTab('billing'); setIsSidebarOpen(false); }, false)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* COMPTABILITÉ CATEGORY */}
+            {canAccessTab('accounting') && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('comptabilite', '📚 Comptabilité', BookOpen)}
+                {expandedSections.comptabilite && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Journal Général', () => { setActiveTab('accounting'); setIsSidebarOpen(false); }, activeTab === 'accounting')}
+                    {renderSubmenuItem('Grand Livre', () => { setActiveTab('accounting'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Balance', () => { setActiveTab('accounting'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Comptes clients', () => { setActiveTab('accounting'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Comptes fournisseurs', () => { setActiveTab('accounting'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Écritures comptables', () => { setActiveTab('accounting'); setIsSidebarOpen(false); }, false)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* RECOUVREMENT CATEGORY */}
+            {canAccessTab('unpaid_debts') && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('recouvrement', '📞 Recouvrement', AlertCircle)}
+                {expandedSections.recouvrement && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Factures impayées', () => { setActiveTab('unpaid_debts'); setIsSidebarOpen(false); }, activeTab === 'unpaid_debts')}
+                    {renderSubmenuItem('Relances & SMS', () => { setActiveTab('unpaid_debts'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Promesses de paiement', () => { setActiveTab('unpaid_debts'); setIsSidebarOpen(false); }, false)}
+                    {renderSubmenuItem('Suspensions de contrats', () => { setActiveTab('unpaid_debts'); setIsSidebarOpen(false); }, false)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* COLLECTE CATEGORY */}
+            {(canAccessTab('routes') || canAccessTab('emplacements') || canAccessTab('bins') || canAccessTab('gps') || canAccessTab('agents') || canAccessTab('notifications')) && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('collecte', '🚛 Collecte / SIG', Navigation)}
+                {expandedSections.collecte && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Zones & Secteurs (SIG)', () => { setActiveTab('emplacements'); setIsSidebarOpen(false); }, activeTab === 'emplacements', emplacements.length)}
+                    {renderSubmenuItem('Tournées', () => { setActiveTab('routes'); setIsSidebarOpen(false); }, activeTab === 'routes', routes.length)}
+                    {renderSubmenuItem('Agents & Équipages', () => { setActiveTab('agents'); setIsSidebarOpen(false); }, activeTab === 'agents', agents.length)}
+                    {renderSubmenuItem('Véhicules & Flotte', () => { setActiveTab('fleet'); setIsSidebarOpen(false); }, activeTab === 'fleet')}
+                    {renderSubmenuItem('Carte GPS Live', () => { setActiveTab('gps'); setIsSidebarOpen(false); }, activeTab === 'gps')}
+                    {renderSubmenuItem('Gestion des Bacs', () => { setActiveTab('bins'); setIsSidebarOpen(false); }, activeTab === 'bins')}
+                    {renderSubmenuItem("Canaux d'Alerte SMS", () => { setActiveTab('notifications'); setIsSidebarOpen(false); }, activeTab === 'notifications')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STOCKS CATEGORY */}
+            {canAccessTab('stock') && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('stock', '📦 Stocks', Layers)}
+                {expandedSections.stock && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Bacs, Conteneurs', () => { setActiveTab('stock'); setIsSidebarOpen(false); }, activeTab === 'stock')}
+                    {renderSubmenuItem('Équipements & Fournitures', () => { setActiveTab('stock'); setIsSidebarOpen(false); }, false)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* RAPPORTS CATEGORY */}
+            {canAccessTab('reports') && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('rapports', '📊 Rapports', TrendingUp)}
+                {expandedSections.rapports && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Statistiques & Rentabilité', () => { setActiveTab('reports'); setIsSidebarOpen(false); }, activeTab === 'reports')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* PARAMÈTRES / CONFIG CATEGORY */}
+            {(canAccessTab('users') || canAccessTab('architect_hub')) && (
+              <div className="space-y-0.5">
+                {renderAccordionHeader('parametres', '⚙️ Paramètres', Settings)}
+                {expandedSections.parametres && (
+                  <div className="space-y-0.5 mt-1 border-l border-slate-800/60 ml-3">
+                    {renderSubmenuItem('Abonnements (Forfaits)', () => { setActiveTab('plans'); setIsSidebarOpen(false); }, activeTab === 'plans')}
+                    {renderSubmenuItem('Habilitations & Rôles', () => { setActiveTab('users'); setIsSidebarOpen(false); }, activeTab === 'users')}
+                    {renderSubmenuItem("Portail de l'Architecte", () => { setActiveTab('architect_hub'); setIsSidebarOpen(false); }, activeTab === 'architect_hub')}
+                  </div>
+                )}
               </div>
             )}
           </nav>
@@ -1719,9 +1928,31 @@ function AppContent() {
         
         {/* UPPER CONSOLE BAR */}
         <header className="hidden md:flex bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-6 py-4 items-center justify-between shrink-0 transition-colors duration-200">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
-            <Calendar className="h-3.5 w-3.5 text-indigo-500" />
-            <span>Aujourd'hui : 22 Mai 2026</span>
+          <div className="flex items-center gap-4 text-xs font-bold text-slate-600 dark:text-slate-400">
+            <div className="flex items-center gap-1.5 matches text-slate-600 dark:text-slate-400">
+              <Calendar className="h-3.5 w-3.5 text-indigo-500" />
+              <span>Aujourd'hui : 22 Mai 2026</span>
+            </div>
+
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold">Région active :</span>
+              <select
+                id="city-header-select"
+                value={currentCity}
+                onChange={(e) => setCurrentCity(e.target.value)}
+                className="bg-transparent border border-slate-200 dark:border-slate-850 font-bold text-slate-805 dark:text-slate-105 p-1 px-2.5 rounded-lg text-xs outline-hidden focus:border-[#635BFF]"
+              >
+                <option value="all" className="bg-white dark:bg-slate-900 font-bold">🌍 Toutes les villes (BF)</option>
+                <option value="Ouagadougou" className="bg-white dark:bg-slate-900 font-bold">🇧🇫 Ouagadougou</option>
+                <option value="Bobo-Dioulasso" className="bg-white dark:bg-slate-900 font-bold">🇧🇫 Bobo-Dioulasso</option>
+                <option value="Koudougou" className="bg-white dark:bg-slate-900 font-bold">🇧🇫 Koudougou</option>
+                <option value="Ouahigouya" className="bg-white dark:bg-slate-900 font-bold">🇧🇫 Ouahigouya</option>
+                <option value="Fada N'Gourma" className="bg-white dark:bg-slate-900 font-bold">🇧🇫 Fada N'Gourma</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -1785,6 +2016,7 @@ function AppContent() {
               activeTab === 'billing' ? ['ADMINISTRATEUR', 'COMPTABLE', 'AGENT_RECOUVREMENT'] :
               activeTab === 'payments' ? ['ADMINISTRATEUR', 'COMPTABLE', 'AGENT_RECOUVREMENT'] :
               activeTab === 'unpaid_debts' ? ['ADMINISTRATEUR', 'COMPTABLE', 'AGENT_RECOUVREMENT'] :
+              activeTab === 'complaints' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'AGENT_RECOUVREMENT', 'COMPTABLE'] :
             activeTab === 'routes' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR', 'AGENT'] :
             activeTab === 'gps' ? ['ADMINISTRATEUR', 'SUPERVISEUR', 'CHAUFFEUR'] :
             activeTab === 'reports' ? ['ADMINISTRATEUR', 'COMPTABLE'] :
@@ -1823,6 +2055,7 @@ function AppContent() {
               onUpdateSubscriber={handleUpdateSubscriber}
               onDeleteSubscriber={handleDeleteSubscriber}
               onSelectSubscriber={setSelectedSubDetailId}
+              initialStatusFilter={subscriberFilterState}
             />
           )}
 
@@ -1862,6 +2095,8 @@ function AppContent() {
               onGenerateMonthlyInvoices={handleGenerateMonthlyInvoices}
               onPayInvoice={handlePayInvoice}
               onSendMockReminders={handleSendMockReminders}
+              onRefresh={loadStateFromServer}
+              initialStatusFilter={billingFilterState}
             />
           )}
 
@@ -1940,6 +2175,18 @@ function AppContent() {
 
           {activeTab === 'emails' && (
             <EmailsManagementView />
+          )}
+
+          {activeTab === 'complaints' && (
+            <ComplaintsView 
+              subscribers={zoneFilteredSubscribers}
+              cityFilter={currentCity}
+              onAddNotification={(newNotif) => {
+                const updated = [newNotif, ...notifLogs];
+                setNotifLogs(updated);
+                saveStateToLocalStorage(plans, subscribers, invoices, agents, routes, updated);
+              }}
+            />
           )}
 
           {activeTab === 'contracts' && (

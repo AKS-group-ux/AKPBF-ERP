@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.5
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Building2, 
   Plus, 
@@ -52,14 +52,12 @@ interface SupplierInvoice {
   justificatifUrl?: string;
 }
 
-const INITIAL_SUPPLIERS: Supplier[] = [];
-
-const INITIAL_SUPPLIER_INVOICES: SupplierInvoice[] = [];
-
 export default function ExpensesView() {
   const [activeTab, setActiveTab] = useState<'suppliers' | 'invoices' | 'expenses'>('expenses');
-  const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
-  const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoice[]>(INITIAL_SUPPLIER_INVOICES);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoice[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   // New Supplier form states
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
@@ -81,6 +79,45 @@ export default function ExpensesView() {
   // Active document for preview dialog
   const [activeJustificatif, setActiveJustificatif] = useState<string | null>(null);
 
+  // Authentication Headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('akpbf_erp_token') || sessionStorage.getItem('akpbf_erp_token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  };
+
+  // Fetch from real PostgreSQL endpoints
+  const fetchState = async () => {
+    try {
+      setIsLoading(true);
+      setErrorMsg('');
+      const [resSup, resInv] = await Promise.all([
+        fetch('/api/accounting/suppliers', { headers: getAuthHeaders() }),
+        fetch('/api/accounting/supplier-invoices', { headers: getAuthHeaders() })
+      ]);
+      const dataSup = await resSup.json();
+      const dataInv = await resInv.json();
+
+      if (dataSup.suppliers) {
+        setSuppliers(dataSup.suppliers);
+      }
+      if (dataInv.supplierInvoices) {
+        setSupplierInvoices(dataInv.supplierInvoices);
+      }
+    } catch (e: any) {
+      console.error(e);
+      setErrorMsg('Erreur de synchronisation avec la base PostgreSQL.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchState();
+  }, []);
+
   // Metrics calculation
   const stats = useMemo(() => {
     const totalDettes = suppliers.reduce((sum, s) => sum + s.outstandingDebt, 0);
@@ -98,77 +135,101 @@ export default function ExpensesView() {
   }, [suppliers, supplierInvoices]);
 
   // Create Supplier
-  const handleCreateSupplier = (e: React.FormEvent) => {
+  const handleCreateSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supName) return;
+    if (!supName || !supPhone) return;
 
-    const newSupplier: Supplier = {
-      id: `FOUR-00${suppliers.length + 1}`,
-      name: supName,
-      contactName: supContact,
-      email: supEmail,
-      phone: supPhone,
-      address: supAddress,
-      category: supCategory,
-      outstandingDebt: 0
-    };
-
-    setSuppliers([...suppliers, newSupplier]);
-    setSupName('');
-    setSupContact('');
-    setSupEmail('');
-    setSupPhone('');
-    setSupAddress('');
-    setIsAddSupplierOpen(false);
+    try {
+      setIsLoading(true);
+      setErrorMsg('');
+      const res = await fetch('/api/accounting/suppliers', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: supName,
+          contactName: supContact,
+          email: supEmail,
+          phone: supPhone,
+          address: supAddress,
+          category: supCategory
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuppliers(prev => [...prev, data.supplier]);
+        setSupName('');
+        setSupContact('');
+        setSupEmail('');
+        setSupPhone('');
+        setSupAddress('');
+        setIsAddSupplierOpen(false);
+      } else {
+        throw new Error(data.error || 'Erreur lors de la création du fournisseur d’achats.');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erreur réseau lors de la création du fournisseur.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Create Vendor Invoice
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!invoiceSupplierId || !invoiceNum || !invoiceAmt) return;
 
-    const selectedSup = suppliers.find(s => s.id === invoiceSupplierId);
-    if (!selectedSup) return;
-
-    const newInvoice: SupplierInvoice = {
-      id: `FAC-FOUR-0${supplierInvoices.length + 1}`,
-      supplierId: invoiceSupplierId,
-      supplierName: selectedSup.name,
-      invoiceNumber: invoiceNum,
-      amount: parseFloat(invoiceAmt),
-      dueDate: invoiceDue || '2026-06-30',
-      category: invoiceCat,
-      status: 'draft',
-      validationFlow: 'Comptable',
-      justificatifUrl: 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=400&auto=format&fit=crop&q=60'
-    };
-
-    setSupplierInvoices([...supplierInvoices, newInvoice]);
-    
-    // Auto increment supplier debt
-    setSuppliers(prev => prev.map(s => s.id === invoiceSupplierId ? { ...s, outstandingDebt: s.outstandingDebt + parseFloat(invoiceAmt) } : s));
-
-    setInvoiceSupplierId('');
-    setInvoiceNum('');
-    setInvoiceAmt('');
-    setIsAddInvoiceOpen(false);
+    try {
+      setIsLoading(true);
+      setErrorMsg('');
+      const res = await fetch('/api/accounting/supplier-invoices', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          supplierId: invoiceSupplierId,
+          invoiceNumber: invoiceNum,
+          amount: parseFloat(invoiceAmt),
+          dueDate: invoiceDue || new Date().toISOString().split('T')[0],
+          category: invoiceCat
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await fetchState();
+        setInvoiceSupplierId('');
+        setInvoiceNum('');
+        setInvoiceAmt('');
+        setIsAddInvoiceOpen(false);
+      } else {
+        throw new Error(data.error || 'Erreur de passation de l’écriture de facture achat.');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erreur de connexion lors de la facturation.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Process validation sequence (Hierarchical flow)
   // Draft -> Pending Approval -> Approved -> Paid
-  const handleAdvanceValidation = (invoiceId: string) => {
-    setSupplierInvoices(prev => prev.map(inv => {
-      if (inv.id !== invoiceId) return inv;
-
-      if (inv.status === 'draft') {
-        return { ...inv, status: 'pending_approval', validationFlow: 'Comptable' };
-      } else if (inv.status === 'pending_approval') {
-        return { ...inv, status: 'approved', validationFlow: 'Directeur' };
-      } else if (inv.status === 'approved') {
-        return { ...inv, status: 'paid', validationFlow: 'Terminé' };
+  const handleAdvanceValidation = async (invoiceId: string) => {
+    try {
+      setIsLoading(true);
+      setErrorMsg('');
+      const res = await fetch(`/api/accounting/supplier-invoices/${invoiceId}/advance`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await fetchState();
+      } else {
+        throw new Error(data.error || 'Erreur lors de l’avancement de la validation financière.');
       }
-      return inv;
-    }));
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erreur réseau de validation.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -202,6 +263,32 @@ export default function ExpensesView() {
           )}
         </div>
       </div>
+
+      {/* Backend Feedback & Interactive States */}
+      {(errorMsg || isLoading) && (
+        <div className="flex flex-col gap-2">
+          {errorMsg && (
+            <div id="expenses-error" className="p-3.5 bg-rose-50 border border-rose-100 text-rose-800 text-xs font-semibold rounded-xl flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+              <button onClick={() => setErrorMsg('')} className="text-rose-405 hover:text-rose-700 font-bold px-1 select-none">✕</button>
+            </div>
+          )}
+          {isLoading && (
+            <div id="expenses-loader" className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-[11px] font-mono font-bold text-emerald-800">
+                Action comptable en cours d'enregistrement en base PostgreSQL...
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* METRIC SHIELDS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   AlertTriangle, 
   Mail, 
@@ -28,7 +28,12 @@ import {
   Eye,
   Check,
   RefreshCw,
-  Coins
+  Coins,
+  Phone,
+  Settings,
+  Flame,
+  Activity as HeartRate,
+  TrendingDown
 } from 'lucide-react';
 import { Subscriber, Invoice, SubscriptionPlan, NotificationLog } from '../types';
 
@@ -39,6 +44,7 @@ interface UnpaidDebtsViewProps {
   onUpdateSubscriber: (updatedSub: Subscriber) => void;
   onPayInvoice: (invoiceId: string, method: 'Orange Money' | 'Wave' | 'Carte Bancaire' | 'Espèces') => void;
   onAddNotification: (notif: NotificationLog) => void;
+  cityFilter?: string; // Multiville filter from App
 }
 
 interface RecoverActionLog {
@@ -46,12 +52,12 @@ interface RecoverActionLog {
   subscriberName: string;
   subscriberId: string;
   invoiceId: string;
-  delayMonths: number;
+  debtAgeDays: number;
   unpaidAmount: number;
   statusBefore: string;
   statusAfter: string;
-  actionTaken: 'Avertissement SMS/Mail' | 'Notification renforcée' | 'Mise En Demeure' | 'Suspension de Contrat' | 'Réactivation Automatique';
-  type: 'email' | 'sms' | 'system';
+  actionTaken: string; // SMS, Email, WhatsApp, Appel, Promesse, Suspension, Résiliation
+  type: 'sms' | 'email' | 'whatsapp' | 'call' | 'promise' | 'suspension' | 'resiliation';
   timestamp: string;
   adminApproved: boolean;
 }
@@ -62,201 +68,233 @@ export default function UnpaidDebtsView({
   plans,
   onUpdateSubscriber,
   onPayInvoice,
-  onAddNotification
+  onAddNotification,
+  cityFilter = 'all'
 }: UnpaidDebtsViewProps) {
   
-  // Tabs: 'ledger' (Les Débiteurs et Traitement), 'workflow' (Schéma & Logique Métier), 'logs' (Journal des Actions)
-  const [activeSubTab, setActiveSubTab] = useState<'ledger' | 'workflow' | 'logs'>('ledger');
+  // Tabs: 'ledger' (Les Débiteurs et Traitement), 'auto_rules' (Règles d'Automatisation), 'logs' (Journal des Relances)
+  const [activeSubTab, setActiveSubTab] = useState<'ledger' | 'auto_rules' | 'logs'>('ledger');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterLevel, setFilterLevel] = useState<'all' | 'warning' | 'reinforced' | 'put_in_suit' | 'suspended'>('all');
   
-  // Custom mock unpaid database to track dates and test different debt age ranges
-  const [targetSubscriberDebtWeeks, setTargetSubscriberDebtWeeks] = useState<{ [key: string]: number }>({
-    'SUB-8842': 8,   // 2 Months -> Notification renforcée
-    'SUB-2110': 4,   // 1 Month -> Avertissement
-    'SUB-9944': 13   // 3 Months overdue -> Mise en demeure
+  // Custom filter on debt stages: 'all', '0-30', '31-60', '61-90', '90+'
+  const [debtAgeFilter, setDebtAgeFilter] = useState<'all' | '0-30' | '31-60' | '61-90' | '90+'>('all');
+
+  // Configurable Automatic Rules parameters (in days)
+  const [autoRuleDays1, setAutoRuleDays1] = useState(30); // Warning / Avertissement
+  const [autoRuleDays2, setAutoRuleDays2] = useState(60); // Reminder / Relance
+  const [autoRuleDays3, setAutoRuleDays3] = useState(90); // Service Suspension
+  const [autoRuleDays4, setAutoRuleDays4] = useState(120); // Resiliation proposal / Proposition résiliation
+
+  // Simulated Custom debt days per subscriber id to enable wide testing ranges
+  const [simulatedSubDebtDays, setSimulatedSubDebtDays] = useState<{ [key: string]: number }>({
+    'SUB-8842': 95,   // 95 Days Overdue -> 90+ bucket
+    'SUB-2110': 42,   // 42 Days Overdue -> 31-60 bucket
+    'SUB-9944': 14,   // 14 Days Overdue -> 0-30 bucket
+    'SUB-4029': 75,   // 75 Days Overdue -> 61-90 bucket
   });
 
-  // Action history state
+  // Action history logs
   const [recoveringLogs, setRecoveringLogs] = useState<RecoverActionLog[]>([
     {
-      id: 'REC-001',
-      subscriberName: 'Mamadou Diallo',
+      id: 'REC-226-01',
+      subscriberName: 'Ouedraogo Boureima',
       subscriberId: 'SUB-8842',
-      invoiceId: 'FAC-2026-003',
-      delayMonths: 2,
+      invoiceId: 'FAC-2026-031',
+      debtAgeDays: 95,
       unpaidAmount: 3500,
       statusBefore: 'active',
-      statusAfter: 'active',
-      actionTaken: 'Notification renforcée',
-      type: 'email',
-      timestamp: '2026-05-18 10:45',
+      statusAfter: 'suspended',
+      actionTaken: 'Suspension Administrative Securité',
+      type: 'suspension',
+      timestamp: '2026-06-02 10:45',
       adminApproved: true
     },
     {
-      id: 'REC-002',
-      subscriberName: 'Ouedraogo Salif',
-      subscriberId: 'SUB-9944',
-      invoiceId: 'FAC-2026-008',
-      delayMonths: 3,
-      unpaidAmount: 6000,
+      id: 'REC-226-02',
+      subscriberName: 'Bamba Mariam',
+      subscriberId: 'SUB-5591',
+      invoiceId: 'FAC-2026-102',
+      debtAgeDays: 42,
+      unpaidAmount: 12000,
+      actionTaken: 'WhatsApp : Rappel de courtoisie',
+      type: 'whatsapp',
+      timestamp: '2026-06-04 14:12',
       statusBefore: 'active',
       statusAfter: 'active',
-      actionTaken: 'Mise En Demeure',
-      type: 'sms',
-      timestamp: '2026-05-20 09:12',
-      adminApproved: false // Requires admin approval!
+      adminApproved: true
     }
   ]);
 
-  // Dynamic Rule Processor simulator logic. Runs dynamically to evaluate subscribers' overdue bills.
-  const handleRunBatchProcessor = () => {
-    let triggeredActionsCount = 0;
-    const newLogs: RecoverActionLog[] = [];
+  // Execute manual single action on a subscriber
+  const handleExecuteAction = (
+    debtor: any, 
+    actionType: 'sms' | 'email' | 'whatsapp' | 'call' | 'promise' | 'suspension' | 'resiliation',
+    unpaidSum: number,
+    pendingInvoiceId: string
+  ) => {
+    let actionLabel = '';
+    let description = '';
+    let targetStatus: Subscriber['status'] = debtor.status;
 
-    // Loop through each subscriber who has overdue invoices
-    subscribers.forEach(sub => {
-      // Find overdue invoices for this subscriber
-      const subInvoices = invoices.filter(i => i.subscriberId === sub.id && i.status !== 'paid');
-      if (subInvoices.length === 0) return;
-
-      const unpaidSum = subInvoices.reduce((sum, inv) => sum + inv.amount, 0);
-      const firstInvoice = subInvoices[0];
-
-      // Use simulated weeks/months overdue or fallback on invoice age estimation
-      // Let's check simulated duration first, if not declared set a default based on sub.paymentStatus
-      let simulatedWeeks = targetSubscriberDebtWeeks[sub.id];
-      if (simulatedWeeks === undefined) {
-        simulatedWeeks = sub.paymentStatus === 'overdue' ? 8 : sub.paymentStatus === 'unpaid' ? 4 : 0;
-      }
-      
-      const simulatedMonths = Math.floor(simulatedWeeks / 4) || 1;
-
-      if (simulatedWeeks === 0) return;
-
-      let action: 'Avertissement SMS/Mail' | 'Notification renforcée' | 'Mise En Demeure' | 'Suspension de Contrat' | null = null;
-      let notificationType: 'email' | 'sms' | 'system' = 'sms';
-      let notificationContent = '';
-      let targetStatus: Subscriber['status'] = sub.status;
-
-      if (simulatedMonths >= 6) {
-        action = 'Suspension de Contrat';
-        notificationType = 'system';
-        notificationContent = `ALERTE SUSPENSION AKPBF : Votre contrat ${sub.id} a été suspendu automatiquement après 6 mois d'impayés (${unpaidSum} FCFA). La collecte de votre bac est annulée d'urgence.`;
+    switch(actionType) {
+      case 'sms':
+        actionLabel = 'Avis SMS de relance';
+        description = `AKPBF RECOUVREMENT : Retard de paiement constaté sur votre facture d'abonnement salubrité (${unpaidSum} FCFA). Veuillez régulariser par Orange Money / Wave.`;
+        break;
+      case 'email':
+        actionLabel = 'Courriel de mise en demeure';
+        description = `Cher(e) ${debtor.name}, nous constatons un retard persistant de paiement de votre redevance de ramassage d'ordure d'un montant de ${unpaidSum} FCFA. Résolution requise sous 48h.`;
+        break;
+      case 'whatsapp':
+        actionLabel = 'Rappel officiel WhatsApp';
+        description = `Bonjour ${debtor.name}, AKPBF Services vous informe qu'un solde débiteur de ${unpaidSum} FCFA perturbe la continuité de collecte de vos bacs. Merci de régler ce jour.`;
+        break;
+      case 'call':
+        actionLabel = 'Appel téléphonique du Contentieux';
+        description = `Entretien téléphonique ou mémo vocal enregistré avec ${debtor.name} à propos du non-paiement prolongé de ${unpaidSum} FCFA.`;
+        break;
+      case 'promise':
+        actionLabel = 'Promesse de paiement enregistrée';
+        description = `L'abonné ${debtor.name} s'engage formellement à régulariser sa situation financière de ${unpaidSum} FCFA avant la fin de semaine.`;
+        break;
+      case 'suspension':
+        actionLabel = 'Suspension officielle du Service';
+        description = `Alerte AKPBF : Suite à un retard de paiement excessif, le ramassage de vos bacs d'ordures à ${debtor.address} est officiellement SUSPENDU.`;
         targetStatus = 'suspended';
-      } else if (simulatedMonths >= 3) {
-        action = 'Mise En Demeure';
-        notificationType = 'sms';
-        notificationContent = `AKPBF MISE EN DEMEURE : Avis solennel de recouvrement forcé sous contrat ${sub.id}. Solde impayé exigible depuis 3 mois : ${unpaidSum} FCFA. Régularisation immédiate requise sous peine de poursuites.`;
-      } else if (simulatedMonths >= 2) {
-        action = 'Notification renforcée';
-        notificationType = 'email';
-        notificationContent = `Cher(e) ${sub.name}, votre redevance de salubrité AKPBF enregistre 2 mois de retard (${unpaidSum} FCFA). Un intérêt de pénalité de 5% pourrait s'appliquer sous peu. Contactez la mairies de votre secteur.`;
-      } else if (simulatedMonths >= 1) {
-        action = 'Avertissement SMS/Mail';
-        notificationType = 'sms';
-        notificationContent = `AKPBF RAPPEL : Votre facture de redevance pour le service de voirie enregistre 1 mois de retard (${unpaidSum} FCFA). Merci de régulariser afin d'éviter la suspension de vos levées.`;
+        break;
+      case 'resiliation':
+        actionLabel = 'Résiliation de contrat salubrité';
+        description = `Information AKPBF : Votre abonnement municipal d'assainissement d'ordures est RÉSILIÉ. Votre bac standard sera confisqué.`;
+        targetStatus = 'terminated';
+        break;
+    }
+
+    // Insert Log
+    const newLogId = `REC-226-${Math.floor(100 + Math.random() * 900)}`;
+    const newLog: RecoverActionLog = {
+      id: newLogId,
+      subscriberName: debtor.name,
+      subscriberId: debtor.id,
+      invoiceId: pendingInvoiceId || 'FAC-GEN-951',
+      debtAgeDays: debtor.debtAgeDays,
+      unpaidAmount: unpaidSum,
+      statusBefore: debtor.status,
+      statusAfter: targetStatus,
+      actionTaken: actionLabel,
+      type: actionType,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      adminApproved: true
+    };
+
+    setRecoveringLogs(prev => [newLog, ...prev]);
+
+    // Update Subscriber status in system
+    if (targetStatus !== debtor.status) {
+      onUpdateSubscriber({
+        ...debtor,
+        status: targetStatus,
+        paymentStatus: 'overdue'
+      });
+    }
+
+    // Add general notifications logs
+    onAddNotification({
+      id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
+      recipientName: debtor.name,
+      recipientContact: actionType === 'email' ? debtor.email : debtor.phone,
+      type: actionType === 'email' ? 'email' : 'sms',
+      templateName: `Contentieux : ${actionLabel}`,
+      content: description,
+      sentAt: 'À l\'instant',
+      status: 'sent'
+    });
+
+    alert(`⚡ Action accomplie avec succès !\n- Action : ${actionLabel}\n- Notification transmise à ${debtor.name} (${debtor.phone}).`);
+  };
+
+  // Run global batch process matching adjustable parameters
+  const handleRunBatchProcessor = () => {
+    let triggeredCount = 0;
+    const batchLogs: RecoverActionLog[] = [];
+
+    debtorList.forEach(debtor => {
+      let actionType: 'sms' | 'email' | 'whatsapp' | 'call' | 'promise' | 'suspension' | 'resiliation' | null = null;
+      let actionLabel = '';
+      let targetStatus: Subscriber['status'] = debtor.status;
+      const unpaidSum = debtor.unpaidSum;
+      const tDays = debtor.debtAgeDays;
+
+      if (tDays >= autoRuleDays4) {
+        actionType = 'resiliation';
+        actionLabel = `Moteur Auto J+${autoRuleDays4} : Proposition de résiliation de contrat`;
+        targetStatus = 'terminated';
+      } else if (tDays >= autoRuleDays3) {
+        actionType = 'suspension';
+        actionLabel = `Moteur Auto J+${autoRuleDays3} : Suspension de service d'enlèvement`;
+        targetStatus = 'suspended';
+      } else if (tDays >= autoRuleDays2) {
+        actionType = 'email';
+        actionLabel = `Moteur Auto J+${autoRuleDays2} : Relance comptable formelle`;
+      } else if (tDays >= autoRuleDays1) {
+        actionType = 'sms';
+        actionLabel = `Moteur Auto J+${autoRuleDays1} : Avertissement de retard par SMS`;
       }
 
-      if (action) {
-        // Build recover action log
-        const logId = `REC-${Math.floor(100 + Math.random() * 900)}`;
+      if (actionType) {
+        const batchLogId = `REC-AR-${Math.floor(1000 + Math.random() * 9000)}`;
         const actionLog: RecoverActionLog = {
-          id: logId,
-          subscriberId: sub.id,
-          subscriberName: sub.name,
-          invoiceId: firstInvoice.id,
-          delayMonths: simulatedMonths,
+          id: batchLogId,
+          subscriberId: debtor.id,
+          subscriberName: debtor.name,
+          invoiceId: debtor.pendingInvoiceId || 'FAC-AUTO',
+          debtAgeDays: tDays,
           unpaidAmount: unpaidSum,
-          statusBefore: sub.status,
+          statusBefore: debtor.status,
           statusAfter: targetStatus,
-          actionTaken: action,
-          type: notificationType,
-          timestamp: 'À l\'instant',
-          adminApproved: action !== 'Suspension de Contrat' && action !== 'Mise En Demeure' // High impact actions require manual validation
+          actionTaken: actionLabel,
+          type: actionType,
+          timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+          adminApproved: true
         };
 
-        newLogs.push(actionLog);
-        triggeredActionsCount++;
+        batchLogs.push(actionLog);
+        triggeredCount++;
 
-        // Auto change subscriber status in the state database if auto-approved
-        if (actionLog.adminApproved && targetStatus !== sub.status) {
+        if (targetStatus !== debtor.status) {
           onUpdateSubscriber({
-            ...sub,
+            ...debtor,
             status: targetStatus,
             paymentStatus: 'overdue'
           });
         }
 
-        // Fire official notification logs
+        // Fire SMS / Notification logs
         onAddNotification({
           id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
-          recipientName: sub.name,
-          recipientContact: notificationType === 'sms' ? sub.phone : sub.email,
-          type: notificationType === 'system' ? 'sms' : notificationType,
-          templateName: `Moteur Impayés : ${action}`,
-          content: notificationContent,
-          sentAt: 'A l\'instant',
+          recipientName: debtor.name,
+          recipientContact: debtor.phone,
+          type: 'sms',
+          templateName: `Moteur Auto Relance`,
+          content: `AKPBF AUTOMATION : ${actionLabel} appliquée sur la fiche ${debtor.id}. Montant impayé : ${unpaidSum} FCFA.`,
+          sentAt: 'À l\'instant',
           status: 'sent'
         });
       }
     });
 
-    if (newLogs.length > 0) {
-      setRecoveringLogs(prev => [...newLogs, ...prev]);
-      alert(`⚡ Moteur exécuté avec succès. ${triggeredActionsCount} actions générées et stockées dans l'historique !`);
+    if (batchLogs.length > 0) {
+      setRecoveringLogs(prev => [...batchLogs, ...prev]);
+      alert(`🤖 Moteur automatique exécuté conforme aux règles :\n- ${triggeredCount} relances de masse et de suspensions générées et appliquées en base !`);
     } else {
-      alert("🔍 Aucune nouvelle anomalie de solvabilité détectée par le scanner.");
+      alert("🔍 Aucune nouvelle transition automatique d'impayé détectée sur vos paramètres.");
     }
   };
 
-  // Administrator approval / Validation action
-  const handleApproveAction = (logId: string) => {
-    const updated = recoveringLogs.map(log => {
-      if (log.id === logId) {
-        // Execute state changes for the subscriber
-        const targetSub = subscribers.find(s => s.id === log.subscriberId);
-        if (targetSub) {
-          let updatedStatus = targetSub.status;
-          if (log.actionTaken === 'Suspension de Contrat') {
-            updatedStatus = 'suspended';
-          }
-          
-          onUpdateSubscriber({
-            ...targetSub,
-            status: updatedStatus,
-            paymentStatus: 'overdue'
-          });
-        }
-        return { ...log, adminApproved: true };
-      }
-      return log;
-    });
-
-    setRecoveringLogs(updated);
-
-    const logDetails = recoveringLogs.find(l => l.id === logId);
-    if (logDetails) {
-      onAddNotification({
-        id: `NOT-${Math.floor(1000 + Math.random() * 9000)}`,
-        recipientName: logDetails.subscriberName,
-        recipientContact: 'Validation Système',
-        type: 'sms',
-        templateName: 'Validation Administrative Recouvrement',
-        content: `PROMPT ADMIN : Action '${logDetails.actionTaken}' approuvée officiellement par l'administrateur de voirie sur le contrat ${logDetails.subscriberId}.`,
-        sentAt: 'À l\'instant',
-        status: 'sent'
-      });
-    }
-
-    alert("✅ Action approuvée et répercutée sur le dossier actif de l'abonné.");
-  };
-
-  // Pay and trigger automatic reactivation
+  // Encaisser & Réactiver standard flow
   const handlePayAndReactivate = (invoiceId: string, subId: string) => {
     onPayInvoice(invoiceId, 'Wave');
     
-    // Auto reactivate contract if suspended
+    // Auto reactivate suspended contracts
     const sub = subscribers.find(s => s.id === subId);
     if (sub) {
       const originalStatus = sub.status;
@@ -266,20 +304,19 @@ export default function UnpaidDebtsView({
         paymentStatus: 'paid'
       });
 
-      // Insert action reactivating the logs
-      const logId = `REC-${Math.floor(100 + Math.random() * 900)}`;
+      const logId = `REC-REV-${Math.floor(100 + Math.random() * 900)}`;
       const reactivateLog: RecoverActionLog = {
         id: logId,
         subscriberId: sub.id,
         subscriberName: sub.name,
         invoiceId: invoiceId,
-        delayMonths: 0,
+        debtAgeDays: 0,
         unpaidAmount: 0,
         statusBefore: originalStatus,
         statusAfter: 'active',
-        actionTaken: 'Réactivation Automatique',
-        type: 'sms',
-        timestamp: 'À l\'instant',
+        actionTaken: 'Arbitrage : Encaissé & Réactivation Automatique',
+        type: 'promise',
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
         adminApproved: true
       };
 
@@ -290,378 +327,381 @@ export default function UnpaidDebtsView({
         recipientName: sub.name,
         recipientContact: sub.phone,
         type: 'sms',
-        templateName: 'Contrat Réactivé',
-        content: `RÉACTIVATION AKPBF : Suite à votre versement, votre compte a été basculé sous statut ${reactivateLog.statusAfter}. Vos bacs sont de nouveau inscrits sur les tournées des camions-bennes.`,
+        templateName: 'Réactivation Immédiate',
+        content: `RÉACTIVATION AKPBF : Versement de régularisation comptabilisé. Votre compte a été remis en service actif. Le camion passera à la prochaine tournée.`,
         sentAt: 'À l\'instant',
         status: 'sent'
       });
 
-      alert(`🎉 Régularisation réussie. Contrat de ${sub.name} remis automatiquement à l'état Actif !`);
+      alert(`🎉 Versement de régularisation validé avec succès. Abonnement de ${sub.name} réactivé immédiatement !`);
     }
   };
 
-  // Adjust simulated debt parameter
-  const handleSetWeeksDebt = (subId: string, weeks: number) => {
-    setTargetSubscriberDebtWeeks(prev => ({
+  // Adjust custom simulation overdue debt days
+  const handleSetDebtDays = (subId: string, days: number) => {
+    setSimulatedSubDebtDays(prev => ({
       ...prev,
-      [subId]: weeks
+      [subId]: days
     }));
   };
 
-  // Filter subscribers list who have unpaid or simulated overdue debts
+  // Calculate detailed debtors with simulation weights
   const debtorList = useMemo(() => {
     return subscribers.map(sub => {
+      // Unpaid invoices
       const unpaidInvs = invoices.filter(i => i.subscriberId === sub.id && i.status !== 'paid');
       const unpaidSum = unpaidInvs.reduce((sum, inv) => sum + inv.amount, 0);
-      
-      let simulatedWeeks = targetSubscriberDebtWeeks[sub.id];
-      if (simulatedWeeks === undefined) {
-        simulatedWeeks = sub.paymentStatus === 'overdue' ? 8 : sub.paymentStatus === 'unpaid' ? 4 : 0;
-      }
-      
-      const simulatedMonths = Math.floor(simulatedWeeks / 4) || (unpaidInvs.length > 0 ? 1 : 0);
 
-      // Determine current policy tier
-      let currentTier: 'RAS' | 'Avertissement' | 'Notification renforcée' | 'Mise En Demeure' | 'Suspension du contrat' = 'RAS';
-      if (sub.status === 'suspended') {
-        currentTier = 'Suspension du contrat';
-      } else if (simulatedMonths >= 6) {
-        currentTier = 'Suspension du contrat';
-      } else if (simulatedMonths >= 3) {
-        currentTier = 'Mise En Demeure';
-      } else if (simulatedMonths >= 2) {
-        currentTier = 'Notification renforcée';
-      } else if (simulatedMonths >= 1) {
-        currentTier = 'Avertissement';
+      // Get simulated days
+      let debtDays = simulatedSubDebtDays[sub.id];
+      if (debtDays === undefined) {
+        // Fallback calculation depending on initial status
+        if (sub.status === 'suspended' || sub.paymentStatus === 'overdue') {
+          debtDays = 95; // default 90+
+        } else if (sub.paymentStatus === 'unpaid') {
+          debtDays = 42; // default 31-60
+        } else {
+          debtDays = 0;
+        }
       }
+
+      // Bucket categorization
+      let ageBucket: '0-30' | '31-60' | '61-90' | '90+' | 'stable' = 'stable';
+      if (debtDays > 90) ageBucket = '90+';
+      else if (debtDays >= 61) ageBucket = '61-90';
+      else if (debtDays >= 31) ageBucket = '31-60';
+      else if (debtDays > 0) ageBucket = '0-30';
 
       return {
         ...sub,
         unpaidSum,
         unpaidCount: unpaidInvs.length,
         pendingInvoiceId: unpaidInvs[0]?.id || '',
-        simulatedWeeks,
-        simulatedMonths,
-        currentTier
+        debtAgeDays: debtDays,
+        ageBucket
       };
     }).filter(debtor => {
-      // Must have simulated debt or actual unpaid sum
-      if (debtor.simulatedWeeks === 0 && debtor.unpaidSum === 0 && debtor.status !== 'suspended') return false;
-      
-      // Match search string
-      const matchesSearch = debtor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            debtor.id.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // Level filter
-      if (filterLevel === 'all') return matchesSearch;
-      if (filterLevel === 'warning') return matchesSearch && debtor.currentTier === 'Avertissement';
-      if (filterLevel === 'reinforced') return matchesSearch && debtor.currentTier === 'Notification renforcée';
-      if (filterLevel === 'put_in_suit') return matchesSearch && debtor.currentTier === 'Mise En Demeure';
-      if (filterLevel === 'suspended') return matchesSearch && (debtor.currentTier === 'Suspension du contrat' || debtor.status === 'suspended');
+      // 1. Must have simulated debt or real overdue invoices or be suspended
+      if (debtor.debtAgeDays === 0 && debtor.unpaidSum === 0 && debtor.status !== 'suspended') return false;
 
-      return matchesSearch;
+      // 2. City Filter (multi-city layout compatibility)
+      // Check if we matches active city filter (neighborhood context)
+      // If client neighborhood is Karpala, Gounghin, Pissy, Somgandé -> they reside in Ouagadougou.
+      // We can map neighborhoods to city or filter generally
+      
+      // 3. Search filter
+      const textToSearch = `${debtor.name} ${debtor.id} ${debtor.neighborhood}`.toLowerCase();
+      if (searchTerm && !textToSearch.includes(searchTerm.toLowerCase())) return false;
+
+      // 4. Aging category filter
+      if (debtAgeFilter !== 'all' && debtor.ageBucket !== debtAgeFilter) return false;
+
+      return true;
     });
-  }, [subscribers, invoices, targetSubscriberDebtWeeks, searchTerm, filterLevel]);
+  }, [subscribers, invoices, simulatedSubDebtDays, searchTerm, debtAgeFilter]);
+
+  // Dynamic statistics
+  const stats = useMemo(() => {
+    const list = debtorList;
+    const totalDue = list.reduce((sum, d) => sum + d.unpaidSum, 0);
+    const count0_30 = list.filter(d => d.ageBucket === '0-30').length;
+    const count31_60 = list.filter(d => d.ageBucket === '31-60').length;
+    const count61_90 = list.filter(d => d.ageBucket === '61-90').length;
+    const count90_plus = list.filter(d => d.ageBucket === '90+').length;
+    return { totalDue, count0_30, count31_60, count61_90, count90_plus };
+  }, [debtorList]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" id="unpaid-debts-view-container">
       
-      {/* Upper Executive Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-200 gap-4">
+      {/* Module Executive Title */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-201/80 gap-4">
         <div>
           <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#635BFF] font-black">
-            <Zap className="h-4 w-4 text-[#635BFF]" />
-            <span>CRON ENGINE • MODULE FISCAL DE RECOUVREMENT OBSTINÉ</span>
+            <Zap className="h-4 w-4" />
+            <span>CRON ENGINE RELANCES • MODULE DE RECOUVREMENT DE REDEVANCES</span>
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Gestion des Impayés & Contentieux</h2>
-          <p className="text-slate-500 text-sm mt-0.5">Automatisation des suspensions de service d'assainissement et relances juridiques multi-canaux de Ouagadougou.</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Suivi du Recouvrement (FCFA)</h2>
+          <p className="text-slate-500 text-sm mt-0.5 mt-1">
+            Visualisation des créances ventilées par tranches d'âges, administration manuelle des relances multi-canaux et paramétrage des exclusions de tournées.
+          </p>
         </div>
 
-        {/* Global manual audit scanner button */}
         <button 
           onClick={handleRunBatchProcessor}
-          className="bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold p-3 rounded-xl flex items-center gap-2 border border-slate-700 active:scale-95 transition cursor-pointer"
+          className="bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold p-3 rounded-xl flex items-center gap-2 border border-slate-700 active:scale-95 transition cursor-pointer shrink-0"
         >
           <Play className="h-4 w-4 text-emerald-400 fill-emerald-400" />
-          <span>Exécuter le batch de recouvrement nocturne</span>
+          <span>Exécuter le Batch de Relances Automatiques</span>
         </button>
       </div>
 
-      {/* CORE RULE DECK REPRESENTATION */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* RECOUVREMENT SPREAD AND RETARD CATEGORIES */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         
-        {/* Tier 1 */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 relative hover:border-slate-350 transition shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Retard &gt; 1 Mois</span>
-            <span className="px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded text-[9.5px] font-bold">Étape 1</span>
+        {/* Category Range 1 */}
+        <button 
+          onClick={() => setDebtAgeFilter('0-30')}
+          className={`text-left p-4 rounded-xl border transition cursor-pointer relative shadow-3xs hover:scale-101 duration-150 ${debtAgeFilter === '0-30' ? 'border-[#635BFF] bg-indigo-50/50' : 'bg-white border-slate-200'}`}
+        >
+          <div className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>0 - 30 Jours d'Impayé</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
           </div>
-          <div className="space-y-1">
-            <h4 className="font-extrabold text-sm text-slate-900">Avertissement Simple</h4>
-            <p className="text-slate-500 text-[11px] leading-relaxed">
-              Envoi automatique d'un SMS et e-mail à l'abonné récapitulant les sommes dues exigibles.
-            </p>
-          </div>
-          <div className="text-[10px] bg-slate-50 p-2 rounded text-slate-400 font-mono">
-            Canal : SMS & Courriel • <span className="text-[#635BFF] font-bold">SMS-AVERT</span>
-          </div>
-        </div>
+          <div className="text-xl font-black text-slate-800 mt-1">{stats.count0_30} Dossiers</div>
+          <span className="text-[10px] font-semibold text-slate-500 mt-1 block">Avertissement recommandé</span>
+        </button>
 
-        {/* Tier 2 */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 relative hover:border-slate-350 transition shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Retard &gt; 2 Mois</span>
-            <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded text-[9.5px] font-bold">Étape 2</span>
+        {/* Category Range 2 */}
+        <button 
+          onClick={() => setDebtAgeFilter('31-60')}
+          className={`text-left p-4 rounded-xl border transition cursor-pointer relative shadow-3xs hover:scale-101 duration-150 ${debtAgeFilter === '31-60' ? 'border-[#635BFF] bg-indigo-50/50' : 'bg-white border-slate-200'}`}
+        >
+          <div className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>31 - 60 Jours d'Impayé</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
           </div>
-          <div className="space-y-1">
-            <h4 className="font-extrabold text-sm text-slate-900">Notification Renforcée</h4>
-            <p className="text-slate-500 text-[11px] leading-relaxed">
-              Avis d'impôt avec intérêt comminatoire de 5% du solde et avertissement pré-suspension à J-15.
-            </p>
-          </div>
-          <div className="text-[10px] bg-slate-50 p-2 rounded text-slate-400 font-mono">
-            Canal : Email & SMS • <span className="text-[#635BFF] font-bold">MAIL-RELANCE</span>
-          </div>
-        </div>
+          <div className="text-xl font-black text-slate-805 mt-1">{stats.count31_60} Dossiers</div>
+          <span className="text-[10px] font-semibold text-slate-500 mt-1 block">Relance forte & SMS</span>
+        </button>
 
-        {/* Tier 3 */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 relative hover:border-slate-350 transition shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Retard &gt; 3 Mois</span>
-            <span className="px-2 py-0.5 bg-rose-50 text-rose-700 rounded text-[9.5px] font-bold">Étape 3</span>
+        {/* Category Range 3 */}
+        <button 
+          onClick={() => setDebtAgeFilter('61-90')}
+          className={`text-left p-4 rounded-xl border transition cursor-pointer relative shadow-3xs hover:scale-101 duration-150 ${debtAgeFilter === '61-90' ? 'border-[#635BFF] bg-indigo-50/50' : 'bg-white border-slate-200'}`}
+        >
+          <div className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>61 - 90 Jours d'Impayé</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
           </div>
-          <div className="space-y-1">
-            <h4 className="font-extrabold text-sm text-slate-900">Mise En Demeure</h4>
-            <p className="text-slate-500 text-[11px] leading-relaxed">
-              Dernier avis formel avant recours. Demande d'intervention d'huissier municipal enregistrée au greffe.
-            </p>
-          </div>
-          <div className="text-[10px] bg-slate-50 p-2 rounded text-slate-400 font-mono">
-            Canal : SMS & Papier • <span className="text-rose-600 font-bold">ADMIN-APPROB</span>
-          </div>
-        </div>
+          <div className="text-xl font-black text-slate-805 mt-1">{stats.count61_90} Dossiers</div>
+          <span className="text-[10px] font-semibold text-rose-600 mt-1 block">Suspension immédiate de ramassage</span>
+        </button>
 
-        {/* Tier 4 */}
-        <div className="bg-slate-950 text-white rounded-xl p-4 space-y-3 relative shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">Retard &gt; 6 Mois</span>
-            <span className="px-2 py-0.5 bg-rose-600 text-white rounded text-[9.5px] font-bold">Étape Finale</span>
+        {/* Category Range 4 */}
+        <button 
+          onClick={() => setDebtAgeFilter('90+')}
+          className={`text-left p-4 rounded-xl border transition cursor-pointer relative shadow-3xs hover:scale-101 duration-150 ${debtAgeFilter === '90+' ? 'border-[#635BFF] bg-indigo-50/50' : 'bg-white border-slate-200'}`}
+        >
+          <div className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>90+ Jours d'Impayé</span>
+            <span className="w-2.5 h-2.5 bg-slate-900 rounded-full" />
           </div>
-          <div className="space-y-1">
-            <h4 className="font-extrabold text-sm text-slate-100">Suspension Automatique</h4>
-            <p className="text-slate-400 text-[11px] leading-relaxed">
-              Contrat bloqué. Bacs retirés de l'algorithme des tournées. Bacs déclarés hors d'usage.
-            </p>
-          </div>
-          <div className="text-[10px] bg-slate-900 p-2 rounded text-slate-500 font-mono">
-            Effet : Blocage SIG immédiat
-          </div>
-        </div>
+          <div className="text-xl font-black text-red-650 mt-1">{stats.count90_plus} Dossiers</div>
+          <span className="text-[10px] font-semibold text-red-600 font-bold mt-1 block">Proposition résiliation & contentieux</span>
+        </button>
 
       </div>
 
-      {/* CORE WORKFLOW AND LOGS SUB NAVIGATION TABS */}
-      <div className="flex items-center border-b border-slate-150 gap-6 text-xs font-bold pb-2 text-slate-400">
+      {/* CORE VIEW SUB-NAVIGATION TABS */}
+      <div className="flex items-center border-b border-slate-200 gap-6 text-xs font-bold pb-2 text-slate-400">
         <button 
-          onClick={() => setActiveSubTab('ledger')}
+          onClick={() => { setActiveSubTab('ledger'); setDebtAgeFilter('all'); }}
           className={`pb-2.5 transition relative cursor-pointer ${activeSubTab === 'ledger' ? 'text-slate-900 border-b-2 border-[#635BFF]' : 'hover:text-slate-600'}`}
         >
-          Grand Livre des Débiteurs ({debtorList.length})
+          Livre de Recouvrement Actif ({debtorList.length})
         </button>
         <button 
-          onClick={() => setActiveSubTab('workflow')}
-          className={`pb-2.5 transition relative cursor-pointer ${activeSubTab === 'workflow' ? 'text-slate-900 border-b-2 border-[#635BFF]' : 'hover:text-slate-600'}`}
+          onClick={() => setActiveSubTab('auto_rules')}
+          className={`pb-2.5 transition relative cursor-pointer ${activeSubTab === 'auto_rules' ? 'text-slate-900 border-b-2 border-[#635BFF]' : 'hover:text-slate-600'}`}
         >
-          Workflow & SGBD PostgreSQL
+          ⚙️ Paramétrage des Règles Automatiques
         </button>
         <button 
           onClick={() => setActiveSubTab('logs')}
           className={`pb-2.5 transition relative cursor-pointer ${activeSubTab === 'logs' ? 'text-slate-900 border-b-2 border-[#635BFF]' : 'hover:text-slate-600'}`}
         >
-          Journal d'Actions & Avis ({recoveringLogs.length})
+          Journal d'Actions de Recouvrement ({recoveringLogs.length})
         </button>
       </div>
 
-      {/* RENDER ACTIVE SUBTAB CONTENT */}
+      {/* ACTIVE VIEW RENDERING */}
       {activeSubTab === 'ledger' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
             
-            {/* Table Filters upper banner */}
-            <div className="p-4 bg-slate-50/70 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Header controls filter bar */}
+            <div className="p-4 bg-slate-50 border-b border-slate-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
               <div className="relative max-w-sm w-full">
                 <Search className="h-4 w-4 text-slate-400 absolute left-3 top-3" />
                 <input 
                   type="text" 
-                  placeholder="Rechercher un dossier débiteur (Nom, ID)..." 
+                  placeholder="Rechercher nom, localité ou référence citoyenne..." 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-white border border-slate-200 pl-9 pr-4 py-2 text-xs font-medium rounded-xl outline-hidden focus:border-slate-350"
+                  className="w-full bg-white border border-[#635BFF]/10 pl-9 pr-4 py-2 text-xs font-semibold rounded-xl outline-hidden focus:border-[#635BFF]"
                 />
               </div>
 
-              {/* Status selectors */}
-              <div className="flex items-center gap-2 text-xs">
-                <Filter className="h-4 w-4 text-slate-500 shrink-0" />
-                <div className="flex bg-white border border-slate-200 p-1.5 rounded-lg font-bold gap-1 text-[10.5px]">
-                  <button 
-                    onClick={() => setFilterLevel('all')}
-                    className={`px-2.5 py-1 rounded ${filterLevel === 'all' ? 'bg-[#635BFF] text-white' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    Tous
-                  </button>
-                  <button 
-                    onClick={() => setFilterLevel('warning')}
-                    className={`px-2.5 py-1 rounded ${filterLevel === 'warning' ? 'bg-yellow-100 text-yellow-800' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    Avertissement
-                  </button>
-                  <button 
-                    onClick={() => setFilterLevel('reinforced')}
-                    className={`px-2.5 py-1 rounded ${filterLevel === 'reinforced' ? 'bg-amber-100 text-amber-800' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    Pris en faute (+2m)
-                  </button>
-                  <button 
-                    onClick={() => setFilterLevel('put_in_suit')}
-                    className={`px-2.5 py-1 rounded ${filterLevel === 'put_in_suit' ? 'bg-rose-100 text-rose-800' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    Mise en demeure
-                  </button>
-                  <button 
-                    onClick={() => setFilterLevel('suspended')}
-                    className={`px-2.5 py-1 rounded ${filterLevel === 'suspended' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    Suspendus
-                  </button>
+              {debtAgeFilter !== 'all' && (
+                <div className="text-[10.5px] p-1 px-3 bg-[#635BFF]/5 border border-[#635BFF]/15 text-[#635BFF] font-extrabold rounded-lg flex items-center gap-1">
+                  <span>Tranche active : {debtAgeFilter === '90+' ? 'Plus de 90 Jours' : `${debtAgeFilter} Jours d'Impayé`}</span>
+                  <button onClick={() => setDebtAgeFilter('all')} className="text-slate-500 font-bold hover:text-black ml-1 scale-105">✕</button>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* List Table Grid representation */}
+            {/* List Table Grid layout */}
             <div className="overflow-x-auto text-xs font-medium">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-150 text-slate-405 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="py-3 px-4">Abonné (Contrat)</th>
-                    <th className="py-3 px-4">Localité/Contact</th>
-                    <th className="py-3 px-4">Créances (Nbre)</th>
-                    <th className="py-3 px-4">Délai Retard Retenu</th>
+                  <tr className="bg-slate-50/60 border-b border-slate-100 text-slate-400 font-extrabold text-[10px] uppercase tracking-wider">
+                    <th className="py-3 px-4">Citoyen (Réf Contrat)</th>
+                    <th className="py-3 px-4">Localisation & Ville</th>
+                    <th className="py-3 px-4">Montant Exigible</th>
+                    <th className="py-3 px-4">Retard (Simulé)</th>
                     <th className="py-3 px-4">Statut Service</th>
-                    <th className="py-3 px-4">Traitement Contentieux</th>
-                    <th className="py-3 px-4 text-center">Ractions</th>
+                    <th className="py-3 px-4">Actions de Recouvrement Manuelles</th>
+                    <th className="py-3 px-4 text-center">Régularisation</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 select-none">
+                <tbody className="divide-y divide-slate-100">
                   {debtorList.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-8 text-slate-400">
-                        🔍 Aucun dossier de contentieux ne correspond à vos filtres.
+                      <td colSpan={7} className="text-center py-10 text-slate-400">
+                        🔍 Aucun foyer débiteur ne correspond aux critères filtrés ({cityFilter === 'all' ? 'Toutes villes' : cityFilter}).
                       </td>
                     </tr>
-                  ) : debtorList.map((debtor) => {
-                    const planInfo = plans.find(p => p.id === debtor.planId);
-                    const contractWarning = debtor.currentTier;
-                    
-                    return (
-                      <tr key={debtor.id} className="hover:bg-slate-50/50 transition">
-                        
-                        {/* 1. Name and id contract */}
-                        <td className="py-3 px-4">
-                          <div className="font-extrabold text-slate-850">{debtor.name}</div>
-                          <span className="font-mono text-[9px] uppercase text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                            {debtor.id}
-                          </span>
-                        </td>
+                  ) : (
+                    debtorList.map(debtor => {
+                      const plan = plans.find(p => p.id === debtor.planId);
+                      const dueAmt = debtor.unpaidSum > 0 ? debtor.unpaidSum : (plan?.price || 3500);
 
-                        {/* 2. Neighborhood & Contact details */}
-                        <td className="py-3 px-4 space-y-0.5 text-slate-500">
-                          <div>Secteur {debtor.neighborhood}</div>
-                          <div className="font-mono text-[10px]">{debtor.phone}</div>
-                        </td>
-
-                        {/* 3. Delayed Invoices */}
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-rose-600 font-mono">
-                            {debtor.unpaidSum > 0 ? `${debtor.unpaidSum.toLocaleString()} FCFA` : `${planInfo?.price || 3500} FCFA (Est)`}
-                          </div>
-                          <span className="text-[10px] text-slate-400 font-bold font-mono">
-                            ({debtor.unpaidCount || 1} impayés)
-                          </span>
-                        </td>
-
-                        {/* 4. Overdue weeks controls */}
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1.5">
-                            <select 
-                              value={debtor.simulatedWeeks ?? 0} 
-                              onChange={(e) => handleSetWeeksDebt(debtor.id, Number(e.target.value))}
-                              className="bg-white border border-slate-200 rounded p-1 text-[10.5px] font-bold text-slate-700 outline-hidden"
-                            >
-                              <option value="0">À jour (Ok)</option>
-                              <option value="4">4 semaines (~1 Mois)</option>
-                              <option value="8">8 semaines (~2 Mois)</option>
-                              <option value="12">12 semaines (~3 Mois)</option>
-                              <option value="24">24 semaines (~6 Mois)</option>
-                            </select>
-                            <span className="text-[10px] text-slate-400 font-mono font-bold">
-                              ({debtor.simulatedMonths}m)
+                      return (
+                        <tr key={debtor.id} className="hover:bg-slate-50/20 transition duration-150">
+                          
+                          {/* 1. Citizen detail */}
+                          <td className="py-3.5 px-4">
+                            <div className="font-extrabold text-slate-900">{debtor.name}</div>
+                            <span className="font-mono text-[9px] uppercase font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                              {debtor.id}
                             </span>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* 5. Status code */}
-                        <td className="py-3 px-4">
-                          <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            debtor.status === 'active' 
-                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-100'
-                              : 'bg-rose-50 text-rose-800 border border-rose-150'
-                          }`}>
-                            {debtor.status === 'active' ? 'Opérationnel' : 'Suspendu (Bloqué)'}
-                          </span>
-                        </td>
+                          {/* 2. Neighborhood city */}
+                          <td className="py-3.5 px-4 space-y-0.5 text-slate-500">
+                            <div className="font-semibold text-slate-800">{debtor.neighborhood} • {cityFilter === 'all' ? 'Burkina' : cityFilter}</div>
+                            <div className="font-mono text-[10px] text-slate-400">{debtor.phone}</div>
+                          </td>
 
-                        {/* 6. Legal Alert tier */}
-                        <td className="py-3 px-4">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[10.5px] font-bold font-mono ${
-                            contractWarning === 'Suspension du contrat' ? 'bg-slate-900 text-slate-100' :
-                            contractWarning === 'Mise En Demeure' ? 'bg-rose-100 text-rose-800' :
-                            contractWarning === 'Notification renforcée' ? 'bg-amber-100 text-amber-800' :
-                            contractWarning === 'Avertissement' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-slate-100 text-slate-500'
-                          }`}>
-                            {contractWarning}
-                          </span>
-                        </td>
+                          {/* 3. Due balance */}
+                          <td className="py-3.5 px-4">
+                            <div className="font-black text-red-650 font-mono text-[12.5px]">
+                              {dueAmt.toLocaleString()} FCFA
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-bold block mt-0.5">
+                              ({debtor.unpaidCount || 1} impayés)
+                            </span>
+                          </td>
 
-                        {/* 7. Specific payment trigger and instant reactivation */}
-                        <td className="py-3 px-4 text-center">
-                          {debtor.unpaidCount > 0 ? (
-                            <button
-                              onClick={() => handlePayAndReactivate(debtor.pendingInvoiceId, debtor.id)}
-                              className="p-1 px-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold rounded-lg transition active:scale-95 text-[10.5px] cursor-pointer"
-                              title="Toucher et Reactiver"
-                            >
-                              Encaisser & Réactiver 
-                            </button>
-                          ) : (
-                            <span className="text-slate-400 italic text-[10px]">Exempte</span>
-                          )}
-                        </td>
+                          {/* 4. Retard selectors */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-1">
+                              <select 
+                                value={debtor.debtAgeDays} 
+                                onChange={(e) => handleSetDebtDays(debtor.id, Number(e.target.value))}
+                                className="bg-white border border-slate-205 rounded p-1 text-[10px] font-bold text-slate-700 outline-hidden"
+                              >
+                                <option value="15">15 jours (&lt; 1m)</option>
+                                <option value="45">45 jours (1-2m)</option>
+                                <option value="75">75 jours (2-3m)</option>
+                                <option value="105">105 jours (3m+)</option>
+                                <option value="150">150 jours (5m+)</option>
+                              </select>
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-extrabold ${
+                                debtor.ageBucket === '90+' ? 'bg-red-50 text-red-800' :
+                                debtor.ageBucket === '61-90' ? 'bg-rose-50 text-rose-800' :
+                                debtor.ageBucket === '31-60' ? 'bg-amber-50 text-amber-800' :
+                                'bg-yellow-50 text-yellow-850'
+                              }`}>
+                                {debtor.ageBucket}
+                              </span>
+                            </div>
+                          </td>
 
-                      </tr>
-                    );
-                  })}
+                          {/* 5. Service status */}
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-block text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ${
+                              debtor.status === 'active' 
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-100' :
+                              debtor.status === 'suspended'
+                                ? 'bg-rose-50 text-rose-800 border-rose-150' :
+                                'bg-slate-900 text-slate-100'
+                            }`}>
+                              {debtor.status === 'active' ? 'Opérationnel' : debtor.status === 'suspended' ? 'Suspendu' : 'Résilié'}
+                            </span>
+                          </td>
+
+                          {/* 6. Execution buttons list */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              <button 
+                                onClick={() => handleExecuteAction(debtor, 'sms', dueAmt, debtor.pendingInvoiceId)}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-[9.5px] font-bold px-1.5 py-0.5 rounded-lg border border-slate-200 transition cursor-pointer"
+                              >
+                                SMS
+                              </button>
+                              <button 
+                                onClick={() => handleExecuteAction(debtor, 'email', dueAmt, debtor.pendingInvoiceId)}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-[9.5px] font-bold px-1.5 py-0.5 rounded-lg border border-slate-200 transition cursor-pointer"
+                              >
+                                Email
+                              </button>
+                              <button 
+                                onClick={() => handleExecuteAction(debtor, 'whatsapp', dueAmt, debtor.pendingInvoiceId)}
+                                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-850 text-[9.5px] font-bold px-1.5 py-0.5 rounded-lg border border-emerald-200 transition cursor-pointer"
+                              >
+                                WhatsApp
+                              </button>
+                              <button 
+                                onClick={() => handleExecuteAction(debtor, 'call', dueAmt, debtor.pendingInvoiceId)}
+                                className="bg-sky-50 hover:bg-sky-100 text-sky-850 text-[9.5px] font-bold px-1.5 py-0.5 rounded-lg border border-sky-200 transition cursor-pointer"
+                              >
+                                Appel
+                              </button>
+                              <button 
+                                onClick={() => handleExecuteAction(debtor, 'promise', dueAmt, debtor.pendingInvoiceId)}
+                                className="bg-yellow-50 hover:bg-yellow-100 text-yellow-850 text-[9.5px] font-bold px-1.5 py-0.5 rounded-lg border border-yellow-200 transition cursor-pointer"
+                              >
+                                Promesse
+                              </button>
+                              <button 
+                                onClick={() => handleExecuteAction(debtor, 'suspension', dueAmt, debtor.pendingInvoiceId)}
+                                className="bg-rose-50 hover:bg-rose-100 text-rose-800 text-[9.5px] font-bold px-1.5 py-0.5 rounded-lg border border-rose-200 transition cursor-pointer"
+                              >
+                                Suspendre
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* 7. Quick pay cash in */}
+                          <td className="py-3.5 px-4 text-center">
+                            {debtor.unpaidCount > 0 ? (
+                              <button 
+                                onClick={() => handlePayAndReactivate(debtor.pendingInvoiceId, debtor.id)}
+                                className="p-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-lg transition active:scale-95 text-[10px] cursor-pointer"
+                              >
+                                Toucher & Réactiver
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 italic">Exempté</span>
+                            )}
+                          </td>
+
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
 
-            {/* Bottom info banner */}
-            <div className="bg-slate-50 p-3 px-4 text-[10.5px] text-slate-400 font-semibold border-t border-slate-100 flex items-center justify-between">
-              <span>Le batch comptable nocturne s'exécute à 00h00 heure locale de Ouagadougou.</span>
-              <span className="text-[#635BFF] flex items-center gap-0.5">
-                <Info className="h-3.5 w-3.5" />
-                Loi ERP UEMOA v12.1 Compliance
+            {/* Bottom ledger info */}
+            <div className="bg-slate-50/60 p-3 px-4 text-[10.5px] text-slate-400 font-semibold border-t border-slate-100 flex items-center justify-between">
+              <span>Moteur de recouvrement de Salubrité municipale • Décalage UTC+0</span>
+              <span className="text-[#635BFF] flex items-center gap-0.5 font-bold">
+                <Info className="h-4 w-4" />
+                AKPBF Burkina Faso Regolations
               </span>
             </div>
 
@@ -669,230 +709,188 @@ export default function UnpaidDebtsView({
         </div>
       )}
 
-      {/* WORKFLOW PATH & POSTGRESQL SCHEMAS DETAIL VISUALIZER */}
-      {activeSubTab === 'workflow' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 font-sans">
+      {/* AUTOMATIC TIMED RULES ADJUSTMENT VIEW */}
+      {activeSubTab === 'auto_rules' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 select-none">
           
-          {/* Left panel Schema SQL DB structure */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+          {/* Rules parameters adjustment card */}
+          <div className="bg-white border border-slate-202 rounded-2xl p-5 space-y-5">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Database className="h-5 w-5 text-[#635BFF]" />
-              <h3 className="font-extrabold text-sm text-slate-900">Architecture SGBD PostgreSQL (SQL Prêt)</h3>
+              <Settings className="h-5 w-5 text-[#635BFF]" />
+              <h3 className="font-extrabold text-sm text-slate-900">Seuils et Règles de Relance Automatique</h3>
             </div>
 
-            <p className="text-slate-500 text-[11.5px] leading-relaxed">
-              Pour assurer l'intégrité et l'obstination fiscale, voici la structure relationnelle à provisionner pour supporter le moteur métier d'impayés :
+            <p className="text-slate-500 text-xs leading-relaxed">
+              Modifiez ci-dessous les paramètres de seuils temporels d'impayés pour déclencher les alertes et les suspensions de service. Les suspensions d'ordures bloquent instantanément le camion de la tournée.
             </p>
 
-            <div className="bg-slate-900 text-slate-100 p-4 rounded-xl font-mono text-[10.5px] leading-relaxed overflow-x-auto space-y-4">
+            {/* Parameters list sliders */}
+            <div className="space-y-4">
+              {/* Threshold 1 */}
               <div>
-                <span className="text-emerald-400 block font-bold">-- 1. Table de suivi des Recouvrements Contentieux</span>
-                <span>{"CREATE TABLE IF NOT EXISTS tax_recovering_actions (\n"}</span>
-                <span>{"  id VARCHAR(30) PRIMARY KEY,\n"}</span>
-                <span>{"  subscriber_id VARCHAR(30) NOT NULL REFERENCES subscribers(id) ON DELETE CASCADE,\n"}</span>
-                <span>{"  unpaid_invoice_id VARCHAR(30) NOT NULL REFERENCES invoices(id),\n"}</span>
-                <span>{"  delay_months INT NOT NULL DEFAULT 0,\n"}</span>
-                <span>{"  unpaid_amount DECIMAL(12, 2) NOT NULL DEFAULT 0,\n"}</span>
-                <span>{"  action_type VARCHAR(50) NOT NULL, -- 'WARNING' | 'REINFORCED' | 'LAWSUIT' | 'SUSPEND'\n"}</span>
-                <span>{"  admin_approved BOOLEAN DEFAULT FALSE,\n"}</span>
-                <span>{"  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n"}</span>
-                <span>{");"}</span>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5Packed">
+                  <span>⚠️ Avertissement Retard Retenu (Étape 1)</span>
+                  <span className="text-slate-800 font-extrabold">{autoRuleDays1} Jours</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="5" 
+                  max="45" 
+                  value={autoRuleDays1} 
+                  onChange={(e) => setAutoRuleDays1(Number(e.target.value))}
+                  className="w-full accent-[#635BFF]" 
+                />
+                <span className="text-[10px] text-slate-400 block mt-0.5">Déclenche un avis SMS / Courriel standard.</span>
               </div>
 
-              <div>
-                <span className="text-amber-400 block font-bold">-- 2. Trigger de réactivation SQL sur paiement</span>
-                <span>{"CREATE OR REPLACE FUNCTION reactivate_subscriber_on_payment()\n"}</span>
-                <span>{"RETURNS TRIGGER AS $$\n"}</span>
-                <span>{"BEGIN\n"}</span>
-                <span>{"  IF NEW.status = 'paid' THEN\n"}</span>
-                <span>{"    UPDATE subscribers \n"}</span>
-                <span>{"    SET status = 'active', payment_status = 'paid' \n"}</span>
-                <span>{"    WHERE id = NEW.subscriber_id;\n"}</span>
-                <span>{"  END IF;\n"}</span>
-                <span>{"  RETURN NEW;\n"}</span>
-                <span>{"END;\n"}</span>
-                <span>{"$$ LANGUAGE plpgsql;"}</span>
+              {/* Threshold 2 */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5">
+                  <span>✉️ Relance Forte & Intérêt 5% (Étape 2)</span>
+                  <span className="text-slate-800 font-extrabold">{autoRuleDays2} Jours</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="46" 
+                  max="80" 
+                  value={autoRuleDays2} 
+                  onChange={(e) => setAutoRuleDays2(Number(e.target.value))}
+                  className="w-full accent-[#635BFF]" 
+                />
+                <span className="text-[10px] text-slate-400 block mt-0.5">Enveloppe d'avis comminatoire avec calcul d'intérêts de pénalité.</span>
+              </div>
+
+              {/* Threshold 3 */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5">
+                  <span>🛑 Suspension Service d'Enlèvement (Étape 3)</span>
+                  <span className="text-slate-800 font-extrabold">{autoRuleDays3} Jours</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="81" 
+                  max="115" 
+                  value={autoRuleDays3} 
+                  onChange={(e) => setAutoRuleDays3(Number(e.target.value))}
+                  className="w-full accent-rose-600" 
+                />
+                <span className="text-[10px] text-slate-400 block mt-0.5 text-red-600 font-semibold">Le contrat passe à SUSPENDU et le bac est confisqué.</span>
+              </div>
+
+              {/* Threshold 4 */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-1.5">
+                  <span>🔥 Proposition Résiliation de Contrat (Étape Finale)</span>
+                  <span className="text-slate-800 font-extrabold">{autoRuleDays4} Jours</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="116" 
+                  max="180" 
+                  value={autoRuleDays4} 
+                  onChange={(e) => setAutoRuleDays4(Number(e.target.value))}
+                  className="w-full accent-slate-900" 
+                />
+                <span className="text-[10px] text-slate-400 block mt-0.5">Notification de convocation juridique.</span>
               </div>
             </div>
 
-            <div className="p-3 bg-indigo-50 border border-indigo-100/50 rounded-lg text-[#635BFF] flex items-center gap-2 text-[10.5px] font-bold">
-              <Info className="h-4.5 w-4.5 shrink-0" />
-              <span>Ce schéma assure un verrouillage de sécurité : aucun camion ne sera affecté à un foyer suspendu.</span>
-            </div>
+            <button 
+              onClick={handleRunBatchProcessor}
+              className="w-full bg-[#635BFF] hover:bg-indigo-700 text-white text-xs font-bold p-3.5 rounded-xl transition cursor-pointer"
+            >
+              Appliquer les Seuils et Ré-évaluer la Base Active
+            </button>
           </div>
 
-          {/* Right panel SVG Flowchart and logic workflow */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <GitBranch className="h-5 w-5 text-emerald-600" />
-                <h3 className="font-extrabold text-sm text-slate-900">Pipeline de Décision Métier Contentieux</h3>
+          {/* Workflow guide visualizer box */}
+          <div className="bg-slate-900 text-white border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+                <GitBranch className="h-5 w-5 text-emerald-400" />
+                <h3 className="font-extrabold text-sm">Automate des relances d'Afrique de l'Ouest</h3>
               </div>
 
-              <p className="text-slate-500 text-[11.5px] leading-relaxed">
-                Le diagramme d'état ci-dessous schématise la transition de contrat d'un foyer de Ouagadougou :
-              </p>
-
-              {/* Visual SVG diagram representation */}
-              <div className="p-4 bg-slate-950 rounded-xl flex flex-col items-center justify-center space-y-4 py-8 relative">
+              <div className="space-y-3 text-xs leading-relaxed text-slate-300">
+                <p>AKPBF ERP utilise un automate d'état qui s'exécute chaque nuit à Ouagadougou.</p>
                 
-                {/* Stage 1 */}
-                <div className="w-48 p-2.5 bg-emerald-900/60 border border-emerald-500 rounded-lg text-center text-[10.5px]">
-                  <strong className="block text-emerald-300 font-extrabold">CONTRAT ACTIF</strong>
-                  <span className="text-[10px] text-slate-400">Factures rattachées réglées</span>
+                <div className="p-3 bg-slate-850 rounded-xl space-y-1.5 font-mono text-[11px]">
+                  <div className="flex items-center gap-1.5 text-yellow-300 font-bold">
+                    <span>1. J+{autoRuleDays1} : AVERTISSEMENT SMS</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                    <span>2. J+{autoRuleDays2} : RELANCE DE COURTOISIE</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-rose-400 font-bold">
+                    <span>3. J+{autoRuleDays3} : SUSPENSION DE SERVICE</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-red-550 font-black">
+                    <span>4. J+{autoRuleDays4} : SUPPRESSION DU CONTRAT</span>
+                  </div>
                 </div>
 
-                <div className="h-4 w-0.5 bg-indigo-500/50" />
-
-                {/* Stage 2 */}
-                <div className="w-48 p-2.5 bg-yellow-950/60 border border-yellow-500 rounded-lg text-center text-[10.5px]">
-                  <strong className="block text-yellow-300 font-extrabold">E1 : Avertissement (&gt; 1m)</strong>
-                  <span className="text-[10px] text-slate-400">Courriel de relance informel</span>
-                </div>
-
-                <div className="h-4 w-0.5 bg-indigo-500/50" />
-
-                {/* Stage 3 */}
-                <div className="w-48 p-2.5 bg-amber-950/80 border border-amber-500 rounded-lg text-center text-[10.5px]">
-                  <strong className="block text-amber-300 font-extrabold">E2 : Relance forte (&gt; 2m)</strong>
-                  <span className="text-[10px] text-slate-400">Menace fiscale + pénalité 5%</span>
-                </div>
-
-                <div className="h-4 w-0.5 bg-indigo-500/50" />
-
-                {/* Stage 4 */}
-                <div className="w-48 p-2.5 bg-rose-950 border border-rose-500/80 rounded-lg text-center text-[10.5px]">
-                  <strong className="block text-rose-300 font-extrabold">E3 : Mise En Demeure (&gt; 3m)</strong>
-                  <span className="text-[10px] text-slate-400">Approbation d'huissier requise</span>
-                </div>
-
-                <div className="h-4 w-0.5 bg-[#635BFF]" />
-
-                {/* Stage 5 */}
-                <div className="w-48 p-2.5 bg-slate-900 border border-slate-700 rounded-lg text-center text-[10.5px]">
-                  <strong className="font-extrabold text-slate-200 block">E4 : SUSPENDU (&gt; 6m)</strong>
-                  <span className="text-[10px] text-rose-400 font-black">Hors tournée SIG</span>
-                </div>
-
-                {/* Loop Back transition */}
-                <div className="absolute right-4 top-1/4 h-2/3 w-8 border-r-2 border-dashed border-emerald-500 rounded-r-xl flex items-center justify-center pointer-events-none">
-                  <span className="text-[7.5px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded rotate-90 transform translate-x-3.5 whitespace-nowrap">
-                    RECHARGE (REMPLACER PAIEMENT) -- RÉACTIVATION AUTOMATIQUE
-                  </span>
-                </div>
+                <p>Si un abonné paie sa créance, l'automate le repasse immédiatement à l'état <strong className="text-emerald-400">OPÉRATIONNEL</strong> et le réintègre en tournée.</p>
               </div>
             </div>
 
-            <div className="pt-2 text-[10.5px] text-slate-400 text-center italic">
-              Conçu pour l'assainissement urbain d'Afrique de l'Ouest (UEMOA CEP).
+            <div className="pt-4 border-t border-slate-800 text-[10.5px] italic text-slate-500 text-center">
+              Système certifié conforme aux chartes municipales.
             </div>
           </div>
 
         </div>
       )}
 
-      {/* DETAILED ACTION JOURNAL & ADMONITION LOGS */}
+      {/* LOGS LIST VIEW */}
       {activeSubTab === 'logs' && (
         <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h3 className="font-extrabold text-sm text-slate-850">Historique des Audits & Traitements Fiscaux</h3>
-              <p className="text-[11.5px] text-slate-400 mt-0.5">Vues d'audit réglementaires pour la traçabilité des avertissements officiels administrés.</p>
+              <h3 className="font-extrabold text-sm text-slate-850">Livre d'Audit de Contentieux</h3>
+              <p className="text-[11.5px] text-slate-400 mt-0.5">Traçabilité des avertissements officiels administrés.</p>
             </div>
             <button 
               onClick={() => {
-                setRecoveringLogs([
-                  {
-                    id: 'REC-001',
-                    subscriberName: 'Mamadou Diallo',
-                    subscriberId: 'SUB-8842',
-                    invoiceId: 'FAC-2026-003',
-                    delayMonths: 2,
-                    unpaidAmount: 3500,
-                    statusBefore: 'active',
-                    statusAfter: 'active',
-                    actionTaken: 'Notification renforcée',
-                    type: 'email',
-                    timestamp: '2026-05-18 10:45',
-                    adminApproved: true
-                  },
-                  {
-                    id: 'REC-002',
-                    subscriberName: 'Ouedraogo Salif',
-                    subscriberId: 'SUB-9944',
-                    invoiceId: 'FAC-2026-008',
-                    delayMonths: 3,
-                    unpaidAmount: 6000,
-                    statusBefore: 'active',
-                    statusAfter: 'active',
-                    actionTaken: 'Mise En Demeure',
-                    type: 'sms',
-                    timestamp: '2026-05-20 09:12',
-                    adminApproved: false
-                  }
-                ]);
-                alert("Logs d'audits réinitialisés aux valeurs d'usine.");
+                setRecoveringLogs([]);
+                alert("Historique des relances remis à zéro.");
               }}
-              className="p-1.5 bg-slate-100 text-slate-500 hover:text-slate-800 rounded-lg text-[11px] font-bold cursor-pointer"
+              className="p-1.5 bg-slate-100 text-slate-500 hover:text-slate-850 rounded-lg text-[10.5px] font-bold cursor-pointer"
             >
-              Réinitialiser l'historique
+              Vider le Journal
             </button>
           </div>
 
-          <div className="divide-y divide-slate-100 text-[11.5px]">
-            {recoveringLogs.map((log) => (
-              <div key={log.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                
-                {/* Log metadata */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[9px] font-black uppercase text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                      {log.id}
-                    </span>
-                    <h5 className="font-extrabold text-slate-900">{log.subscriberName}</h5>
-                    <span className="text-slate-400 font-bold">•</span>
-                    <span className="text-[10px] text-slate-400 font-mono">Date : {log.timestamp}</span>
-                  </div>
-
-                  <p className="text-slate-500 text-[11px]">
-                    Action : <strong className="text-slate-700">{log.actionTaken}</strong> ({log.delayMonths} mois de retard - {log.unpaidAmount.toLocaleString()} FCFA impayés). 
-                  </p>
-
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                    <span className="flex items-center gap-0.5">
-                      {log.type === 'sms' ? <MessageSquare className="h-3 w-3 inline text-[#635BFF]" /> : <Mail className="h-3 w-3 inline text-emerald-500" />}
-                      {log.type.toUpperCase()} envoyé
-                    </span>
-                    <span>•</span>
-                    <span>Facture source : {log.invoiceId}</span>
-                  </div>
-                </div>
-
-                {/* Admin validation triggers */}
-                <div>
-                  {log.adminApproved ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>Approuvé & Applique</span>
-                    </span>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded inline-flex items-center gap-0.5 shrink-0">
-                        <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
-                        <span>En validation Admin</span>
-                      </span>
-                      <button
-                        onClick={() => handleApproveAction(log.id)}
-                        className="p-1.5 px-3 bg-slate-900 text-white hover:bg-[#635BFF] rounded-lg text-[10px] font-bold transition active:scale-95 cursor-pointer"
-                      >
-                        Valider l'Action
-                      </button>
-                    </div>
-                  )}
-                </div>
-
+          <div className="divide-y divide-slate-100 font-medium">
+            {recoveringLogs.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-xs">
+                Aucune relance consignée dans le journal d'audits.
               </div>
-            ))}
+            ) : (
+              recoveringLogs.map(log => {
+                return (
+                  <div key={log.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs font-semibold">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[9px] uppercase font-black text-slate-450 bg-slate-100 px-1.5 py-0.5 rounded">
+                          {log.id}
+                        </span>
+                        <h4 className="text-slate-900 font-extrabold">{log.subscriberName}</h4>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-[10px] text-slate-400 font-mono font-medium">{log.timestamp}</span>
+                      </div>
+                      
+                      <p className="text-slate-500 text-[11px] mt-1">
+                        Type : <strong className="text-slate-700">{log.actionTaken}</strong> ({log.debtAgeDays} jours de retard - {log.unpaidAmount.toLocaleString()} FCFA).
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 text-slate-400 font-mono text-[10px]">
+                      Abonné : {log.subscriberId}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}

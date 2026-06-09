@@ -9,6 +9,7 @@ import { ErpController } from '../controllers/erpController';
 import { authenticateToken } from '../middleware/authMiddleware';
 
 import { UserController } from '../controllers/userController';
+import { BillingWorkflowController } from '../controllers/billingWorkflowController';
 import accountingRoutes from '../modules/accounting/routes/accountingRoutes';
 
 const router = Router();
@@ -40,6 +41,21 @@ router.put('/users/:id/status', authenticateToken as any, UserController.toggleS
 router.post('/billing/cycle', authenticateToken as any, BillingController.runBillingCycle);
 router.get('/billing/debts', authenticateToken as any, BillingController.getUnpaidDebts);
 router.post('/billing/auto-suspend', authenticateToken as any, BillingController.triggerAutoSuspensions);
+
+// ==========================================
+// PHASE 1: WORKFLOW BILLING ENGINE ENDPOINTS
+// ==========================================
+router.post('/invoices', authenticateToken as any, BillingWorkflowController.createInvoice);
+router.get('/invoices', authenticateToken as any, BillingWorkflowController.getInvoices);
+router.get('/invoices/:id', authenticateToken as any, BillingWorkflowController.getInvoiceById);
+router.put('/invoices/:id', authenticateToken as any, BillingWorkflowController.updateInvoice);
+router.post('/invoices/:id/validate', authenticateToken as any, BillingWorkflowController.validateInvoice);
+router.post('/invoices/:id/payment', authenticateToken as any, BillingWorkflowController.recordInvoicePayment);
+router.post('/invoices/:id/cancel', authenticateToken as any, BillingWorkflowController.cancelInvoice);
+
+router.post('/subscriptions/:id/resiliate', authenticateToken as any, BillingWorkflowController.resiliateSubscription);
+
+router.get('/payments', authenticateToken as any, BillingWorkflowController.getPayments);
 
 // ==========================================
 // MOBILE MONEY PAYMENT ENDPOINTS (PHASE 7)

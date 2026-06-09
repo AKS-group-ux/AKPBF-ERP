@@ -1,5 +1,5 @@
 import { getPrismaClient } from '../../../config/database';
-import { Account, Journal, JournalEntry, JournalEntryLine, Expense, ExpenseCategory } from '../models/types';
+import { Account, Journal, JournalEntry, JournalEntryLine, Expense, ExpenseCategory, Supplier, SupplierInvoice } from '../models/types';
 
 export class AccountingRepository {
   private static instance: AccountingRepository;
@@ -49,6 +49,74 @@ export class AccountingRepository {
     } catch (e) {
       console.error(`[AccountingRepository] Critical: Failed to persist accounting data for ${key} to PostgreSQL`, e);
     }
+  }
+
+  // ==========================================
+  // SUPPLIERS
+  // ==========================================
+  public async getSuppliers(): Promise<Supplier[]> {
+    const list = await this.getSettingData<Supplier[]>('AKPBF_ERP_SUPPLIERS', []);
+    if (list.length === 0) {
+      const seeded: Supplier[] = [
+        {
+          id: 'FOUR-001',
+          name: 'Sodirep S.A.',
+          contactName: 'Kaboré Souleymane',
+          email: 'contact@sodirep.bf',
+          phone: '+226 25 30 31 32',
+          address: 'Avenue de la Nation, Ouagadougou',
+          category: 'Fuel',
+          outstandingDebt: 0
+        },
+        {
+          id: 'FOUR-002',
+          name: 'PlastIsur Sarl',
+          contactName: 'Sawadogo Aminata',
+          email: 'b2b@plastisur.com',
+          phone: '+226 25 40 41 42',
+          address: 'Zone Industrielle de Kossodo, Ouagadougou',
+          category: 'Equipment',
+          outstandingDebt: 0
+        }
+      ];
+      await this.saveSuppliers(seeded);
+      return seeded;
+    }
+    return list;
+  }
+
+  public async saveSuppliers(suppliers: Supplier[]): Promise<void> {
+    await this.saveSettingData('AKPBF_ERP_SUPPLIERS', suppliers, 'Annuaire des fournisseurs homologues AKPBF');
+  }
+
+  // ==========================================
+  // SUPPLIER INVOICES
+  // ==========================================
+  public async getSupplierInvoices(): Promise<SupplierInvoice[]> {
+    const list = await this.getSettingData<SupplierInvoice[]>('AKPBF_ERP_SUPPLIER_INVOICES', []);
+    if (list.length === 0) {
+      const seeded: SupplierInvoice[] = [
+        {
+          id: 'FAC-FOUR-01',
+          supplierId: 'FOUR-001',
+          supplierName: 'Sodirep S.A.',
+          invoiceNumber: 'SOD-2026-004',
+          amount: 120000,
+          dueDate: '2026-08-30',
+          category: 'Carburant',
+          status: 'paid',
+          validationFlow: 'Terminé',
+          justificatifUrl: 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=400&auto=format&fit=crop&q=60'
+        }
+      ];
+      await this.saveSupplierInvoices(seeded);
+      return seeded;
+    }
+    return list;
+  }
+
+  public async saveSupplierInvoices(invoices: SupplierInvoice[]): Promise<void> {
+    await this.saveSettingData('AKPBF_ERP_SUPPLIER_INVOICES', invoices, 'Registre des factures fournisseurs d’achats et dettes');
   }
 
   // ==========================================

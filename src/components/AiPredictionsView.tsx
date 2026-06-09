@@ -366,7 +366,7 @@ export default function AiPredictionsView({
           <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight mt-1.5 flex items-center gap-2">
             Intelligence Artificielle & Audit
           </h2>
-          <p className="text-slate-500 text-sm mt-0.5">Croisement cognitif de facturation, logistique d'Abidjan et plans de secours d'urgence</p>
+          <p className="text-slate-500 text-sm mt-0.5">Croisement cognitif de facturation, logistique de Ouagadougou et plans de secours d'urgence</p>
         </div>
 
         {/* Local Tab Selector */}
@@ -471,7 +471,7 @@ export default function AiPredictionsView({
                 <span>Statut du Moteur</span>
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed font-semibold">
-                Le cerveau cognitif interroge en temps réel le registre comptable d'AKPBF et le positionnement RFID des cuves d'Abidjan pour formuler de fiers diagnostics.
+                Le cerveau cognitif interroge en temps réel le registre comptable d'AKPBF and le positionnement RFID des cuves de Ouagadougou pour formuler de fiers diagnostics.
               </p>
             </div>
           </div>
@@ -541,7 +541,7 @@ export default function AiPredictionsView({
               {isAiAnswering && (
                 <div className="flex justify-start items-center gap-2 text-slate-400 text-xs pl-8 font-mono animate-pulse">
                   <Sparkles className="h-3.5 w-3.5 text-emerald-600 animate-spin" />
-                  <span>AKPBF-Brain interroge l'ERP et compile l'analyse en Côte d'Ivoire...</span>
+                  <span>AKPBF-Brain interroge l'ERP et compile l'analyse au Burkina Faso...</span>
                 </div>
               )}
             </div>
@@ -554,7 +554,7 @@ export default function AiPredictionsView({
                   id="copilot-text-input"
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
-                  placeholder="Posez une question sur le recouvrement, les tournées d'Abidjan..."
+                  placeholder="Posez une question sur le recouvrement, les tournées de Ouagadougou..."
                   className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-xs outline-hidden focus:ring-1 focus:ring-emerald-500 font-semibold shadow-inner"
                 />
                 
@@ -829,7 +829,7 @@ export default function AiPredictionsView({
                 <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-150 font-medium text-xs leading-normal text-slate-700 flex items-start gap-2">
                   <Info className="h-4.5 w-4.5 text-emerald-800 shrink-0 mt-0.5" />
                   <p>
-                    <strong>Recommandation d'acquisition SaaS :</strong> En déployant un représentant sur la **Riviera 3**, notre taux de conversion de salubrité peut augmenter de **18%** grâce à la preuve sociale de voisinage résiduelle.
+                    <strong>Recommandation d'acquisition SaaS :</strong> En déployant un représentant sur **Karpala**, notre taux de conversion de salubrité peut augmenter de **18%** grâce à la preuve sociale de voisinage résiduelle.
                   </p>
                 </div>
               </div>
@@ -852,7 +852,7 @@ export default function AiPredictionsView({
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-800 text-sm">Rapport d'Audit Stratégique & SWOT</h3>
-                  <p className="text-xs text-slate-400">Croisement automatique des metrics d'Abidjan en direct</p>
+                  <p className="text-xs text-slate-400">Croisement automatique des metrics de Ouagadougou en direct</p>
                 </div>
               </div>
 
@@ -875,7 +875,7 @@ export default function AiPredictionsView({
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 text-amber-300" />
-                      Générer le Rapport d'Audit Institutionnel (Abidjan)
+                      Générer le Rapport d'Audit Institutionnel (Ouagadougou)
                     </>
                   )}
                 </button>
@@ -899,7 +899,7 @@ export default function AiPredictionsView({
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-800 text-sm">Simulateur de Crises Urbaines & Continuité (PCA)</h3>
-                  <p className="text-xs text-slate-400">Modèles de réaction d'urgence face aux imprévus d'Abidjan</p>
+                  <p className="text-xs text-slate-400">Modèles de réaction d'urgence face aux imprévus de Ouagadougou</p>
                 </div>
               </div>
 
@@ -910,7 +910,7 @@ export default function AiPredictionsView({
                   {[
                     { id: 'greve', label: '✊ Grève Organisée', tip: '75% du personnel absent' },
                     { id: 'penurie_carburant', label: '⛽ Pénurie Gazole', tip: 'Ravitaillement bloqué' },
-                    { id: 'inondation', label: '⛈️ Saison des Pluies', tip: 'Riviera submergée' },
+                    { id: 'inondation', label: '⛈️ Saison des Pluies', tip: 'Karpala submergé' },
                     { id: 'panne_camions', label: '🔧 Pannes Matérielles', tip: '3 Vérins hydrauliques hors-service' }
                   ].map((sc) => (
                     <button

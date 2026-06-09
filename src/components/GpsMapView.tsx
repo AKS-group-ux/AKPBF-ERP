@@ -397,12 +397,12 @@ export default function GpsMapView({
     setSearchResults([]);
 
     try {
-      // Build search query targeting Côte d'Ivoire
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}+Abidjan+Cote+d+Ivoire&limit=5`;
+      // Build search query targeting Burkina Faso
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}+Ouagadougou+Burkina+Faso&limit=5`;
       
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'akpbf-cleanup-sig-abidjan-v1' // As stored in secure environment vars
+          'User-Agent': 'akpbf-cleanup-sig-ouaga-v1' // As stored in secure environment vars
         }
       });
 

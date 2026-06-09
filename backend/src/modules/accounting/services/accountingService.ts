@@ -1,5 +1,5 @@
 import { AccountingRepository } from '../repositories/accountingRepository';
-import { Account, Journal, JournalEntry, JournalEntryLine, Expense, AccountType } from '../models/types';
+import { Account, Journal, JournalEntry, JournalEntryLine, Expense, AccountType, Supplier, SupplierInvoice } from '../models/types';
 import crypto from 'crypto';
 
 export class AccountingService {
@@ -23,6 +23,8 @@ export class AccountingService {
     const journals = await this.repo.getJournals();
     const entriesWithLines = await this.repo.getJournalEntries();
     const expenses = await this.repo.getExpenses();
+    const suppliers = await this.repo.getSuppliers();
+    const supplierInvoices = await this.repo.getSupplierInvoices();
 
     // Compile actual balances for trial balance and reporting
     const trialBalance = this.compileTrialBalance(accounts, entriesWithLines);
@@ -34,12 +36,159 @@ export class AccountingService {
       journals,
       entries: entriesWithLines,
       expenses,
+      suppliers,
+      supplierInvoices,
       statements: {
         trialBalance,
         incomeStatement,
         balanceSheet
       }
     };
+  }
+
+  // ==========================================
+  // REGISTER & UPDATE SUPPLIERS
+  // ==========================================
+  public async getSuppliers(): Promise<Supplier[]> {
+    return await this.repo.getSuppliers();
+  }
+
+  public async getSupplierInvoices(): Promise<SupplierInvoice[]> {
+    return await this.repo.getSupplierInvoices();
+  }
+
+  public async createSupplier(supplierData: any): Promise<Supplier> {
+    const list = await this.repo.getSuppliers();
+    const newId = `FOUR-00${list.length + 1}`;
+    const newSupplier: Supplier = {
+      id: newId,
+      name: supplierData.name,
+      contactName: supplierData.contactName || '',
+      email: supplierData.email || '',
+      phone: supplierData.phone,
+      address: supplierData.address || '',
+      category: supplierData.category || 'Others',
+      outstandingDebt: 0,
+      createdAt: new Date().toISOString()
+    };
+    list.push(newSupplier);
+    await this.repo.saveSuppliers(list);
+    return newSupplier;
+  }
+
+  public async createSupplierInvoice(invoiceData: any): Promise<SupplierInvoice> {
+    const invoices = await this.repo.getSupplierInvoices();
+    const suppliers = await this.repo.getSuppliers();
+
+    const selectedSup = suppliers.find(s => s.id === invoiceData.supplierId);
+    if (!selectedSup) {
+      throw new Error(`Fournisseur avec l'identifiant ${invoiceData.supplierId} introuvable.`);
+    }
+
+    const newId = `FAC-FOUR-0${invoices.length + 1}`;
+    const amount = Number(invoiceData.amount);
+
+    const newInvoice: SupplierInvoice = {
+      id: newId,
+      supplierId: invoiceData.supplierId,
+      supplierName: selectedSup.name,
+      invoiceNumber: invoiceData.invoiceNumber,
+      amount,
+      dueDate: invoiceData.dueDate || new Date().toISOString().split('T')[0],
+      category: invoiceData.category || 'Divers d\'exploitation',
+      status: 'draft',
+      validationFlow: 'Comptable',
+      justificatifUrl: invoiceData.justificatifUrl || 'https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=400&auto=format&fit=crop&q=60',
+      createdAt: new Date().toISOString()
+    };
+
+    invoices.push(newInvoice);
+    await this.repo.saveSupplierInvoices(invoices);
+
+    // Increment outstanding debt on suppliers list
+    selectedSup.outstandingDebt += amount;
+    await this.repo.saveSuppliers(suppliers);
+
+    // Standard SYSCOHADA double-entry logic: Establish Debt liability
+    // Debit Class 6 (purchased service charges, standard 606100) / Credit Class 401100 (Supplier Debt)
+    try {
+      let debitAccount = '606100'; // Fuel
+      const categoryLower = (invoiceData.category || '').toLowerCase();
+      if (categoryLower.includes('repar') || categoryLower.includes('maintenan')) {
+        debitAccount = '615100'; // Repair
+      } else if (categoryLower.includes('equip') || categoryLower.includes('bac')) {
+        debitAccount = '602100'; // Sacs/Bacs supplies
+      } else if (categoryLower.includes('telecom') || categoryLower.includes('phone')) {
+        debitAccount = '626100'; // Telecom
+      } else if (categoryLower.includes('insur') || categoryLower.includes('assur')) {
+        debitAccount = '616100'; // Insurance
+      }
+
+      await this.createManualEntry({
+        date: new Date().toISOString().split('T')[0],
+        reference: newInvoice.id,
+        description: `Facture d'achat d'exploitation rattachée - No. ${newInvoice.invoiceNumber} (Fr: ${selectedSup.name})`,
+        journalCode: 'AC',
+        operator: 'Système ERP (Auto)'
+      }, [
+        { accountCode: debitAccount, debit: amount, credit: 0 },
+        { accountCode: '401100', debit: 0, credit: amount }
+      ]);
+    } catch (e: any) {
+      console.error('[AccountingService] Automatic purchase entry generation error:', e);
+    }
+
+    return newInvoice;
+  }
+
+  public async advanceSupplierInvoiceValidation(invoiceId: string): Promise<SupplierInvoice> {
+    const invoices = await this.repo.getSupplierInvoices();
+    const targetIdx = invoices.findIndex(i => i.id === invoiceId);
+
+    if (targetIdx === -1) {
+      throw new Error(`Facture d'achat ${invoiceId} introuvable.`);
+    }
+
+    const inv = invoices[targetIdx];
+
+    if (inv.status === 'draft') {
+      inv.status = 'pending_approval';
+      inv.validationFlow = 'Comptable';
+    } else if (inv.status === 'pending_approval') {
+      inv.status = 'approved';
+      inv.validationFlow = 'Directeur';
+    } else if (inv.status === 'approved') {
+      inv.status = 'paid';
+      inv.validationFlow = 'Terminé';
+
+      // Settle Outstanding Debts on Supplier profile
+      const suppliers = await this.repo.getSuppliers();
+      const sIndex = suppliers.findIndex(s => s.id === inv.supplierId);
+      if (sIndex !== -1) {
+        suppliers[sIndex].outstandingDebt = Math.max(0, suppliers[sIndex].outstandingDebt - inv.amount);
+        await this.repo.saveSuppliers(suppliers);
+      }
+
+      // Standard SYSCOHADA double-entry logic: Clear Supplier debt liability (401100) via cash/bank
+      // Debit 401100 / Credit 571100 or 512100
+      try {
+        await this.createManualEntry({
+          date: new Date().toISOString().split('T')[0],
+          reference: `SETTLE-${inv.id}`,
+          description: `Règlement facture d'achat ${inv.id} (No. ${inv.invoiceNumber} Fr: ${inv.supplierName})`,
+          journalCode: 'CSH',
+          operator: 'Comptable ERP (Validation)'
+        }, [
+          { accountCode: '401100', debit: inv.amount, credit: 0 },
+          { accountCode: '571100', debit: 0, credit: inv.amount }
+        ]);
+      } catch (e: any) {
+        console.error('[AccountingService] Automatic supplier settlement journal entry error:', e);
+      }
+    }
+
+    await this.repo.saveSupplierInvoices(invoices);
+    return inv;
   }
 
   /**

@@ -552,7 +552,7 @@ export default function BinsManagementView({ subscribers, onUpdateSubscriber, on
                       </span>
                     </div>
                     <div className="bg-slate-50 p-2 rounded-lg">
-                      <span className="text-[9px] text-slate-400 block font-semibold uppercase">Zone Géo (Abidjan)</span>
+                      <span className="text-[9px] text-slate-400 block font-semibold uppercase">Zone Géo (Ouagadougou)</span>
                       <span className="font-bold text-slate-700 flex items-center gap-1 mt-0.5">
                         <MapPin className="h-3 w-3 text-red-500 shrink-0" />
                         <span>{selectedBin.neighborhood}</span>

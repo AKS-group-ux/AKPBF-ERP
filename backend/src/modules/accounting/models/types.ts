@@ -64,3 +64,33 @@ export interface FinancialReport {
   generatedAt: Date | string;
   content: string; // Serialized JSON or narrative
 }
+
+// ====================================================
+// SUPPLIER WORKFLOW
+// ====================================================
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  address: string;
+  category: 'Fuel' | 'Vehicles Repair' | 'Equipment' | 'Telecom' | 'Insure' | 'Others';
+  outstandingDebt: number;
+  createdAt?: string;
+}
+
+export interface SupplierInvoice {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  invoiceNumber: string;
+  amount: number;
+  dueDate: string;
+  category: string;
+  status: 'draft' | 'pending_approval' | 'approved' | 'paid' | 'cancelled';
+  validationFlow: 'Comptable' | 'Directeur' | 'Terminé';
+  justificatifUrl?: string;
+  createdAt?: string;
+}

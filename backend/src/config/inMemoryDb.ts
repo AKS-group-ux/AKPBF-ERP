@@ -230,7 +230,9 @@ export class InMemoryDb {
     notification: [],
     document: [],
     auditLog: [],
-    setting: []
+    setting: [],
+    invoiceItem: [],
+    accountingEntry: []
   };
 
   /**
@@ -245,6 +247,8 @@ export class InMemoryDb {
     if (raw === 'vehiclelocation') return 'vehicleLocation';
     if (raw === 'collectionroute') return 'collectionRoute';
     if (raw === 'auditlog') return 'auditLog';
+    if (raw === 'invoiceitem') return 'invoiceItem';
+    if (raw === 'accountingentry') return 'accountingEntry';
     return raw;
   }
 
@@ -278,7 +282,25 @@ export class InMemoryDb {
         ...record,
         customer: this.collections.customer.find(c => c.id === record.customerId),
         subscription: this.collections.subscription.find(s => s.id === record.subscriptionId),
-        payments: (this.collections.payment || []).filter(p => p.invoiceId === record.id)
+        payments: (this.collections.payment || []).filter(p => p.invoiceId === record.id),
+        items: (this.collections.invoiceItem || []).filter(item => item.invoiceId === record.id),
+        accountingEntries: (this.collections.accountingEntry || []).filter(entry => entry.invoiceId === record.id)
+      };
+    }
+
+    if (name === 'payment') {
+      return {
+        ...record,
+        invoice: this.collections.invoice.find(i => i.id === record.invoiceId),
+        accountingEntries: (this.collections.accountingEntry || []).filter(e => e.paymentId === record.id)
+      };
+    }
+
+    if (name === 'accountingEntry') {
+      return {
+        ...record,
+        invoice: this.collections.invoice.find(i => i.id === record.invoiceId),
+        payment: this.collections.payment.find(p => p.id === record.paymentId)
       };
     }
 

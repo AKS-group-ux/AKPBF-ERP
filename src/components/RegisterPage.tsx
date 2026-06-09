@@ -97,7 +97,7 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
         if (data && data.display_name) {
           // Fill temporary search address box or physical input
           const cleanAddr = data.address?.road || data.address?.suburb || data.address?.neighbourhood 
-            ? `${data.address.road || ''} ${data.address.suburb || data.address.neighbourhood || ''}, Abidjan` 
+            ? `${data.address.road || ''} ${data.address.suburb || data.address.neighbourhood || ''}, Ouagadougou` 
             : data.display_name;
           setMapSearchQuery(cleanAddr.trim());
         }
@@ -136,7 +136,7 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
 
     setIsSearchingAddress(true);
     try {
-      const queryStr = encodeURIComponent(mapSearchQuery.trim() + ", Abidjan, Côte d'Ivoire");
+      const queryStr = encodeURIComponent(mapSearchQuery.trim() + ", Ouagadougou, Burkina Faso");
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${queryStr}&limit=5`, {
         headers: { 'Accept-Language': 'fr' }
       });
@@ -234,7 +234,7 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      setError("L'adresse e-mail saisie n'est pas au format valide (ex: citoyen@Abidjan.ci).");
+      setError("L'adresse e-mail saisie n'est pas au format valide (ex: citoyen@ouaga.bf).");
       return;
     }
 
@@ -262,8 +262,8 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
         phone: phone.trim(),
         address: address.trim(),
         neighborhood: neighborhood,
-        lat: selectedCoords ? selectedCoords.lat : 5.3489 + (Math.random() - 0.5) * 0.04,
-        lng: selectedCoords ? selectedCoords.lng : -3.9995 + (Math.random() - 0.5) * 0.04,
+        lat: selectedCoords ? selectedCoords.lat : 12.3711 + (Math.random() - 0.5) * 0.04,
+        lng: selectedCoords ? selectedCoords.lng : -1.5312 + (Math.random() - 0.5) * 0.04,
         planId: planId,
         status: 'pending_validation',
         binType: binType,
@@ -321,7 +321,7 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
             Abonnement de Collecte & d'Assainissement
           </h2>
           <p className="mt-1 text-center text-xs text-slate-400">
-            Adhésion citoyenne numérique gérée par la plateforme technologique AKPBF Abidjan.
+            Adhésion citoyenne numérique gérée par la plateforme technologique AKPBF Ouagadougou.
           </p>
         </div>
       </div>
@@ -339,7 +339,7 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
               <div className="space-y-2">
                 <h3 className="text-xl font-bold text-white">Souscription Enregistrée !</h3>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-                  Votre dossier citoyen a été indexé avec succès dans le registre d'Abidjan. Un agent municipal validera votre raccordement sous 24h.
+                  Votre dossier citoyen a été indexé avec succès dans le registre de Ouagadougou. Un agent municipal validera votre raccordement sous 24h.
                 </p>
               </div>
 
@@ -538,7 +538,7 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
                     className="mt-0.5 rounded border-slate-800 text-emerald-600 focus:ring-emerald-555 outline-none bg-slate-950 w-4 h-4 cursor-pointer"
                   />
                   <span>
-                    J'approuve formellement les <strong>Conditions Générales d’Utilisation (CGU)</strong> d’AKPBF S.A, et autorise le traitement de mes coordonnées pour l'exécution réglementaire du raccordement de voirie et de facturation municipale d'Abidjan.
+                    J'approuve formellement les <strong>Conditions Générales d’Utilisation (CGU)</strong> d’AKPBF S.A, et autorise le traitement de mes coordonnées pour l'exécution réglementaire du raccordement de voirie et de facturation municipale de Ouagadougou.
                   </span>
                 </label>
               </div>
@@ -586,7 +586,7 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
                     </div>
                     <div>
                       <h3 className="text-sm font-black text-slate-100 uppercase tracking-wide">Positionnement Cartographique du Client</h3>
-                      <p className="text-[10px] text-slate-400">Glissez le marqueur ou cliquez sur le plan pour cibler les coordonnées de raccordement municipaux d'Abidjan.</p>
+                      <p className="text-[10px] text-slate-400">Glissez le marqueur ou cliquez sur le plan pour cibler les coordonnées de raccordement municipaux de Ouagadougou.</p>
                     </div>
                   </div>
                   <button
@@ -610,8 +610,8 @@ export default function RegisterPage({ plans, onAddSubscriber, onAddNotification
                         type="text"
                         value={mapSearchQuery}
                         onChange={(e) => setMapSearchQuery(e.target.value)}
-                        placeholder="Rechercher une adresse, une rue ou un repère à Abidjan (ex: Rue des Jardins, Deux Plateaux)..."
-                        className="w-full bg-slate-900 border border-slate-800 text-slate-100 focus:border-emerald-500 rounded-lg pl-9 pr-4 py-2 text-xs font-semibold outline-none transition"
+                        placeholder="Rechercher une adresse, une rue ou un repère à Ouagadougou (ex: Avenue Kwame N'Krumah, Karpala)..."
+                        className="w-full bg-slate-900 border border-slate-805 text-slate-100 focus:border-emerald-500 rounded-lg pl-9 pr-4 py-2 text-xs font-semibold outline-none transition"
                       />
                     </div>
                     <button

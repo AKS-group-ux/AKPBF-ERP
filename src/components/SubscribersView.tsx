@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { 
   Plus, 
   Search, 
@@ -30,6 +30,7 @@ interface SubscribersViewProps {
   onUpdateSubscriber: (updatedSub: Subscriber) => void;
   onDeleteSubscriber: (id: string) => void;
   onSelectSubscriber?: (id: string) => void;
+  initialStatusFilter?: string; // New prop for ERP integration
 }
 
 export default function SubscribersView({ 
@@ -39,14 +40,21 @@ export default function SubscribersView({
   onAddSubscriber, 
   onUpdateSubscriber, 
   onDeleteSubscriber,
-  onSelectSubscriber
+  onSelectSubscriber,
+  initialStatusFilter = 'All'
 }: SubscribersViewProps) {
   // State for search and filter controls
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedNeighborhood, setSelectedNeighborhood] = useState('All');
   const [selectedPlan, setSelectedPlan] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState(initialStatusFilter);
 
+  // Sync state if prop changes
+  useEffect(() => {
+    if (initialStatusFilter) {
+      setSelectedStatus(initialStatusFilter);
+    }
+  }, [initialStatusFilter]);
   // Form states for creating a new subscriber
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newSubName, setNewSubName] = useState('');

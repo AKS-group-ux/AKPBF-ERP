@@ -96,15 +96,15 @@ export default function ContractsView({
       .replace(/\{\{start_date\}\}/g, contract.startDate)
       .replace(/\{\{end_date\}\}/g, contract.endDate)
       .replace(/\{\{company_name\}\}/g, 'AKPBF Salubrité Urbaine')
-      .replace(/\{\{company_phone\}\}/g, '+225 20 00 11 22')
-      .replace(/\{\{company_email\}\}/g, 'contact@salubrite.akpbf.ci');
+      .replace(/\{\{company_phone\}\}/g, '+226 25 30 11 22')
+      .replace(/\{\{company_email\}\}/g, 'contact@salubrite.akpbf.bf');
   };
 
   const currentTemplateSelected = useMemo(() => {
     const defaultTemplate = templates[0] || {
       id: 'default',
       name: 'Modèle Standard',
-      body: 'CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ\nRéférence: {{contract_number}}\n\nEntre, d\'une part, l\'entreprise {{company_name}} représentée par son service de voiries, et d\'autre part, le Citoyen {{client_name}} (N° Abonné: {{client_number}}).\n\nL\'Abonné souscrit au forfait d\'assainissement : {{subscription_name}} pour un coût de {{subscription_price}}.\nLe contrat débute le {{start_date}} et expirera le {{end_date}}.\n\nFait à Abidjan, Côte d\'Ivoire.',
+      body: 'CONTRAT DE PRESTATION DE SERVICE SALUBRITÉ\nRéférence: {{contract_number}}\n\nEntre, d\'une part, l\'entreprise {{company_name}} représentée par son service de voiries, et d\'autre part, le Citoyen {{client_name}} (N° Abonné: {{client_number}}).\n\nL\'Abonné souscrit au forfait d\'assainissement : {{subscription_name}} pour un coût de {{subscription_price}}.\nLe contrat débute le {{start_date}} et expirera le {{end_date}}.\n\nFait à Ouagadougou, Burkina Faso.',
       status: 'active'
     };
     if (!selectedTemplateIdForGen) return defaultTemplate;
@@ -250,7 +250,7 @@ export default function ContractsView({
             onClick={() => {
               setSelectedTemplate(null);
               setTemplateName('');
-              setTemplateBody('CONTRAT DE SERVICE SALUBRITÉ AKPBF\n\nModèle de convention officielle pour {{client_name}}.\nForfait retenu : {{subscription_name}}.\nPrix : {{subscription_price}}.\n\nConditions Générales d\'Assainissement de la Ville d\'Abidjan.');
+              setTemplateBody('CONTRAT DE SERVICE SALUBRITÉ AKPBF\n\nModèle de convention officielle pour {{client_name}}.\nForfait retenu : {{subscription_name}}.\nPrix : {{subscription_price}}.\n\nConditions Générales d\'Assainissement de la Ville de Ouagadougou.');
               setIsTemplateModalOpen(true);
             }}
             className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-2"
@@ -844,8 +844,8 @@ export default function ContractsView({
                         <div className="bg-emerald-650 text-white font-serif font-black text-sm p-1.5 rounded-lg tracking-wider">AKPBF</div>
                         <span className="font-serif font-extrabold text-sm tracking-tight text-slate-950">AKPBF SALUBRITÉ</span>
                       </div>
-                      <p className="text-[9px] text-slate-500 font-medium">République de Côte d'Ivoire • Union - Discipline - Travail</p>
-                      <p className="text-[8.5px] text-slate-400 font-mono">Plateau, Avenue des Mairies, Immeuble d'Assainissement</p>
+                      <p className="text-[9px] text-slate-500 font-medium">République du Burkina Faso • Unité - Progrès - Justice</p>
+                      <p className="text-[8.5px] text-slate-400 font-mono">Karpala, Avenue des Mairies, Immeuble d'Assainissement</p>
                     </div>
                     <div className="text-right text-[10px] space-y-1">
                       <div className="font-black text-rose-600 font-mono">N° : {pdfPreviewDoc.data.contractNumber}</div>
@@ -868,8 +868,8 @@ export default function ContractsView({
                         L'ENTREPRISE CONCÉDANTE
                       </div>
                       <div className="font-bold text-slate-800">AKPBF Salubrité Urbaine SAS</div>
-                      <div className="text-slate-600">Direction de l'hygiène et de la voirie d'Abidjan</div>
-                      <div className="text-slate-500 font-mono">Tél: +225 20 00 11 22 • contact@salubrite.akpbf.ci</div>
+                      <div className="text-slate-600">Direction de l'hygiène et de la voirie de Ouagadougou</div>
+                      <div className="text-slate-500 font-mono">Tél: +226 25 30 11 22 • contact@salubrite.akpbf.bf</div>
                     </div>
 
                     <div className="space-y-1.5">
@@ -879,7 +879,7 @@ export default function ContractsView({
                       </div>
                       <div className="font-bold text-slate-800">{pdfPreviewDoc.data.subscriberName}</div>
                       <div className="text-slate-600">ID d'Abonné ERP: {pdfPreviewDoc.data.subscriberId}</div>
-                      <div className="text-slate-500">Adresse d'effet rattachée: Abidjan, Côte d'Ivoire</div>
+                      <div className="text-slate-500">Adresse d'effet rattachée: Ouagadougou, Burkina Faso</div>
                     </div>
                   </div>
 
@@ -914,11 +914,11 @@ export default function ContractsView({
                   {/* Bottom Signatures layout */}
                   <div className="pt-6 border-t border-slate-100 grid grid-cols-2 gap-10">
                     <div className="text-left space-y-4">
-                      <div className="text-[9px] uppercase font-black text-slate-400">Pour la Direction AKPBF</div>
+                      <div className="text-[9px] uppercase font-black text-slate-400 font-mono">Pour la Direction AKPBF</div>
                       <div className="h-16 flex items-center justify-center border-b border-dashed border-slate-350 bg-slate-50/30 rounded-lg">
                         <span className="font-serif italic text-slate-400 text-[10.5px]">Cachet Électronique Apposé</span>
                       </div>
-                      <div className="text-[10px] font-bold text-slate-700 text-center font-mono">Abidjan, Le 23 Mai 2026</div>
+                      <div className="text-[10px] font-bold text-slate-700 text-center font-mono">Ouagadougou, Le 23 Mai 2026</div>
                     </div>
 
                     <div className="text-right space-y-4">
